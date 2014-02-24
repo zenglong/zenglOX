@@ -1,0 +1,7 @@
+#use gdb and bochs to debug zenglOX
+gdb -q zenglOX.bin
+(gdb) break *_zlox_boot_start
+(gdb) target remote localhost:1234
+(gdb) info breakpoints
+(gdb) c
+......
