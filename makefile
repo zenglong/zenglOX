@@ -10,14 +10,15 @@ CFLAGS = -std=gnu99 -ffreestanding -gdwarf-2 -g3 -Wall -Wextra
 CLINK_FLAGS = -ffreestanding -gdwarf-2 -g3 -nostdlib
 ASFLAGS = -gdwarf-2 -g3
 
-DEPS = zlox_common.h zlox_monitor.h
-OBJS = zlox_boot.o zlox_kernel.o zlox_common.o zlox_monitor.o
+DEPS = zlox_common.h zlox_monitor.h zlox_descriptor_tables.h zlox_isr.h
+OBJS = zlox_boot.o zlox_kernel.o zlox_common.o zlox_monitor.o zlox_descriptor_tables.o \
+		zlox_gdt.o zlox_interrupt.o zlox_isr.o
 
 zenglOX.bin: $(OBJS) linker.ld
 	$(CC) -T linker.ld -o zenglOX.bin $(CLINK_FLAGS) $(OBJS)
 
-zlox_boot.o: zlox_boot.s
-	$(AS) zlox_boot.s -o zlox_boot.o $(ASFLAGS)
+%.o: %.s
+	$(AS) -o $@ $< $(ASFLAGS)
 
 %.o: %.c $(DEPS)
 	$(CC) -c -o $@ $< $(CFLAGS)

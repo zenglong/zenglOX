@@ -27,3 +27,11 @@ ZLOX_UINT16 zlox_inw(ZLOX_UINT16 port)
 	return ret;
 }
 
+// Write len copies of val into dest.
+ZLOX_VOID zlox_memset(ZLOX_UINT8 *dest, ZLOX_UINT8 val, ZLOX_UINT32 len)
+{
+    ZLOX_UINT8 *temp = (ZLOX_UINT8 *)dest;
+    for ( ; len != 0; len--) 
+		*temp++ = val;
+}
+

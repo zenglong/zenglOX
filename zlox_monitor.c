@@ -144,3 +144,38 @@ ZLOX_VOID zlox_monitor_write(ZLOX_CHAR * c)
     }
 }
 
+// Outputs an integer to the monitor.
+ZLOX_VOID zlox_monitor_write_dec(ZLOX_UINT32 n)
+{
+	ZLOX_SINT32 acc;
+    ZLOX_CHAR c[32];
+    ZLOX_SINT32 i;
+	ZLOX_CHAR c2[32];
+    ZLOX_SINT32 j;
+
+    if (n == 0)
+    {
+        zlox_monitor_put('0');
+        return;
+    }
+	
+	acc = n;
+	i = 0;	
+    while (acc > 0)
+    {
+        c[i] = '0' + acc%10;
+        acc /= 10;
+        i++;
+    }
+    c[i] = 0;
+
+	c2[i--] = 0;
+	j = 0;
+	// reverse the integer string's order
+    while(i >= 0)
+    {
+        c2[i--] = c[j++];
+    }
+    zlox_monitor_write(c2);
+}
+

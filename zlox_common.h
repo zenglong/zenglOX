@@ -20,6 +20,8 @@ ZLOX_VOID zlox_outb(ZLOX_UINT16 port,ZLOX_UINT8 value);
 ZLOX_UINT8 zlox_inb(ZLOX_UINT16 port);
 //read a word(2 byte) from the specified port.
 ZLOX_UINT16 zlox_inw(ZLOX_UINT16 port);
+// Write len copies of val into dest.
+ZLOX_VOID zlox_memset(ZLOX_UINT8 *dest, ZLOX_UINT8 val, ZLOX_UINT32 len);
 
 #endif // _ZLOX_COMMON_H_
 
