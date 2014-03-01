@@ -10,7 +10,8 @@ CFLAGS = -std=gnu99 -ffreestanding -gdwarf-2 -g3 -Wall -Wextra
 CLINK_FLAGS = -ffreestanding -gdwarf-2 -g3 -nostdlib
 ASFLAGS = -gdwarf-2 -g3
 
-OBJS = zlox_boot.o zlox_kernel.o
+DEPS = zlox_common.h zlox_monitor.h
+OBJS = zlox_boot.o zlox_kernel.o zlox_common.o zlox_monitor.o
 
 zenglOX.bin: $(OBJS) linker.ld
 	$(CC) -T linker.ld -o zenglOX.bin $(CLINK_FLAGS) $(OBJS)
@@ -18,13 +19,15 @@ zenglOX.bin: $(OBJS) linker.ld
 zlox_boot.o: zlox_boot.s
 	$(AS) zlox_boot.s -o zlox_boot.o $(ASFLAGS)
 
-zlox_kernel.o: zlox_kernel.c
-	$(CC) -c zlox_kernel.c -o zlox_kernel.o $(CFLAGS)
+%.o: %.c $(DEPS)
+	$(CC) -c -o $@ $< $(CFLAGS)
 
 clean:
-	rm -v zlox_boot.o
-	rm -v zlox_kernel.o
-	rm -v zenglOX.bin
+	rm -vf *.o
+	rm -vf zenglOX.bin
+	rm -vf zenglOX.iso
+	rm -vf isodir/boot/zenglOX.bin
+	rm -vf isodir/boot/grub/grub.cfg
 
 all: zenglOX.bin
 

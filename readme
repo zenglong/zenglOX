@@ -16,7 +16,9 @@ Ubuntu下直接输入apt-get install xorriso(在root权限的情况下)
 
 安装好bochs后，修改bochsrc.txt文件，将romimage与vgaromimage的路径值改为你的系统里的路径
 
-在命令行运行./startBochs启动Bochs虚拟机
+接着可以运行startBochs脚本，不过一开始startBochs没有执行权限，需要在命令行通过chmod +x startBochs来设置可执行权限
+
+然后就可以在命令行运行./startBochs来启动Bochs虚拟机
 
 当Bochs虚拟机在命令行输出显示Waiting for gdb connection on port 1234时，另外再开一个
 终端，在该终端里切换到源代码位置，输入类似如下的命令(命令的输出信息仅供参考)：
