@@ -87,6 +87,22 @@ extern void _zlox_isr_28();
 extern void _zlox_isr_29();
 extern void _zlox_isr_30();
 extern void _zlox_isr_31();
+extern void _zlox_irq_0	();
+extern void _zlox_irq_1	();
+extern void _zlox_irq_2	();
+extern void _zlox_irq_3	();
+extern void _zlox_irq_4	();
+extern void _zlox_irq_5	();
+extern void _zlox_irq_6	();
+extern void _zlox_irq_7	();
+extern void _zlox_irq_8	();
+extern void _zlox_irq_9	();
+extern void _zlox_irq_10();
+extern void _zlox_irq_11();
+extern void _zlox_irq_12();
+extern void _zlox_irq_13();
+extern void _zlox_irq_14();
+extern void _zlox_irq_15();
 
 #endif //_ZLOX_DESCRIPTOR_TABLES_H_
 

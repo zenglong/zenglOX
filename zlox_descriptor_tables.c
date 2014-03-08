@@ -2,6 +2,7 @@
   and defines the default ISR and IRQ handler.*/
 
 #include "zlox_common.h"
+#include "zlox_isr.h"
 #include "zlox_descriptor_tables.h"
 
 // Lets us access our ASM functions from our C code.
@@ -20,6 +21,9 @@ ZLOX_GDT_PTR gdt_ptr;
 ZLOX_IDT_ENTRY idt_entries[256];
 ZLOX_IDT_PTR idt_ptr;
 
+// Extern the ISR handler array so we can nullify them on startup.
+extern ZLOX_ISR_CALLBACK interrupt_callbacks[];
+
 // initialises the GDT and IDT.
 ZLOX_VOID zlox_init_descriptor_tables()
 {
@@ -28,6 +32,9 @@ ZLOX_VOID zlox_init_descriptor_tables()
 
 	// Initialise the interrupt descriptor table.
 	zlox_init_idt();
+
+	// Nullify all the interrupt callbacks.
+    zlox_memset((ZLOX_UINT8 *)interrupt_callbacks, 0, sizeof(ZLOX_ISR_CALLBACK)*256);
 }
 
 // Initialises the GDT (global descriptor table)
@@ -67,6 +74,27 @@ static ZLOX_VOID zlox_init_idt()
     idt_ptr.base  = (ZLOX_UINT32)idt_entries;
 
 	zlox_memset((ZLOX_UINT8 *)idt_entries, 0, sizeof(ZLOX_IDT_ENTRY)*256);
+
+	// Remap the irq table.
+	// ICW1: starts the initialization sequence (in cascade mode)
+	zlox_outb(0x20, 0x11); 
+    zlox_outb(0xA0, 0x11);
+	// ICW2: Master PIC vector offset
+    zlox_outb(0x21, 0x20); 
+	// ICW2: Slave PIC vector offset
+    zlox_outb(0xA1, 0x28);
+	// ICW3: tell Master PIC that there is a slave PIC at IRQ2 (0000 0100)
+    zlox_outb(0x21, 0x04); 
+	// ICW3: tell Slave PIC its cascade identity (0000 0010)
+    zlox_outb(0xA1, 0x02);
+	// ICW4: 8086/88 (MCS-80/85) mode
+    zlox_outb(0x21, 0x01);
+	// ICW4: 8086/88 (MCS-80/85) mode
+    zlox_outb(0xA1, 0x01);
+	// masks.
+    zlox_outb(0x21, 0x0);
+	// masks.
+    zlox_outb(0xA1, 0x0);
 	
 	zlox_idt_set_gate( 0, (ZLOX_UINT32)_zlox_isr_0 , 0x08, 0x8E);
 	zlox_idt_set_gate( 1, (ZLOX_UINT32)_zlox_isr_1 , 0x08, 0x8E);
@@ -100,6 +128,22 @@ static ZLOX_VOID zlox_init_idt()
     zlox_idt_set_gate(29, (ZLOX_UINT32)_zlox_isr_29, 0x08, 0x8E);
     zlox_idt_set_gate(30, (ZLOX_UINT32)_zlox_isr_30, 0x08, 0x8E);
     zlox_idt_set_gate(31, (ZLOX_UINT32)_zlox_isr_31, 0x08, 0x8E);
+	zlox_idt_set_gate(ZLOX_IRQ0, (ZLOX_UINT32)_zlox_irq_0, 0x08, 0x8E);
+	zlox_idt_set_gate(ZLOX_IRQ1, (ZLOX_UINT32)_zlox_irq_1, 0x08, 0x8E);
+	zlox_idt_set_gate(ZLOX_IRQ2, (ZLOX_UINT32)_zlox_irq_2, 0x08, 0x8E);
+	zlox_idt_set_gate(ZLOX_IRQ3, (ZLOX_UINT32)_zlox_irq_3, 0x08, 0x8E);
+	zlox_idt_set_gate(ZLOX_IRQ4, (ZLOX_UINT32)_zlox_irq_4, 0x08, 0x8E);
+	zlox_idt_set_gate(ZLOX_IRQ5, (ZLOX_UINT32)_zlox_irq_5, 0x08, 0x8E);
+	zlox_idt_set_gate(ZLOX_IRQ6, (ZLOX_UINT32)_zlox_irq_6, 0x08, 0x8E);
+	zlox_idt_set_gate(ZLOX_IRQ7, (ZLOX_UINT32)_zlox_irq_7, 0x08, 0x8E);
+	zlox_idt_set_gate(ZLOX_IRQ8, (ZLOX_UINT32)_zlox_irq_8, 0x08, 0x8E);
+	zlox_idt_set_gate(ZLOX_IRQ9, (ZLOX_UINT32)_zlox_irq_9, 0x08, 0x8E);
+	zlox_idt_set_gate(ZLOX_IRQ10, (ZLOX_UINT32)_zlox_irq_10, 0x08, 0x8E);
+	zlox_idt_set_gate(ZLOX_IRQ11, (ZLOX_UINT32)_zlox_irq_11, 0x08, 0x8E);
+	zlox_idt_set_gate(ZLOX_IRQ12, (ZLOX_UINT32)_zlox_irq_12, 0x08, 0x8E);
+	zlox_idt_set_gate(ZLOX_IRQ13, (ZLOX_UINT32)_zlox_irq_13, 0x08, 0x8E);
+	zlox_idt_set_gate(ZLOX_IRQ14, (ZLOX_UINT32)_zlox_irq_14, 0x08, 0x8E);
+	zlox_idt_set_gate(ZLOX_IRQ15, (ZLOX_UINT32)_zlox_irq_15, 0x08, 0x8E);
 
 	_zlox_idt_flush((ZLOX_UINT32)&idt_ptr);
 }
