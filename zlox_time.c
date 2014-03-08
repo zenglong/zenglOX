@@ -1,4 +1,4 @@
-/* timer.c Initialises the PIT, and handles clock updates. */
+/* zlox_timer.c Initialises the PIT, and handles clock updates. */
 
 #include "zlox_time.h"
 #include "zlox_isr.h"
@@ -6,7 +6,7 @@
 
 ZLOX_UINT32 tick = 0;
 
-static ZLOX_VOID zlox_timer_callback(ZLOX_ISR_REGISTERS regs)
+static ZLOX_VOID zlox_timer_callback(/*ZLOX_ISR_REGISTERS regs*/)
 {
     tick++;
     zlox_monitor_write("zenglOX Tick: ");

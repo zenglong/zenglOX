@@ -14,6 +14,9 @@ ZLOX_VOID zlox_monitor_clear();
 // Outputs a null-terminated ASCII string to the monitor.
 ZLOX_VOID zlox_monitor_write(ZLOX_CHAR * c);
 
+// Outputs an integer as Hex
+ZLOX_VOID zlox_monitor_write_hex(ZLOX_UINT32 n);
+
 // Outputs an integer to the monitor.
 ZLOX_VOID zlox_monitor_write_dec(ZLOX_UINT32 n);
 

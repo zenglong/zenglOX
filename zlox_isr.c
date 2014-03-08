@@ -14,9 +14,17 @@ ZLOX_VOID zlox_register_interrupt_callback(ZLOX_UINT8 n, ZLOX_ISR_CALLBACK callb
 // This gets called from our ASM interrupt handler stub.
 ZLOX_VOID zlox_isr_handler(ZLOX_ISR_REGISTERS regs)
 {
-	zlox_monitor_write("zenglox recieved interrupt: ");
-	zlox_monitor_write_dec(regs.int_no);
-	zlox_monitor_put('\n');
+	if (interrupt_callbacks[regs.int_no] != 0)
+    {
+		ZLOX_ISR_CALLBACK callback = interrupt_callbacks[regs.int_no];
+        callback(regs);
+	}
+	else
+	{
+		zlox_monitor_write("zenglox recieved interrupt: ");
+		zlox_monitor_write_dec(regs.int_no);
+		zlox_monitor_put('\n');
+	}
 }
 
 // This gets called from our ASM interrupt handler stub.

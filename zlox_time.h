@@ -1,4 +1,4 @@
-/* timer.h Defines the interface for all PIT-related functions.*/
+/* zlox_timer.h Defines the interface for all PIT-related functions.*/
 
 #ifndef _ZLOX_TIME_H_
 #define _ZLOX_TIME_H_

@@ -2,6 +2,9 @@
 
 #include "zlox_common.h"
 
+// Outputs an integer to the monitor.
+extern ZLOX_VOID zlox_monitor_write_dec(ZLOX_UINT32 n);
+
 // Write a byte out to the specified port.
 ZLOX_VOID zlox_outb(ZLOX_UINT16 port,ZLOX_UINT8 value)
 {
@@ -33,5 +36,22 @@ ZLOX_VOID zlox_memset(ZLOX_UINT8 *dest, ZLOX_UINT8 val, ZLOX_UINT32 len)
     ZLOX_UINT8 *temp = (ZLOX_UINT8 *)dest;
     for ( ; len != 0; len--) 
 		*temp++ = val;
+}
+
+ZLOX_VOID zlox_panic(const ZLOX_CHAR *message, const ZLOX_CHAR *file, ZLOX_UINT32 line)
+{
+    // We encountered a massive problem and have to stop.
+    asm volatile("cli"); // Disable interrupts.
+
+    zlox_monitor_write("PANIC(");
+    zlox_monitor_write(message);
+    zlox_monitor_write(") at ");
+    zlox_monitor_write(file);
+    zlox_monitor_write(":");
+    zlox_monitor_write_dec(line);
+    zlox_monitor_write("\n");
+    // Halt by going into an infinite loop.
+    for(;;)
+		;
 }
 
