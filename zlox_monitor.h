@@ -12,7 +12,7 @@ ZLOX_VOID zlox_monitor_put(ZLOX_CHAR c);
 ZLOX_VOID zlox_monitor_clear();
 
 // Outputs a null-terminated ASCII string to the monitor.
-ZLOX_VOID zlox_monitor_write(ZLOX_CHAR * c);
+ZLOX_VOID zlox_monitor_write(const ZLOX_CHAR * c);
 
 // Outputs an integer as Hex
 ZLOX_VOID zlox_monitor_write_hex(ZLOX_UINT32 n);

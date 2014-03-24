@@ -15,6 +15,7 @@ typedef char ZLOX_CHAR;
 typedef void ZLOX_VOID;
 
 #define ZLOX_PANIC(msg) zlox_panic(msg, __FILE__, __LINE__);
+#define ZLOX_ASSERT(b) ((b) ? (void)0 : zlox_panic_assert(__FILE__, __LINE__, #b))
 
 // Write a byte out to the specified port.
 ZLOX_VOID zlox_outb(ZLOX_UINT16 port,ZLOX_UINT8 value);
@@ -26,6 +27,7 @@ ZLOX_UINT16 zlox_inw(ZLOX_UINT16 port);
 ZLOX_VOID zlox_memset(ZLOX_UINT8 *dest, ZLOX_UINT8 val, ZLOX_UINT32 len);
 
 extern ZLOX_VOID zlox_panic(const ZLOX_CHAR *message, const ZLOX_CHAR *file, ZLOX_UINT32 line);
+extern ZLOX_VOID zlox_panic_assert(const ZLOX_CHAR *file, ZLOX_UINT32 line, const ZLOX_CHAR * desc);
 
 #endif // _ZLOX_COMMON_H_
 
