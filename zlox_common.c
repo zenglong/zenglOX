@@ -31,12 +31,64 @@ ZLOX_UINT16 zlox_inw(ZLOX_UINT16 port)
 	return ret;
 }
 
+// Copy len bytes from src to dest.
+ZLOX_VOID zlox_memcpy(ZLOX_UINT8 *dest, const ZLOX_UINT8 *src, ZLOX_UINT32 len)
+{
+	const ZLOX_UINT8 *sp = (const ZLOX_UINT8 *)src;
+	ZLOX_UINT8 *dp = (ZLOX_UINT8 *)dest;
+	if(len == 0)
+		return;
+	for(; len != 0; len--) 
+		*dp++ = *sp++;
+}
+
 // Write len copies of val into dest.
 ZLOX_VOID zlox_memset(ZLOX_UINT8 *dest, ZLOX_UINT8 val, ZLOX_UINT32 len)
 {
 	ZLOX_UINT8 *temp = (ZLOX_UINT8 *)dest;
 	for ( ; len != 0; len--) 
 		*temp++ = val;
+}
+
+// Compare two strings. return 0 if they are equal or 1 otherwise.
+ZLOX_SINT32 zlox_strcmp(ZLOX_CHAR * str1, ZLOX_CHAR * str2)
+{
+	ZLOX_SINT32 i = 0;
+	ZLOX_SINT32 failed = 0;
+	while(str1[i] != '\0' && str2[i] != '\0')
+	{
+		if(str1[i] != str2[i])
+		{
+			failed = 1;
+			break;
+		}
+		i++;
+	}
+	// why did the loop exit?
+	if( (str1[i] == '\0' && str2[i] != '\0') || (str1[i] != '\0' && str2[i] == '\0') )
+		failed = 1;
+  
+	return failed;
+}
+
+// Copy the NULL-terminated string src into dest, and
+// return dest.
+ZLOX_CHAR * zlox_strcpy(ZLOX_CHAR * dest, const ZLOX_CHAR * src)
+{
+	do
+	{
+		*dest++ = *src++;
+	}
+	while (*src != 0);
+	return dest;
+}
+
+ZLOX_SINT32 zlox_strlen(ZLOX_CHAR *src)
+{
+	ZLOX_SINT32 i = 0;
+	while (*src++)
+		i++;
+	return i;
 }
 
 ZLOX_VOID zlox_panic(const ZLOX_CHAR *message, const ZLOX_CHAR *file, ZLOX_UINT32 line)

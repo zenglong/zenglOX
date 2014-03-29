@@ -23,8 +23,16 @@ ZLOX_VOID zlox_outb(ZLOX_UINT16 port,ZLOX_UINT8 value);
 ZLOX_UINT8 zlox_inb(ZLOX_UINT16 port);
 //read a word(2 byte) from the specified port.
 ZLOX_UINT16 zlox_inw(ZLOX_UINT16 port);
+// Copy len bytes from src to dest.
+ZLOX_VOID zlox_memcpy(ZLOX_UINT8 *dest, const ZLOX_UINT8 *src, ZLOX_UINT32 len);
 // Write len copies of val into dest.
 ZLOX_VOID zlox_memset(ZLOX_UINT8 *dest, ZLOX_UINT8 val, ZLOX_UINT32 len);
+// Compare two strings. return 0 if they are equal or 1 otherwise.
+ZLOX_SINT32 zlox_strcmp(ZLOX_CHAR * str1, ZLOX_CHAR * str2);
+// Copy the NULL-terminated string src into dest, and
+// return dest.
+ZLOX_CHAR * zlox_strcpy(ZLOX_CHAR * dest, const ZLOX_CHAR * src);
+ZLOX_SINT32 zlox_strlen(ZLOX_CHAR *src);
 
 extern ZLOX_VOID zlox_panic(const ZLOX_CHAR *message, const ZLOX_CHAR *file, ZLOX_UINT32 line);
 extern ZLOX_VOID zlox_panic_assert(const ZLOX_CHAR *file, ZLOX_UINT32 line, const ZLOX_CHAR * desc);
