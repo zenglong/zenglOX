@@ -11,9 +11,10 @@ struct _ZLOX_PAGE
 	ZLOX_UINT32 present		: 1;   // Page present in memory
 	ZLOX_UINT32 rw			: 1;   // Read-only if clear, readwrite if set
 	ZLOX_UINT32 user		: 1;   // Supervisor level only if clear
-	ZLOX_UINT32 accessed	: 1;   // Has the page been accessed since last refresh?
+	ZLOX_UINT32 unused1		: 2;   // unused temporary
+	ZLOX_UINT32 accessed		: 1;   // Has the page been accessed since last refresh?
 	ZLOX_UINT32 dirty		: 1;   // Has the page been written to since last refresh?
-	ZLOX_UINT32 unused		: 7;   // Amalgamation of unused and reserved bits
+	ZLOX_UINT32 unused2		: 5;   // Amalgamation of unused and reserved bits
 	ZLOX_UINT32 frame		: 20;  // Frame address (shifted right 12 bits)
 }__attribute__((packed));
 
@@ -55,6 +56,10 @@ ZLOX_VOID zlox_alloc_frame(ZLOX_PAGE *page, ZLOX_SINT32 is_kernel, ZLOX_SINT32 i
 ZLOX_VOID zlox_free_frame(ZLOX_PAGE *page);
 
 ZLOX_PAGE *zlox_get_page(ZLOX_UINT32 address, ZLOX_SINT32 make, ZLOX_PAGE_DIRECTORY *dir);
+
+ZLOX_VOID zlox_page_copy(ZLOX_UINT32 copy_address);
+
+ZLOX_PAGE_DIRECTORY * zlox_clone_directory(ZLOX_PAGE_DIRECTORY * src , ZLOX_UINT32 needCopy);
 
 #endif //_ZLOX_PAGING_H_
 

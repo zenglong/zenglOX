@@ -8,20 +8,28 @@
 #include "zlox_multiboot.h"
 #include "zlox_fs.h"
 #include "zlox_initrd.h"
+#include "zlox_task.h"
 
 extern ZLOX_UINT32 placement_address;
+ZLOX_UINT32 initial_esp;
 
 //zenglOX kernel main entry
-ZLOX_SINT32 zlox_kernel_main(ZLOX_MULTIBOOT * mboot_ptr)
+ZLOX_SINT32 zlox_kernel_main(ZLOX_MULTIBOOT * mboot_ptr, ZLOX_UINT32 initial_stack)
 {
 	ZLOX_UINT32 initrd_location;
 	ZLOX_UINT32 initrd_end;
+
+	initial_esp = initial_stack;
 
 	// init gdt and idt
 	zlox_init_descriptor_tables();	
 
 	// Initialise the screen (by clearing it)
 	zlox_monitor_clear();
+
+	asm volatile("sti");
+	// 将PIT定时器的频率设为50Hz,即每20ms产生一次时间中断
+	zlox_init_timer(50);
 
 	ZLOX_ASSERT(mboot_ptr->mods_count > 0);
 	initrd_location = *((ZLOX_UINT32*)mboot_ptr->mods_addr);
@@ -33,9 +41,25 @@ ZLOX_SINT32 zlox_kernel_main(ZLOX_MULTIBOOT * mboot_ptr)
 	// 开启分页,并创建堆
 	zlox_init_paging();
 
+	//初始化任务系统
+	zlox_initialise_tasking();
+
+	// Write out a sample string
+	zlox_monitor_write("hello world!\nwelcome to zenglOX v0.0.8!\n");
+
 	// Initialise the initial ramdisk, and set it as the filesystem root.
 	fs_root = zlox_initialise_initrd(initrd_location);
 
+	ZLOX_SINT32 ret = zlox_fork();
+
+	zlox_monitor_write("fork() returned ");
+	zlox_monitor_write_hex(ret);
+	zlox_monitor_write(", and getpid() returned ");
+	zlox_monitor_write_hex(zlox_getpid());
+	zlox_monitor_write("\n============================================================================\n");
+
+	// The next section of code is not reentrant so make sure we aren't interrupted during.
+	asm volatile("cli");
 	// list the contents of /
 	ZLOX_SINT32 i = 0;
 	ZLOX_DIRENT *node = 0;
@@ -62,16 +86,10 @@ ZLOX_SINT32 zlox_kernel_main(ZLOX_MULTIBOOT * mboot_ptr)
 		}
 		i++;
 	}
+	zlox_monitor_write("\n");
 
-	// Write out a sample string
-	zlox_monitor_write("hello world!\nwelcome to zenglOX v0.0.7!\n");
-
-	/*asm volatile("int $0x3");
-	asm volatile("int $0x4");
-	
 	asm volatile("sti");
-	zlox_init_timer(50);*/
 
-	return (ZLOX_SINT32)mboot_ptr;
+	return 0;
 }
 

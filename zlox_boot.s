@@ -23,6 +23,7 @@ _zlox_boot_mb_header:
 .section .text
 .global _zlox_boot_start
 _zlox_boot_start:
+  pushl %esp
   pushl %ebx
   cli
   call zlox_kernel_main

@@ -3,15 +3,19 @@
 #include "zlox_time.h"
 #include "zlox_isr.h"
 #include "zlox_monitor.h"
+#include "zlox_task.h"
 
 ZLOX_UINT32 tick = 0;
 
 static ZLOX_VOID zlox_timer_callback(/*ZLOX_ISR_REGISTERS regs*/)
 {
 	tick++;
-	zlox_monitor_write("zenglOX Tick: ");
-	zlox_monitor_write_dec(tick);
-	zlox_monitor_write("\n");
+	//zlox_monitor_write("zenglOX Tick: ");
+	//zlox_monitor_write_dec(tick);
+	//zlox_monitor_write("\n");
+
+	zlox_switch_task();
+	
 }
 
 ZLOX_VOID zlox_init_timer(ZLOX_UINT32 frequency)

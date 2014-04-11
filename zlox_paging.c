@@ -19,13 +19,15 @@ ZLOX_UINT32 nframes;
 extern ZLOX_UINT32 placement_address;
 extern ZLOX_HEAP *kheap;
 
+// Defined in zlox_process.s
+extern ZLOX_VOID _zlox_copy_page_physical(ZLOX_UINT32 src,ZLOX_UINT32 dest);
+
 // Macros used in the bitset algorithms.
 #define ZLOX_INDEX_FROM_BIT(a) (a/(8*4))
 #define ZLOX_OFFSET_FROM_BIT(a) (a%(8*4))
 
-ZLOX_VOID zlox_switch_page_directory(ZLOX_PAGE_DIRECTORY *dir);
-ZLOX_PAGE *zlox_get_page(ZLOX_UINT32 address, ZLOX_SINT32 make, ZLOX_PAGE_DIRECTORY *dir);
 ZLOX_VOID zlox_page_fault(ZLOX_ISR_REGISTERS regs);
+static ZLOX_PAGE_TABLE * zlox_clone_table(ZLOX_PAGE_TABLE * src, ZLOX_UINT32 * physAddr, ZLOX_UINT32 needCopy);
 
 // Static function to set a bit in the frames bitset
 static ZLOX_VOID zlox_set_frame(ZLOX_UINT32 frame_addr)
@@ -76,6 +78,23 @@ static ZLOX_UINT32 zlox_first_frame()
 	return 0xFFFFFFFF;
 }
 
+// Function real to allocate a frame.
+ZLOX_VOID zlox_alloc_frame_do(ZLOX_PAGE *page, ZLOX_SINT32 is_kernel, ZLOX_SINT32 is_writeable)
+{
+	ZLOX_UINT32 tmp_page = zlox_first_frame();
+	if (tmp_page == ((ZLOX_UINT32)(-1)))
+	{
+		// PANIC! no free frames!!
+		// 在frames位图里,没有足够的物理内存可供分配了
+		ZLOX_PANIC("no free frames!!");
+	}
+	zlox_set_frame(tmp_page*0x1000);
+	page->present = 1;
+	page->rw = (is_writeable==1)?1:0;
+	page->user = (is_kernel==1)?0:1;
+	page->frame = tmp_page;
+}
+
 // Function to allocate a frame.
 ZLOX_VOID zlox_alloc_frame(ZLOX_PAGE *page, ZLOX_SINT32 is_kernel, ZLOX_SINT32 is_writeable)
 {
@@ -85,18 +104,7 @@ ZLOX_VOID zlox_alloc_frame(ZLOX_PAGE *page, ZLOX_SINT32 is_kernel, ZLOX_SINT32 i
 	}
 	else
 	{
-		ZLOX_UINT32 tmp_page = zlox_first_frame();
-		if (tmp_page == ((ZLOX_UINT32)(-1)))
-		{
-			// PANIC! no free frames!!
-			// 在frames位图里,没有足够的物理内存可供分配了
-			ZLOX_PANIC("no free frames!!");
-		}
-		zlox_set_frame(tmp_page*0x1000);
-		page->present = 1;
-		page->rw = (is_writeable)?1:0;
-		page->user = (is_kernel)?0:1;
-		page->frame = tmp_page;
+		zlox_alloc_frame_do(page, is_kernel, is_writeable);
 	}
 }
 
@@ -131,7 +139,7 @@ ZLOX_VOID zlox_init_paging()
 	kernel_directory = (ZLOX_PAGE_DIRECTORY *)zlox_kmalloc_a(sizeof(ZLOX_PAGE_DIRECTORY));
 	// we must clean the memory of kernel_directory!
 	zlox_memset((ZLOX_UINT8 *)kernel_directory, 0, sizeof(ZLOX_PAGE_DIRECTORY));
-	current_directory = kernel_directory;
+	kernel_directory->physicalAddr = (ZLOX_UINT32)kernel_directory->tablesPhysical;
 
 	// Map some pages in the kernel heap area.
 	// Here we call get_page but not alloc_frame. This causes page_table_t's 
@@ -175,13 +183,16 @@ ZLOX_VOID zlox_init_paging()
 
 	// 在0xc0000000线性地址处创建一个新的堆,用于后面的zlox_kmalloc,zlox_kfree之类的分配及释放操作
 	kheap = zlox_create_heap(ZLOX_KHEAP_START,ZLOX_KHEAP_START+ZLOX_KHEAP_INITIAL_SIZE,0xCFFFF000, 0, 0);
+
+	current_directory = zlox_clone_directory(kernel_directory,1);
+	zlox_switch_page_directory(current_directory);
 }
 
 ZLOX_VOID zlox_switch_page_directory(ZLOX_PAGE_DIRECTORY *dir)
 {
 	ZLOX_UINT32 cr0_val;
 	current_directory = dir;
-	asm volatile("mov %0, %%cr3":: "r"(dir->tablesPhysical));
+	asm volatile("mov %0, %%cr3":: "r"(dir->physicalAddr));
 	asm volatile("mov %%cr0, %0": "=r"(cr0_val));
 	cr0_val |= 0x80000000; // Enable paging!
 	asm volatile("mov %0, %%cr0":: "r"(cr0_val));
@@ -213,6 +224,30 @@ ZLOX_PAGE *zlox_get_page(ZLOX_UINT32 address, ZLOX_SINT32 make, ZLOX_PAGE_DIRECT
 	}
 }
 
+ZLOX_VOID zlox_page_copy(ZLOX_UINT32 copy_address)
+{
+	ZLOX_UINT32 phys;
+	ZLOX_PAGE_TABLE * newTable;
+	copy_address /= 0x1000;
+	ZLOX_UINT32 table_idx = copy_address / 1024;
+	ZLOX_UINT32 page_idx = copy_address % 1024;
+	if( (current_directory->tablesPhysical[table_idx] & 0x2) == 0)
+	{
+		newTable = zlox_clone_table(current_directory->tables[table_idx],&phys,0);
+	}
+	ZLOX_PAGE_TABLE * oldTable = current_directory->tables[table_idx];
+	zlox_alloc_frame_do(&newTable->pages[page_idx], 0, 1);
+	if (oldTable->pages[page_idx].present) newTable->pages[page_idx].present = 1;
+	if (oldTable->pages[page_idx].user) newTable->pages[page_idx].user = 1;
+	if (oldTable->pages[page_idx].accessed) newTable->pages[page_idx].accessed = 1;
+	if (oldTable->pages[page_idx].dirty) newTable->pages[page_idx].dirty = 1;
+	newTable->pages[page_idx].rw = 1;
+	_zlox_copy_page_physical(oldTable->pages[page_idx].frame*0x1000, 
+				newTable->pages[page_idx].frame*0x1000);
+	current_directory->tables[table_idx] = newTable;
+	current_directory->tablesPhysical[table_idx] = phys | 0x07;
+}
+
 ZLOX_VOID zlox_page_fault(ZLOX_ISR_REGISTERS regs)
 {
 	// A page fault has occurred.
@@ -228,10 +263,17 @@ ZLOX_VOID zlox_page_fault(ZLOX_ISR_REGISTERS regs)
 	
 	// The error code gives us details of what happened.
 	present   = !(regs.err_code & 0x1); // Page not present
-	rw = regs.err_code & 0x2;		   // Write operation?
-	us = regs.err_code & 0x4;		   // Processor was in user-mode?
-	reserved = regs.err_code & 0x8;	 // Overwritten CPU-reserved bits of page entry?
-	id = regs.err_code & 0x10;		  // Caused by an instruction fetch?
+	rw = regs.err_code & 0x2; // Write operation?
+	us = regs.err_code & 0x4; // Processor was in user-mode?
+	reserved = regs.err_code & 0x8;	// Overwritten CPU-reserved bits of page entry?
+	id = regs.err_code & 0x10; // Caused by an instruction fetch?
+
+	// 当用户权限的程式对只读内存进行写操作时,如果该段内存位于可以复制的内存区段,则进行写时复制
+	if (rw && (faulting_address >= 0xc0000000))
+	{
+		zlox_page_copy(faulting_address);
+		return ;
+	}
 
 	// Output an error message.
 	zlox_monitor_write("Page fault! ( ");
@@ -247,11 +289,95 @@ ZLOX_VOID zlox_page_fault(ZLOX_ISR_REGISTERS regs)
 	if(id)
 		zlox_monitor_write("instruction fetch ");
 
-	zlox_monitor_write(") at 0x");
+	zlox_monitor_write(") at ");
 
 	zlox_monitor_write_hex(faulting_address);
 	zlox_monitor_write("\n");
 
 	ZLOX_PANIC("Page fault");
+}
+
+static ZLOX_PAGE_TABLE * zlox_clone_table(ZLOX_PAGE_TABLE * src, ZLOX_UINT32 * physAddr, ZLOX_UINT32 needCopy)
+{
+	// Make a new page table, which is page aligned.
+	ZLOX_PAGE_TABLE * table = (ZLOX_PAGE_TABLE *)zlox_kmalloc_ap(sizeof(ZLOX_PAGE_TABLE), physAddr);
+	// Ensure that the new table is blank.
+	zlox_memset((ZLOX_UINT8 *)table, 0, sizeof(ZLOX_PAGE_TABLE));
+
+	// For every entry in the table...
+	ZLOX_SINT32 i;
+	for (i = 0; i < 1024; i++)
+	{
+		// If the source entry has a frame associated with it...
+		if (src->pages[i].frame)
+		{
+			if(needCopy == 1)
+			{
+				// Get a new frame.
+				zlox_alloc_frame(&table->pages[i], 0, 0);
+				// Clone the flags from source to destination.
+				if (src->pages[i].present) table->pages[i].present = 1;
+				if (src->pages[i].rw) table->pages[i].rw = 1;
+				if (src->pages[i].user) table->pages[i].user = 1;
+				if (src->pages[i].accessed) table->pages[i].accessed = 1;
+				if (src->pages[i].dirty) table->pages[i].dirty = 1;
+				// Physically copy the data across. This function is in process.s.
+				_zlox_copy_page_physical(src->pages[i].frame*0x1000, table->pages[i].frame*0x1000);
+			}
+			else
+			{
+				table->pages[i] = src->pages[i];
+				table->pages[i].rw = 0; // 读写位清零,用于写时复制
+			}
+		}
+	}
+	return table;
+}
+
+ZLOX_PAGE_DIRECTORY * zlox_clone_directory(ZLOX_PAGE_DIRECTORY * src , ZLOX_UINT32 needCopy)
+{
+	ZLOX_UINT32 phys;
+	// Make a new page directory and obtain its physical address.
+	ZLOX_PAGE_DIRECTORY * dir = (ZLOX_PAGE_DIRECTORY *)zlox_kmalloc_ap(sizeof(ZLOX_PAGE_DIRECTORY), &phys);
+	// Ensure that it is blank.
+	zlox_memset((ZLOX_UINT8 *)dir, 0, sizeof(ZLOX_PAGE_DIRECTORY));
+
+	// Get the offset of tablesPhysical from the start of the page_directory_t structure.
+	ZLOX_UINT32 offset = (ZLOX_UINT32)dir->tablesPhysical - (ZLOX_UINT32)dir;
+
+	// Then the physical address of dir->tablesPhysical is:
+	dir->physicalAddr = phys + offset;
+
+	// Go through each page table. If the page table is in the kernel directory, do not make a new copy.
+	ZLOX_SINT32 i;
+	for (i = 0; i < 1024; i++)
+	{
+		if (!src->tables[i])
+			continue;
+
+		if (kernel_directory->tables[i] == src->tables[i])
+		{
+			// It's in the kernel, so just use the same pointer.
+			dir->tables[i] = src->tables[i];
+			dir->tablesPhysical[i] = src->tablesPhysical[i];
+		}
+		else
+		{
+			// Copy the table.
+			ZLOX_UINT32 phys;
+			if(needCopy == 1)
+			{
+				dir->tables[i] = zlox_clone_table(src->tables[i], &phys , 1);
+				dir->tablesPhysical[i] = phys | 0x07;
+			}
+			else
+			{
+				dir->tables[i] = src->tables[i];
+				// 读写位清零,用于写时复制
+				dir->tablesPhysical[i] = src->tablesPhysical[i] & (~0x2);
+			}
+		}
+	}
+	return dir;
 }
 
