@@ -36,7 +36,7 @@ typedef struct _ZLOX_ISR_REGISTERS ZLOX_ISR_REGISTERS;
 // Enables registration of callbacks for interrupts or IRQs.
 // For IRQs, to ease confusion, use the #defines above as the
 // first parameter.
-typedef void (*ZLOX_ISR_CALLBACK)(ZLOX_ISR_REGISTERS);
+typedef ZLOX_VOID (*ZLOX_ISR_CALLBACK)(ZLOX_ISR_REGISTERS *);
 
 ZLOX_VOID zlox_register_interrupt_callback(ZLOX_UINT8 n, ZLOX_ISR_CALLBACK callback);
 

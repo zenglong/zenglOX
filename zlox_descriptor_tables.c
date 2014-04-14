@@ -8,6 +8,7 @@
 // Lets us access our ASM functions from our C code.
 extern ZLOX_VOID _zlox_gdt_flush(ZLOX_UINT32);
 extern ZLOX_VOID _zlox_idt_flush(ZLOX_UINT32);
+extern ZLOX_VOID _zlox_tss_flush();
 
 static ZLOX_VOID zlox_init_gdt();
 static ZLOX_VOID zlox_init_idt();
@@ -15,11 +16,13 @@ static ZLOX_VOID zlox_gdt_set_gate(ZLOX_SINT32 num, ZLOX_UINT32 base, ZLOX_UINT3
 									ZLOX_UINT8 access, ZLOX_UINT8 gran);
 static ZLOX_VOID zlox_idt_set_gate(ZLOX_UINT8 num, ZLOX_UINT32 base, ZLOX_UINT16 sel,
 									ZLOX_UINT8 flags);
+static ZLOX_VOID zlox_write_tss(ZLOX_SINT32 num, ZLOX_UINT16 ss0, ZLOX_UINT32 esp0);
 
-ZLOX_GDT_ENTRY gdt_entries[5];
+ZLOX_GDT_ENTRY gdt_entries[ZLOX_GDT_ENTRY_NUMBER];
 ZLOX_GDT_PTR gdt_ptr;
 ZLOX_IDT_ENTRY idt_entries[256];
 ZLOX_IDT_PTR idt_ptr;
+ZLOX_TSS_ENTRY tss_entry;
 
 // Extern the ISR handler array so we can nullify them on startup.
 extern ZLOX_ISR_CALLBACK interrupt_callbacks[];
@@ -40,7 +43,7 @@ ZLOX_VOID zlox_init_descriptor_tables()
 // Initialises the GDT (global descriptor table)
 static ZLOX_VOID zlox_init_gdt()
 {
-	gdt_ptr.limit = (sizeof(ZLOX_GDT_ENTRY) * 5) - 1;
+	gdt_ptr.limit = (sizeof(ZLOX_GDT_ENTRY) * ZLOX_GDT_ENTRY_NUMBER) - 1;
 	gdt_ptr.base  = (ZLOX_UINT32)gdt_entries;
 	
 	zlox_gdt_set_gate(0, 0, 0, 0, 0);					// Null segment
@@ -48,8 +51,10 @@ static ZLOX_VOID zlox_init_gdt()
 	zlox_gdt_set_gate(2, 0, 0xFFFFFFFF, 0x92, 0xCF);	// Data segment
 	zlox_gdt_set_gate(3, 0, 0xFFFFFFFF, 0xFA, 0xCF);	// User mode code segment
 	zlox_gdt_set_gate(4, 0, 0xFFFFFFFF, 0xF2, 0xCF);	// User mode data segment
+	zlox_write_tss(5, 0x10, 0x0);
 
 	_zlox_gdt_flush((ZLOX_UINT32)&gdt_ptr);
+	_zlox_tss_flush();
 }
 
 // Set the value of one GDT entry.
@@ -65,6 +70,31 @@ static ZLOX_VOID zlox_gdt_set_gate(ZLOX_SINT32 num, ZLOX_UINT32 base, ZLOX_UINT3
 	
 	gdt_entries[num].granularity |= gran & 0xF0;
 	gdt_entries[num].access = access;
+}
+
+// Initialise our task state segment structure.
+static ZLOX_VOID zlox_write_tss(ZLOX_SINT32 num, ZLOX_UINT16 ss0, ZLOX_UINT32 esp0)
+{
+    // Firstly, let's compute the base and limit of our entry into the GDT.
+    ZLOX_UINT32 base = (ZLOX_UINT32) &tss_entry;
+    ZLOX_UINT32 limit = sizeof(tss_entry) - 1;
+    
+    // Now, add our TSS descriptor's address to the GDT.
+    zlox_gdt_set_gate(num, base, limit, 0xE9, 0x00);
+
+    // Ensure the descriptor is initially zero.
+    zlox_memset((ZLOX_UINT8 *)&tss_entry, 0, sizeof(tss_entry));
+
+    tss_entry.ss0  = ss0;  // Set the kernel stack segment.
+    tss_entry.esp0 = esp0; // Set the kernel stack pointer.
+    
+    // tss_entry.cs   = 0x0b;     
+    // tss_entry.ss = tss_entry.ds = tss_entry.es = tss_entry.fs = tss_entry.gs = 0x13;
+}
+
+ZLOX_VOID zlox_set_kernel_stack(ZLOX_UINT32 stack)
+{
+    tss_entry.esp0 = stack;
 }
 
 // Initialise the interrupt descriptor table.
@@ -128,6 +158,8 @@ static ZLOX_VOID zlox_init_idt()
 	zlox_idt_set_gate(29, (ZLOX_UINT32)_zlox_isr_29, 0x08, 0x8E);
 	zlox_idt_set_gate(30, (ZLOX_UINT32)_zlox_isr_30, 0x08, 0x8E);
 	zlox_idt_set_gate(31, (ZLOX_UINT32)_zlox_isr_31, 0x08, 0x8E);
+	zlox_idt_set_gate(31, (ZLOX_UINT32)_zlox_isr_31, 0x08, 0x8E);
+	zlox_idt_set_gate(128, (ZLOX_UINT32)_zlox_isr_128, 0x08, 0x8E); // syscall
 	zlox_idt_set_gate(ZLOX_IRQ0, (ZLOX_UINT32)_zlox_irq_0, 0x08, 0x8E);
 	zlox_idt_set_gate(ZLOX_IRQ1, (ZLOX_UINT32)_zlox_irq_1, 0x08, 0x8E);
 	zlox_idt_set_gate(ZLOX_IRQ2, (ZLOX_UINT32)_zlox_irq_2, 0x08, 0x8E);
@@ -156,8 +188,6 @@ static ZLOX_VOID zlox_idt_set_gate(ZLOX_UINT8 num, ZLOX_UINT32 base, ZLOX_UINT16
 
 	idt_entries[num].sel     = sel;
 	idt_entries[num].always0 = 0;
-	// We must uncomment the OR below when we get to using user-mode.
-	// It sets the interrupt gate's privilege level to 3.
-	idt_entries[num].flags   = flags /* | 0x60 */;
+	idt_entries[num].flags   = flags  | 0x60;
 }
 

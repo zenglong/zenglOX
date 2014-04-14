@@ -3,6 +3,7 @@
 #include "zlox_task.h"
 #include "zlox_paging.h"
 #include "zlox_kheap.h"
+#include "zlox_descriptor_tables.h"
 
 // The currently running task.
 volatile ZLOX_TASK * current_task = 0;
@@ -38,6 +39,7 @@ ZLOX_VOID zlox_initialise_tasking()
 	current_task->init_esp = 0xE0000000;
 	current_task->page_directory = current_directory;
 	current_task->next = 0;
+	current_task->kernel_stack = zlox_kmalloc_a(ZLOX_KERNEL_STACK_SIZE);
 
 	// Reenable interrupts.
 	asm volatile("sti");
@@ -140,27 +142,9 @@ ZLOX_VOID zlox_switch_task()
 
 	// Make sure the memory manager knows we've changed page directory.
 	current_directory = current_task->page_directory;
-	// Here we:
-	// * Stop interrupts so we don't get interrupted.
-	// * Temporarily puts the new EIP location in ECX.
-	// * Loads the stack and base pointers from the new task struct.
-	// * Changes page directory to the physical address (physicalAddr) of the new directory.
-	// * Puts a dummy value (0x12345) in EAX so that above we can recognise that we've just
-	//   switched task.
-	// * Restarts interrupts. The STI instruction has a delay - it doesn't take effect until after
-	//   the next instruction.
-	// * Jumps to the location in ECX (remember we put the new EIP in there).
-	/*asm volatile(
-	  //"pushf\n\t"
-	  //"cli\n\t"
-	  "movl %0, %%ecx\n\t"
-	  "movl %1, %%esp\n\t"
-	  "movl %2, %%ebp\n\t"
-	  "movl %3, %%cr3\n\t"
-	  "movl $0x12345, %%eax\n\t"
-	  //"popf\n\t"
-	  "jmp *%%ecx"
-	: : "m"(eip), "m"(esp), "m"(ebp), "m"(current_directory->physicalAddr));*/
+	
+	// Change our kernel stack over.
+	zlox_set_kernel_stack(current_task->kernel_stack + ZLOX_KERNEL_STACK_SIZE);
 
 	_zlox_switch_task_do(eip,esp,ebp,current_directory->physicalAddr);
 }
@@ -184,6 +168,7 @@ ZLOX_SINT32 zlox_fork()
 	new_task->eip = 0;
 	new_task->init_esp = current_task->init_esp;
 	new_task->page_directory = directory;
+	new_task->kernel_stack = zlox_kmalloc_a(ZLOX_KERNEL_STACK_SIZE);
 	new_task->next = 0;
 
 	// Add it to the end of the ready queue.
@@ -226,5 +211,33 @@ ZLOX_SINT32 zlox_fork()
 ZLOX_SINT32 zlox_getpid()
 {
 	return current_task->id;
+}
+
+ZLOX_VOID zlox_switch_to_user_mode()
+{
+	// Set up our kernel stack.
+	zlox_set_kernel_stack(current_task->kernel_stack + ZLOX_KERNEL_STACK_SIZE);
+	
+	// Set up a stack structure for switching to user mode.
+	asm volatile(
+		"cli\n\t"
+		"mov $0x23, %ax\n\t"
+		"mov %ax, %ds\n\t"
+		"mov %ax, %es\n\t"
+		"mov %ax, %fs\n\t"
+		"mov %ax, %gs\n\t"
+		"mov %esp, %eax\n\t"
+		"pushl $0x23\n\t"
+		"pushl %eax\n\t"
+		"pushf\n\t"
+		"pop %eax\n\t"	// Get EFLAGS back into EAX. The only way to read EFLAGS is to pushf then pop.
+		"orl $0x200,%eax\n\t"	// Set the IF flag.
+		"pushl %eax\n\t"	// Push the new EFLAGS value back onto the stack.
+		"pushl $0x1B\n\t"
+		"push $1f\n\t"
+		"iret\n"
+	"1:"
+		); 
+	  
 }
 

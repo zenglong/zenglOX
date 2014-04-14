@@ -7,7 +7,7 @@
 
 ZLOX_UINT32 tick = 0;
 
-static ZLOX_VOID zlox_timer_callback(/*ZLOX_ISR_REGISTERS regs*/)
+static ZLOX_VOID zlox_timer_callback(/*ZLOX_ISR_REGISTERS * regs*/)
 {
 	tick++;
 	//zlox_monitor_write("zenglOX Tick: ");

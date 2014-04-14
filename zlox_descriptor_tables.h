@@ -6,8 +6,13 @@
 
 #include "zlox_common.h"
 
+#define ZLOX_GDT_ENTRY_NUMBER 6
+
 // Initialisation function is publicly accessible.
 ZLOX_VOID zlox_init_descriptor_tables();
+
+// Allows the kernel stack in the TSS to be changed.
+ZLOX_VOID zlox_set_kernel_stack(ZLOX_UINT32 stack);
 
 // This structure contains the value of one GDT entry.
 // We use the attribute 'packed' to tell GCC not to change
@@ -54,6 +59,41 @@ struct _ZLOX_IDT_PTR
 
 typedef struct _ZLOX_IDT_PTR ZLOX_IDT_PTR;
 
+// A struct describing a Task State Segment.
+struct _ZLOX_TSS_ENTRY
+{
+    ZLOX_UINT32 prev_tss;   // The previous TSS - if we used hardware task switching this would form a linked list.
+    ZLOX_UINT32 esp0;       // The stack pointer to load when we change to kernel mode.
+    ZLOX_UINT32 ss0;        // The stack segment to load when we change to kernel mode.
+    ZLOX_UINT32 esp1;       // Unused...
+    ZLOX_UINT32 ss1;
+    ZLOX_UINT32 esp2;  
+    ZLOX_UINT32 ss2;   
+    ZLOX_UINT32 cr3;   
+    ZLOX_UINT32 eip;   
+    ZLOX_UINT32 eflags;
+    ZLOX_UINT32 eax;
+    ZLOX_UINT32 ecx;
+    ZLOX_UINT32 edx;
+    ZLOX_UINT32 ebx;
+    ZLOX_UINT32 esp;
+    ZLOX_UINT32 ebp;
+    ZLOX_UINT32 esi;
+    ZLOX_UINT32 edi;
+    ZLOX_UINT32 es;         // The value to load into ES when we change to kernel mode.
+    ZLOX_UINT32 cs;         // The value to load into CS when we change to kernel mode.
+    ZLOX_UINT32 ss;         // The value to load into SS when we change to kernel mode.
+    ZLOX_UINT32 ds;         // The value to load into DS when we change to kernel mode.
+    ZLOX_UINT32 fs;         // The value to load into FS when we change to kernel mode.
+    ZLOX_UINT32 gs;         // The value to load into GS when we change to kernel mode.
+    ZLOX_UINT32 ldt;        // Unused...
+    ZLOX_UINT16 trap;
+    ZLOX_UINT16 iomap_base;
+
+} __attribute__((packed));
+
+typedef struct _ZLOX_TSS_ENTRY ZLOX_TSS_ENTRY;
+
 // These extern directives let us access the addresses of our ASM ISR handlers.
 extern void _zlox_isr_0 ();
 extern void _zlox_isr_1 ();
@@ -87,6 +127,7 @@ extern void _zlox_isr_28();
 extern void _zlox_isr_29();
 extern void _zlox_isr_30();
 extern void _zlox_isr_31();
+extern void _zlox_isr_128();
 extern void _zlox_irq_0	();
 extern void _zlox_irq_1	();
 extern void _zlox_irq_2	();

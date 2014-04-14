@@ -26,7 +26,7 @@ extern ZLOX_VOID _zlox_copy_page_physical(ZLOX_UINT32 src,ZLOX_UINT32 dest);
 #define ZLOX_INDEX_FROM_BIT(a) (a/(8*4))
 #define ZLOX_OFFSET_FROM_BIT(a) (a%(8*4))
 
-ZLOX_VOID zlox_page_fault(ZLOX_ISR_REGISTERS regs);
+ZLOX_VOID zlox_page_fault(ZLOX_ISR_REGISTERS * regs);
 static ZLOX_PAGE_TABLE * zlox_clone_table(ZLOX_PAGE_TABLE * src, ZLOX_UINT32 * physAddr, ZLOX_UINT32 needCopy);
 
 // Static function to set a bit in the frames bitset
@@ -151,7 +151,7 @@ ZLOX_VOID zlox_init_paging()
 	//	线性地址就会找不到正确的物理地址(内核代码的线性地址等于物理地址),堆必须等内核部分的映射完,
 	//	然后才能用它们后面的物理地址进行映射 
 	i = 0;
-	for (i = ZLOX_KHEAP_START; i < ZLOX_KHEAP_START+ZLOX_KHEAP_INITIAL_SIZE; i += 0x1000)
+	for (i = ZLOX_KHEAP_START; i < ZLOX_KHEAP_START + mem_end_page /*ZLOX_KHEAP_INITIAL_SIZE*/; i += 0x1000)
 		zlox_get_page(i, 1, kernel_directory);
 
 	// We need to identity map (phys addr = virt addr) from
@@ -248,7 +248,7 @@ ZLOX_VOID zlox_page_copy(ZLOX_UINT32 copy_address)
 	current_directory->tablesPhysical[table_idx] = phys | 0x07;
 }
 
-ZLOX_VOID zlox_page_fault(ZLOX_ISR_REGISTERS regs)
+ZLOX_VOID zlox_page_fault(ZLOX_ISR_REGISTERS * regs)
 {
 	// A page fault has occurred.
 	// The faulting address is stored in the CR2 register.
@@ -262,11 +262,11 @@ ZLOX_VOID zlox_page_fault(ZLOX_ISR_REGISTERS regs)
 	asm volatile("mov %%cr2, %0" : "=r" (faulting_address));
 	
 	// The error code gives us details of what happened.
-	present   = !(regs.err_code & 0x1); // Page not present
-	rw = regs.err_code & 0x2; // Write operation?
-	us = regs.err_code & 0x4; // Processor was in user-mode?
-	reserved = regs.err_code & 0x8;	// Overwritten CPU-reserved bits of page entry?
-	id = regs.err_code & 0x10; // Caused by an instruction fetch?
+	present   = !(regs->err_code & 0x1); // Page not present
+	rw = regs->err_code & 0x2; // Write operation?
+	us = regs->err_code & 0x4; // Processor was in user-mode?
+	reserved = regs->err_code & 0x8;	// Overwritten CPU-reserved bits of page entry?
+	id = regs->err_code & 0x10; // Caused by an instruction fetch?
 
 	// 当用户权限的程式对只读内存进行写操作时,如果该段内存位于可以复制的内存区段,则进行写时复制
 	if (rw && (faulting_address >= 0xc0000000))
@@ -292,6 +292,8 @@ ZLOX_VOID zlox_page_fault(ZLOX_ISR_REGISTERS regs)
 	zlox_monitor_write(") at ");
 
 	zlox_monitor_write_hex(faulting_address);
+	zlox_monitor_write(" - EIP: ");
+	zlox_monitor_write_hex(regs->eip);
 	zlox_monitor_write("\n");
 
 	ZLOX_PANIC("Page fault");

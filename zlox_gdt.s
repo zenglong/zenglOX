@@ -21,3 +21,9 @@ _zlox_idt_flush:
 	lidt (%eax)			# Load the IDT pointer.
 	ret
 
+.global _zlox_tss_flush
+_zlox_tss_flush:
+	movl $0x2B,%eax		# The index is 5th in GDT and RPL is 3
+	ltr %ax			# Load 0x2B into the task state register.
+	ret
+

@@ -14,16 +14,22 @@ ZLOX_VOID zlox_register_interrupt_callback(ZLOX_UINT8 n, ZLOX_ISR_CALLBACK callb
 // This gets called from our ASM interrupt handler stub.
 ZLOX_VOID zlox_isr_handler(ZLOX_ISR_REGISTERS regs)
 {
-	if (interrupt_callbacks[regs.int_no] != 0)
+	// This line is important. When the processor extends the 8-bit interrupt number
+	// to a 32bit value, it sign-extends, not zero extends. So if the most significant
+	// bit (0x80) is set, regs.int_no will be very large (about 0xffffff80).
+	ZLOX_UINT8 int_no = regs.int_no & 0xFF;
+	if (interrupt_callbacks[int_no] != 0)
 	{
-		ZLOX_ISR_CALLBACK callback = interrupt_callbacks[regs.int_no];
-		callback(regs);
+		ZLOX_ISR_CALLBACK callback = interrupt_callbacks[int_no];
+		callback(&regs);
 	}
 	else
 	{
-		zlox_monitor_write("zenglox recieved interrupt: ");
-		zlox_monitor_write_dec(regs.int_no);
+		zlox_monitor_write("zenglox recieved unhandled interrupt: ");
+		zlox_monitor_write_hex(int_no);
 		zlox_monitor_put('\n');
+		for(;;)
+			;
 	}
 }
 
@@ -47,7 +53,7 @@ ZLOX_VOID zlox_irq_handler(ZLOX_ISR_REGISTERS regs)
 	if (interrupt_callbacks[regs.int_no] != 0)
 	{
 		ZLOX_ISR_CALLBACK callback = interrupt_callbacks[regs.int_no];
-		callback(regs);
+		callback(&regs);
 	}
 }
 
