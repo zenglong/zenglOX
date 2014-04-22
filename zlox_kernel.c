@@ -10,6 +10,7 @@
 #include "zlox_initrd.h"
 #include "zlox_task.h"
 #include "zlox_syscall.h"
+#include "zlox_keyboard.h"
 
 extern ZLOX_UINT32 placement_address;
 ZLOX_UINT32 initial_esp;
@@ -51,10 +52,20 @@ ZLOX_SINT32 zlox_kernel_main(ZLOX_MULTIBOOT * mboot_ptr, ZLOX_UINT32 initial_sta
 	// 初始化系统调用
 	zlox_initialise_syscalls();
 
+	zlox_initKeyboard();
+
+	zlox_syscall_monitor_write("=========================\n");	
+
+	zlox_syscall_monitor_write("Keyboard is init now!\n");
+
+	zlox_syscall_monitor_write("=========================\n");
+
 	// 切换到ring 3的用户模式
 	zlox_switch_to_user_mode();
 
-	zlox_syscall_monitor_write("hello world!\nwelcome to zenglOX v0.0.9!\ni'm in user world!\n");
+	zlox_syscall_monitor_write("I'm in user mode!\n");
+
+	zlox_syscall_monitor_write("Hello world!\nwelcome to zenglOX v0.0.10!\nplease input some char> ");
 
 	for(;;)
 		;

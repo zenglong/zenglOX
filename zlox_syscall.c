@@ -3,21 +3,24 @@
 #include "zlox_syscall.h"
 #include "zlox_isr.h"
 #include "zlox_monitor.h"
+#include "zlox_keyboard.h"
 
 static ZLOX_VOID zlox_syscall_handler(ZLOX_ISR_REGISTERS * regs);
 
-ZLOX_DEFN_SYSCALL1(monitor_write, 0, const char*);
-ZLOX_DEFN_SYSCALL1(monitor_write_hex, 1, const char*);
-ZLOX_DEFN_SYSCALL1(monitor_write_dec, 2, const char*);
+ZLOX_DEFN_SYSCALL1(monitor_write, ZLOX_SYSCALL_MONITOR_WRITE, const char*);
+ZLOX_DEFN_SYSCALL1(monitor_write_hex, ZLOX_SYSCALL_MONITOR_WRITE_HEX, const char*);
+ZLOX_DEFN_SYSCALL1(monitor_write_dec, ZLOX_SYSCALL_MONITOR_WRITE_DEC, const char*);
+ZLOX_DEFN_SYSCALL1(monitor_put, ZLOX_SYSCALL_MONITOR_PUT, char);
 
-static ZLOX_VOID * syscalls[3] =
+static ZLOX_VOID * syscalls[ZLOX_SYSCALL_NUMBER] =
 {
-    &zlox_monitor_write,
-    &zlox_monitor_write_hex,
-    &zlox_monitor_write_dec,
+	&zlox_monitor_write,
+	&zlox_monitor_write_hex,
+	&zlox_monitor_write_dec,
+	&zlox_monitor_put,
 };
 
-ZLOX_UINT32 num_syscalls = 3;
+ZLOX_UINT32 num_syscalls = ZLOX_SYSCALL_NUMBER;
 
 ZLOX_VOID zlox_initialise_syscalls()
 {

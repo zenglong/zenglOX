@@ -5,6 +5,15 @@
 
 #include "zlox_common.h"
 
+#define ZLOX_SYSCALL_NUMBER 4
+
+typedef enum _ZLOX_SYSCALL_ENUM{
+	ZLOX_SYSCALL_MONITOR_WRITE,
+	ZLOX_SYSCALL_MONITOR_WRITE_HEX,
+	ZLOX_SYSCALL_MONITOR_WRITE_DEC,
+	ZLOX_SYSCALL_MONITOR_PUT,
+}ZLOX_SYSCALL_ENUM;
+
 ZLOX_VOID zlox_initialise_syscalls();
 
 #define ZLOX_DECL_SYSCALL1(fn,p1) ZLOX_SINT32 zlox_syscall_##fn(p1);
@@ -20,6 +29,7 @@ int zlox_syscall_##fn(P1 p1) \
 ZLOX_DECL_SYSCALL1(monitor_write, const char*)
 ZLOX_DECL_SYSCALL1(monitor_write_hex, const char*)
 ZLOX_DECL_SYSCALL1(monitor_write_dec, const char*)
+ZLOX_DECL_SYSCALL1(monitor_put, char)
 
 #endif // _ZLOX_SYSCALL_H_
 
