@@ -11,6 +11,7 @@
 #include "zlox_task.h"
 #include "zlox_syscall.h"
 #include "zlox_keyboard.h"
+#include "zlox_elf.h"
 
 extern ZLOX_UINT32 placement_address;
 ZLOX_UINT32 initial_esp;
@@ -65,7 +66,9 @@ ZLOX_SINT32 zlox_kernel_main(ZLOX_MULTIBOOT * mboot_ptr, ZLOX_UINT32 initial_sta
 
 	zlox_syscall_monitor_write("I'm in user mode!\n");
 
-	zlox_syscall_monitor_write("Hello world!\nwelcome to zenglOX v0.0.10!\nplease input some char> ");
+	zlox_syscall_monitor_write("welcome to zenglOX v0.0.11! I will execve a ELF file\n");
+
+	zlox_syscall_execve("cpuid");
 
 	for(;;)
 		;

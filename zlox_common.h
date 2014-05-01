@@ -13,7 +13,11 @@ typedef unsigned char ZLOX_UINT8;
 typedef char ZLOX_SINT8;
 typedef char ZLOX_CHAR;
 typedef void ZLOX_VOID;
+typedef ZLOX_UINT8 ZLOX_BOOL;
 
+#define ZLOX_FALSE 0
+#define ZLOX_TRUE 1
+#define ZLOX_NULL 0
 #define ZLOX_PANIC(msg) zlox_panic(msg, __FILE__, __LINE__);
 #define ZLOX_ASSERT(b) ((b) ? (void)0 : zlox_panic_assert(__FILE__, __LINE__, #b))
 

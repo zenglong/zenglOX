@@ -235,17 +235,20 @@ ZLOX_VOID zlox_page_copy(ZLOX_UINT32 copy_address)
 	{
 		newTable = zlox_clone_table(current_directory->tables[table_idx],&phys,0);
 	}
-	ZLOX_PAGE_TABLE * oldTable = current_directory->tables[table_idx];
+	ZLOX_PAGE oldPage = current_directory->tables[table_idx]->pages[page_idx];
 	zlox_alloc_frame_do(&newTable->pages[page_idx], 0, 1);
-	if (oldTable->pages[page_idx].present) newTable->pages[page_idx].present = 1;
-	if (oldTable->pages[page_idx].user) newTable->pages[page_idx].user = 1;
-	if (oldTable->pages[page_idx].accessed) newTable->pages[page_idx].accessed = 1;
-	if (oldTable->pages[page_idx].dirty) newTable->pages[page_idx].dirty = 1;
+	if (oldPage.present) newTable->pages[page_idx].present = 1;
+	if (oldPage.user) newTable->pages[page_idx].user = 1;
+	if (oldPage.accessed) newTable->pages[page_idx].accessed = 1;
+	if (oldPage.dirty) newTable->pages[page_idx].dirty = 1;
 	newTable->pages[page_idx].rw = 1;
-	_zlox_copy_page_physical(oldTable->pages[page_idx].frame*0x1000, 
+	_zlox_copy_page_physical(oldPage.frame*0x1000, 
 				newTable->pages[page_idx].frame*0x1000);
-	current_directory->tables[table_idx] = newTable;
-	current_directory->tablesPhysical[table_idx] = phys | 0x07;
+	if( (current_directory->tablesPhysical[table_idx] & 0x2) == 0)
+	{
+		current_directory->tables[table_idx] = newTable;
+		current_directory->tablesPhysical[table_idx] = phys | 0x07;
+	}
 }
 
 ZLOX_VOID zlox_page_fault(ZLOX_ISR_REGISTERS * regs)
@@ -269,7 +272,7 @@ ZLOX_VOID zlox_page_fault(ZLOX_ISR_REGISTERS * regs)
 	id = regs->err_code & 0x10; // Caused by an instruction fetch?
 
 	// 当用户权限的程式对只读内存进行写操作时,如果该段内存位于可以复制的内存区段,则进行写时复制
-	if (rw && (faulting_address >= 0xc0000000))
+	if (rw && (faulting_address >= 0x8048000))
 	{
 		zlox_page_copy(faulting_address);
 		return ;

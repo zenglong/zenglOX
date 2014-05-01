@@ -186,16 +186,48 @@ ZLOX_SINT32 zlox_fork()
 		// We are the parent, so set up the esp/ebp/eip for our child.
 		ZLOX_UINT32 esp; asm volatile("mov %%esp, %0" : "=r"(esp));
 		ZLOX_UINT32 ebp; asm volatile("mov %%ebp, %0" : "=r"(ebp));
+		ZLOX_UINT32 tmp_off;
 		ZLOX_UINT32 tmp_esp;
-		current_directory = new_task->page_directory;
-		// 为新进程拷贝栈数据
-		for(tmp_esp = esp; tmp_esp < new_task->init_esp ;tmp_esp += 0x1000)
+		ZLOX_UINT32 i;
+		// 为新进程拷贝内核栈数据
+		zlox_memcpy((ZLOX_UINT8 *)new_task->kernel_stack,(ZLOX_UINT8 *)current_task->kernel_stack,ZLOX_KERNEL_STACK_SIZE);
+		// 为新进程拷贝用户栈数据
+		current_directory = new_task->page_directory;		
+		for(tmp_esp = new_task->init_esp - 0x2000; tmp_esp < new_task->init_esp ;tmp_esp += 0x1000)
 		{
 			zlox_page_copy(tmp_esp);
 		}
 		current_directory = current_task->page_directory;
-		new_task->esp = esp;
-		new_task->ebp = ebp;
+
+		tmp_off = esp - current_task->kernel_stack;
+		new_task->esp = new_task->kernel_stack + tmp_off;
+		tmp_off = ebp - current_task->kernel_stack;
+		new_task->ebp = new_task->kernel_stack + tmp_off;
+		if(new_task->kernel_stack > current_task->kernel_stack)
+			tmp_off = new_task->kernel_stack - current_task->kernel_stack;
+		else
+			tmp_off = current_task->kernel_stack - new_task->kernel_stack;
+
+		// Backtrace through the original stack, copying new values into
+		// the new stack.  
+		for(i = (ZLOX_UINT32)new_task->ebp; 
+			(i >= new_task->esp && (i < (ZLOX_UINT32)(new_task->kernel_stack + ZLOX_KERNEL_STACK_SIZE))); )
+		{
+			ZLOX_UINT32 tmp = * (ZLOX_UINT32*)i;
+			// it is a base pointer and remap it. 
+			if (( esp < tmp) && (tmp < (current_task->kernel_stack + ZLOX_KERNEL_STACK_SIZE)))
+			{
+				if(new_task->kernel_stack > current_task->kernel_stack)
+					tmp = tmp + tmp_off;
+				else
+					tmp = tmp - tmp_off;
+				ZLOX_UINT32 *tmp2 = (ZLOX_UINT32 *)i;
+				*tmp2 = tmp;
+				i = tmp;
+			}
+			else
+				break;
+		}
 		new_task->eip = eip;
 		asm volatile("sti");
 
