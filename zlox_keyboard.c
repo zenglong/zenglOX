@@ -3,6 +3,7 @@
 #include "zlox_keyboard.h"
 #include "zlox_isr.h"
 #include "zlox_monitor.h"
+#include "zlox_task.h"
 
 #define ZLOX_LED_NUM_LOCK		2
 #define ZLOX_LED_SCROLL_LOCK		1
@@ -11,6 +12,8 @@
 #define ZLOX_CK_SHIFT		1
 #define	ZLOX_CK_ALT		2
 #define ZLOX_CK_CTRL		4
+
+extern ZLOX_TASK * input_focus_task;
 
 ZLOX_VOID zlox_setleds();
 
@@ -169,7 +172,8 @@ static ZLOX_VOID zlox_keyboard_callback(/*ZLOX_ISR_REGISTERS * regs*/)
 	else if(control_keys & ZLOX_CK_CTRL) 
 		key_ascii = scanToAscii_table[key][2];
 	else if(control_keys & ZLOX_CK_ALT) 
-		key_ascii = scanToAscii_table[key][3];	
+		//key_ascii = scanToAscii_table[key][3];
+		key_ascii = scanToAscii_table[key][0];		
 	else if((control_keys & ZLOX_CK_SHIFT) && (led_status & ZLOX_LED_NUM_LOCK)) 
 		key_ascii = scanToAscii_table[key][7];
 	else if(led_status & ZLOX_LED_CAPS_LOCK) 
@@ -183,15 +187,20 @@ static ZLOX_VOID zlox_keyboard_callback(/*ZLOX_ISR_REGISTERS * regs*/)
 	{
 		if(key_ascii <= 0xFF)
 		{
-			keyboard_buffer[keyboard_buffer_size] = key_ascii;
-			keyboard_buffer_size++;
-			zlox_monitor_put(key_ascii);
+			//keyboard_buffer[keyboard_buffer_size] = key_ascii;
+			//keyboard_buffer_size++;
+			//zlox_monitor_put(key_ascii);
+			ZLOX_TASK_MSG ascii_msg = {0};
+			ascii_msg.type = ZLOX_MT_KEYBOARD;
+			ascii_msg.keyboard.type = ZLOX_MKT_ASCII;
+			ascii_msg.keyboard.ascii = key_ascii;
+			zlox_send_tskmsg(input_focus_task,&ascii_msg);
 		}
 		else
 		{
-			keyboard_buffer[keyboard_buffer_size] = (key_ascii & 0xFF);
+			/*keyboard_buffer[keyboard_buffer_size] = (key_ascii & 0xFF);
 			keyboard_buffer[keyboard_buffer_size+1] = (key_ascii & 0xFF00);
-			keyboard_buffer_size += 2;
+			keyboard_buffer_size += 2;*/
 		}
 	}
 }

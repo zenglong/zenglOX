@@ -14,6 +14,7 @@
 #include "zlox_elf.h"
 
 extern ZLOX_UINT32 placement_address;
+extern ZLOX_TASK * current_task;
 ZLOX_UINT32 initial_esp;
 
 //zenglOX kernel main entry
@@ -66,12 +67,42 @@ ZLOX_SINT32 zlox_kernel_main(ZLOX_MULTIBOOT * mboot_ptr, ZLOX_UINT32 initial_sta
 
 	zlox_syscall_monitor_write("I'm in user mode!\n");
 
-	zlox_syscall_monitor_write("welcome to zenglOX v0.0.11! I will execve a ELF file\n");
+	zlox_syscall_monitor_write("welcome to zenglOX v");
+	ZLOX_SINT32 major,minor,revision;
+	zlox_syscall_get_version(&major,&minor,&revision);
+	zlox_syscall_monitor_write_dec(major);
+	zlox_syscall_monitor_put('.');
+	zlox_syscall_monitor_write_dec(minor);
+	zlox_syscall_monitor_put('.');
+	zlox_syscall_monitor_write_dec(revision);
+	zlox_syscall_monitor_write("! I will execve a shell\n"
+					"you can input some command: ls , ps , cat , uname , cpuid , shell , reboot ...\n");
 
-	zlox_syscall_execve("cpuid");
+	zlox_syscall_execve("shell");
+	//zlox_syscall_execve("cpuid");
 
-	for(;;)
-		;
+	zlox_syscall_wait(current_task);
+
+	ZLOX_SINT32 ret;
+	ZLOX_TASK_MSG msg;
+	while(ZLOX_TRUE)
+	{
+		ret = zlox_syscall_get_tskmsg(current_task,&msg,ZLOX_TRUE);
+		if(ret != 1)
+		{
+			zlox_syscall_wait(current_task);
+			// 只剩下一个初始任务了，就再创建一个shell
+			if(current_task->next == 0)
+			{
+				zlox_syscall_execve("shell");
+				zlox_syscall_wait(current_task);
+			}
+		}
+		else if(msg.type == ZLOX_MT_TASK_FINISH)
+		{
+			zlox_syscall_finish(msg.finish_task.exit_task);
+		}
+	}
 
 	return 0;
 }

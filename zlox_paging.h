@@ -63,5 +63,10 @@ ZLOX_VOID zlox_page_copy(ZLOX_UINT32 copy_address);
 
 ZLOX_PAGE_DIRECTORY * zlox_clone_directory(ZLOX_PAGE_DIRECTORY * src , ZLOX_UINT32 needCopy);
 
+ZLOX_VOID zlox_free_directory(ZLOX_PAGE_DIRECTORY * src);
+
+// 获取内存的位图信息，主要用于系统调用
+ZLOX_SINT32 zlox_get_frame_info(ZLOX_UINT32 ** hold_frames,ZLOX_UINT32 * hold_nframes);
+
 #endif //_ZLOX_PAGING_H_
 

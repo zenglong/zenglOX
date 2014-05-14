@@ -37,10 +37,11 @@ static ZLOX_VOID zlox_scroll()
 		// Move the current text chunk that makes up the screen
 		// back in the buffer by a line
 		ZLOX_SINT32 i;
-		for (i = 0*80; i < 24*80; i++)
+		/*for (i = 0*80; i < 24*80; i++)
 		{
 			video_memory[i] = video_memory[i+80];
-		}
+		}*/
+		zlox_memcpy((ZLOX_UINT8 *)video_memory,(ZLOX_UINT8 *)(video_memory + 80),24*80*2);
 
 		// The last line should now be blank. Do this by writing
 		// 80 spaces to it.

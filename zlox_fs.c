@@ -33,3 +33,9 @@ ZLOX_FS_NODE * zlox_finddir_fs(ZLOX_FS_NODE *node, ZLOX_CHAR *name)
         return 0;
 }
 
+// get the root of the filesystem.
+ZLOX_FS_NODE * zlox_get_fs_root()
+{
+	return fs_root;
+}
+

@@ -50,6 +50,8 @@ extern ZLOX_FS_NODE * fs_root; // The root of the filesystem.
 ZLOX_UINT32 zlox_read_fs(ZLOX_FS_NODE *node, ZLOX_UINT32 offset, ZLOX_UINT32 size, ZLOX_UINT8 *buffer);
 ZLOX_DIRENT * zlox_readdir_fs(ZLOX_FS_NODE *node, ZLOX_UINT32 index);
 ZLOX_FS_NODE * zlox_finddir_fs(ZLOX_FS_NODE *node, ZLOX_CHAR *name);
+// get the root of the filesystem.
+ZLOX_FS_NODE * zlox_get_fs_root();
 
 #endif //_ZLOX_FS_H_
 

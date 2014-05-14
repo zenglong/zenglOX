@@ -118,7 +118,7 @@ ZLOX_VOID zlox_free_frame(ZLOX_PAGE *page)
 	}
 	else
 	{
-		zlox_clear_frame(frame);
+		zlox_clear_frame(frame * 0x1000);
 		zlox_memset((ZLOX_UINT8 *)page,0,4);
 		//page->frame = 0x0;
 	}
@@ -235,6 +235,9 @@ ZLOX_VOID zlox_page_copy(ZLOX_UINT32 copy_address)
 	{
 		newTable = zlox_clone_table(current_directory->tables[table_idx],&phys,0);
 	}
+	else
+		newTable = current_directory->tables[table_idx];
+
 	ZLOX_PAGE oldPage = current_directory->tables[table_idx]->pages[page_idx];
 	zlox_alloc_frame_do(&newTable->pages[page_idx], 0, 1);
 	if (oldPage.present) newTable->pages[page_idx].present = 1;
@@ -272,7 +275,7 @@ ZLOX_VOID zlox_page_fault(ZLOX_ISR_REGISTERS * regs)
 	id = regs->err_code & 0x10; // Caused by an instruction fetch?
 
 	// 当用户权限的程式对只读内存进行写操作时,如果该段内存位于可以复制的内存区段,则进行写时复制
-	if (rw && (faulting_address >= 0x8048000))
+	if (!present && rw && (faulting_address >= 0x8048000 && faulting_address < 0xc0000000))
 	{
 		zlox_page_copy(faulting_address);
 		return ;
@@ -384,5 +387,39 @@ ZLOX_PAGE_DIRECTORY * zlox_clone_directory(ZLOX_PAGE_DIRECTORY * src , ZLOX_UINT
 		}
 	}
 	return dir;
+}
+
+ZLOX_VOID zlox_free_directory(ZLOX_PAGE_DIRECTORY * src)
+{
+	ZLOX_SINT32 i,j;
+	ZLOX_PAGE_TABLE * src_table;
+	for (i = 0; i < 1024; i++)
+	{
+		if (!src->tables[i])
+			continue;
+		if (kernel_directory->tables[i] == src->tables[i])
+			continue;
+		if((src->tablesPhysical[i] & 0x2) == 0)
+			continue;
+
+		src_table = src->tables[i];
+		for(j = 0; j < 1024; j++)
+		{			
+			if (src_table->pages[j].frame && (src_table->pages[j].rw == 1))
+			{
+				zlox_free_frame(&src_table->pages[j]);
+			}
+		}
+		zlox_kfree(src_table);
+	}
+	zlox_kfree(src);
+}
+
+// 获取内存的位图信息，主要用于系统调用
+ZLOX_SINT32 zlox_get_frame_info(ZLOX_UINT32 ** hold_frames,ZLOX_UINT32 * hold_nframes)
+{
+	(*hold_frames) = frames;
+	(*hold_nframes) = nframes;
+	return 0;
 }
 

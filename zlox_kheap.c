@@ -74,6 +74,50 @@ ZLOX_UINT32 zlox_kmalloc(ZLOX_UINT32 sz)
 	return zlox_kmalloc_int(sz, 0, 0);
 }
 
+// 给用户态程式使用的分配堆函数
+ZLOX_UINT32 zlox_umalloc(ZLOX_UINT32 sz)
+{
+	ZLOX_PAGE * page;
+	ZLOX_UINT32 ret = zlox_kmalloc_int(sz, 0, 0);
+	ZLOX_UINT32 i;
+
+	for(i=ret; i < ret + sz ;i+=0x1000)
+	{
+		page = zlox_get_page(i, 0, kernel_directory);
+		if(page->rw == 0)
+			page->rw = 1;
+	}
+
+	// Flush the TLB(translation lookaside buffer) by reading and writing the page directory address again.
+	ZLOX_UINT32 pd_addr;
+	asm volatile("mov %%cr3, %0" : "=r" (pd_addr));
+	asm volatile("mov %0, %%cr3" : : "r" (pd_addr));
+
+	return ret;
+}
+
+// 给用户态程式使用的释放堆函数
+ZLOX_VOID zlox_ufree(ZLOX_VOID *p)
+{
+	ZLOX_PAGE * page;
+	ZLOX_KHP_HEADER * header = (ZLOX_KHP_HEADER *)((ZLOX_UINT32)p - sizeof(ZLOX_KHP_HEADER));
+	ZLOX_UINT32 sz = header->size - sizeof(ZLOX_KHP_HEADER) - sizeof(ZLOX_KHP_FOOTER);
+	ZLOX_UINT32 i;
+	for(i=(ZLOX_UINT32)p; i < (ZLOX_UINT32)p + sz ;i+=0x1000)
+	{
+		page = zlox_get_page(i, 0, kernel_directory);
+		if(page->rw == 1)
+			page->rw = 0;
+	}
+
+	// Flush the TLB(translation lookaside buffer) by reading and writing the page directory address again.
+	ZLOX_UINT32 pd_addr;
+	asm volatile("mov %%cr3, %0" : "=r" (pd_addr));
+	asm volatile("mov %0, %%cr3" : : "r" (pd_addr));
+
+	zlox_free(p, kheap);
+}
+
 // 当堆空间不足时,扩展堆的物理内存 
 static ZLOX_VOID zlox_expand(ZLOX_UINT32 new_size, ZLOX_HEAP * heap)
 {
@@ -458,5 +502,11 @@ ZLOX_VOID zlox_free(ZLOX_VOID *p, ZLOX_HEAP *heap)
 	if (do_add == 1)
 		zlox_insert_ordered_array((ZLOX_VPTR)header, &heap->index);
 
+}
+
+// 获取kheap，主要用于系统调用
+ZLOX_UINT32 zlox_get_kheap()
+{
+	return (ZLOX_UINT32)kheap;
 }
 

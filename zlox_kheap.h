@@ -80,7 +80,16 @@ ZLOX_UINT32 zlox_kmalloc_ap(ZLOX_UINT32 sz, ZLOX_UINT32 *phys);
 **/
 ZLOX_UINT32 zlox_kmalloc(ZLOX_UINT32 sz);
 
+// 给用户态程式使用的分配堆函数
+ZLOX_UINT32 zlox_umalloc(ZLOX_UINT32 sz);
+
 ZLOX_VOID zlox_kfree(ZLOX_VOID *p);
+
+// 给用户态程式使用的释放堆函数
+ZLOX_VOID zlox_ufree(ZLOX_VOID *p);
+
+// 获取kheap，主要用于系统调用
+ZLOX_UINT32 zlox_get_kheap();
 
 #endif //_ZLOX_KHEAP_H_
 

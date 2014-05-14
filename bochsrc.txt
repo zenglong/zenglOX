@@ -14,6 +14,7 @@ cpuid: mmx=1, sep=1, sse=sse2, aes=0, movbe=0, xsave=0
 romimage: file="/usr/local/share/bochs/BIOS-bochs-latest", address=0xfffe0000
 vgaromimage: file="/usr/local/share/bochs/VGABIOS-elpin-2.40"
 vga_update_interval: 40000
+
 mouse: enabled=0, toggle=f12
 
 ata0: enabled=1, ioaddr1=0x1f0, ioaddr2=0x3f0, irq=14
