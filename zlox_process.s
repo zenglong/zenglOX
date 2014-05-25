@@ -38,3 +38,13 @@ _zlox_copy_page_physical:
 	popf		# Pop EFLAGS back.
 	ret
 
+.global _zlox_idle_cpu
+ _zlox_idle_cpu:
+	pushf		# push EFLAGS
+	sti
+#null_loop:
+	hlt
+	#jmp null_loop
+	popf		# Pop EFLAGS back.
+	ret
+

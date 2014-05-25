@@ -5,10 +5,10 @@
 
 #include "zlox_common.h"
 
-#define ZLOX_SYSCALL_NUMBER 24
+#define ZLOX_SYSCALL_NUMBER 28
 
 #define ZLOX_MAJOR_VERSION 1 //zenglOX 主版本号
-#define ZLOX_MINOR_VERSION 0 //zenglOX 子版本号
+#define ZLOX_MINOR_VERSION 1 //zenglOX 子版本号
 #define ZLOX_REVISION 0      //zenglOX 修正版本号
 
 typedef enum _ZLOX_SYSCALL_ENUM{
@@ -36,6 +36,10 @@ typedef enum _ZLOX_SYSCALL_ENUM{
 	ZLOX_SYSCALL_GET_VERSION,
 	ZLOX_SYSCALL_REBOOT,
 	ZLOX_SYSCALL_SHUTDOWN,
+	ZLOX_SYSCALL_IDLE_CPU,
+	ZLOX_SYSCALL_ATAPI_DRIVE_READ_SECTOR,
+	ZLOX_SYSCALL_ATAPI_DRIVE_READ_CAPACITY,
+	ZLOX_SYSCALL_ATA_GET_IDE_INFO,
 }ZLOX_SYSCALL_ENUM;
 
 ZLOX_VOID zlox_initialise_syscalls();
@@ -119,6 +123,10 @@ ZLOX_DECL_SYSCALL0(get_kheap)
 ZLOX_DECL_SYSCALL3(get_version,void *,void *,void *)
 ZLOX_DECL_SYSCALL0(reboot)
 ZLOX_DECL_SYSCALL0(shutdown)
+ZLOX_DECL_SYSCALL0(idle_cpu)
+ZLOX_DECL_SYSCALL3(atapi_drive_read_sector,ZLOX_UINT32,ZLOX_UINT32,void *)
+ZLOX_DECL_SYSCALL2(atapi_drive_read_capacity,ZLOX_UINT32,void *)
+ZLOX_DECL_SYSCALL0(ata_get_ide_info)
 
 ZLOX_SINT32 zlox_get_version(ZLOX_SINT32 * major, ZLOX_SINT32 * minor, ZLOX_SINT32 * revision);
 

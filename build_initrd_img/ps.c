@@ -27,6 +27,9 @@ int main(TASK * task, int argc, char * argv[])
 			case TS_WAIT:
 				syscall_monitor_write("wait");
 				break;
+			case TS_ATA_WAIT:
+				syscall_monitor_write("ata_wait");
+				break;
 			case TS_RUNNING:
 				syscall_monitor_write("running");
 				break;

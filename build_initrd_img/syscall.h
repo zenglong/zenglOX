@@ -30,6 +30,10 @@ typedef enum _SYSCALL_ENUM{
 	SYSCALL_GET_VERSION,
 	SYSCALL_REBOOT,
 	SYSCALL_SHUTDOWN,
+	SYSCALL_IDLE_CPU,
+	SYSCALL_ATAPI_DRIVE_READ_SECTOR,
+	SYSCALL_ATAPI_DRIVE_READ_CAPACITY,
+	SYSCALL_ATA_GET_IDE_INFO,
 }SYSCALL_ENUM;
 
 #define DECL_SYSCALL0(fn) SINT32 syscall_##fn();
@@ -111,6 +115,10 @@ DECL_SYSCALL0(get_kheap)
 DECL_SYSCALL3(get_version,void *,void *,void *)
 DECL_SYSCALL0(reboot)
 DECL_SYSCALL0(shutdown)
+DECL_SYSCALL0(idle_cpu)
+DECL_SYSCALL3(atapi_drive_read_sector,UINT32,UINT32,void *)
+DECL_SYSCALL2(atapi_drive_read_capacity,UINT32,void *)
+DECL_SYSCALL0(ata_get_ide_info)
 
 #endif // _SYSCALL_H_
 

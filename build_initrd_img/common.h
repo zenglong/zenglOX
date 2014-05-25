@@ -33,6 +33,8 @@ SINT32 strcmp(CHAR * str1, CHAR * str2);
 // return dest.
 CHAR * strcpy(CHAR * dest, const CHAR * src);
 SINT32 strlen(CHAR *src);
+// convert string to unsigned int
+UINT32 strToUInt(CHAR *c);
 
 #endif // _COMMON_H_
 

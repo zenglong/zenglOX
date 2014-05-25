@@ -19,6 +19,7 @@ typedef enum _MSG_KB_TYPE
 typedef enum _TSK_STATUS
 {
 	TS_WAIT,
+	TS_ATA_WAIT,
 	TS_RUNNING,
 	TS_FINISH,
 	TS_ZOMBIE,

@@ -157,3 +157,16 @@ SINT32 strlen(CHAR *src)
 	return i;
 }
 
+// convert string to unsigned int
+UINT32 strToUInt(CHAR *c)
+{
+	UINT32 result = 0; 
+	while(*c != 0)
+	{
+		result *= 10;           
+		result += (*c - 48);
+		c++;
+	}
+	return result;
+}
+

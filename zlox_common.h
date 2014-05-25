@@ -23,10 +23,18 @@ typedef ZLOX_UINT8 ZLOX_BOOL;
 
 // Write a byte out to the specified port.
 ZLOX_VOID zlox_outb(ZLOX_UINT16 port,ZLOX_UINT8 value);
+// Write a word(2 byte) out to the specified port.
+ZLOX_VOID zlox_outw(ZLOX_UINT16 port,ZLOX_UINT16 value);
+// writes Count words (16-bit) from memory location Data to I/O port
+ZLOX_VOID zlox_outsw(ZLOX_UINT16 port, ZLOX_UINT16 * Data, ZLOX_UINT32 Count);
+
 //read a byte from the specified port.
 ZLOX_UINT8 zlox_inb(ZLOX_UINT16 port);
 //read a word(2 byte) from the specified port.
 ZLOX_UINT16 zlox_inw(ZLOX_UINT16 port);
+//reads Count words (16-bit) from I/O port to memory location Data
+ZLOX_VOID zlox_insw(ZLOX_UINT16 port, ZLOX_UINT16 * Data, ZLOX_UINT32 Count);
+
 // Copy len bytes from src to dest.
 ZLOX_VOID zlox_memcpy(ZLOX_UINT8 *dest, const ZLOX_UINT8 *src, ZLOX_UINT32 len);
 // Write len copies of val into dest.

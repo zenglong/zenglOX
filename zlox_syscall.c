@@ -9,11 +9,14 @@
 #include "zlox_kheap.h"
 #include "zlox_fs.h"
 #include "zlox_paging.h"
+#include "zlox_ata.h"
 
 static ZLOX_VOID zlox_syscall_handler(ZLOX_ISR_REGISTERS * regs);
 // _zlox_reboot() and _zlox_shutdown() is in zlox_shutdown.s
 ZLOX_VOID _zlox_reboot();
 ZLOX_VOID _zlox_shutdown();
+//  _zlox_idle_cpu is in zlox_process.s
+ZLOX_VOID _zlox_idle_cpu();
 
 ZLOX_DEFN_SYSCALL1(monitor_write, ZLOX_SYSCALL_MONITOR_WRITE, const char*);
 ZLOX_DEFN_SYSCALL1(monitor_write_hex, ZLOX_SYSCALL_MONITOR_WRITE_HEX, ZLOX_UINT32);
@@ -39,6 +42,10 @@ ZLOX_DEFN_SYSCALL0(get_kheap,ZLOX_SYSCALL_GET_KHEAP);
 ZLOX_DEFN_SYSCALL3(get_version,ZLOX_SYSCALL_GET_VERSION,void *,void *,void *);
 ZLOX_DEFN_SYSCALL0(reboot,ZLOX_SYSCALL_REBOOT);
 ZLOX_DEFN_SYSCALL0(shutdown,ZLOX_SYSCALL_SHUTDOWN);
+ZLOX_DEFN_SYSCALL0(idle_cpu,ZLOX_SYSCALL_IDLE_CPU);
+ZLOX_DEFN_SYSCALL3(atapi_drive_read_sector,ZLOX_SYSCALL_ATAPI_DRIVE_READ_SECTOR,ZLOX_UINT32,ZLOX_UINT32,void *);
+ZLOX_DEFN_SYSCALL2(atapi_drive_read_capacity,ZLOX_SYSCALL_ATAPI_DRIVE_READ_CAPACITY,ZLOX_UINT32,void *);
+ZLOX_DEFN_SYSCALL0(ata_get_ide_info,ZLOX_SYSCALL_ATA_GET_IDE_INFO);
 
 static ZLOX_VOID * syscalls[ZLOX_SYSCALL_NUMBER] =
 {
@@ -66,6 +73,10 @@ static ZLOX_VOID * syscalls[ZLOX_SYSCALL_NUMBER] =
 	&zlox_get_version,
 	&_zlox_reboot,
 	&_zlox_shutdown,
+	&_zlox_idle_cpu,
+	&zlox_atapi_drive_read_sector,
+	&zlox_atapi_drive_read_capacity,
+	&zlox_ata_get_ide_info,
 };
 
 ZLOX_UINT32 num_syscalls = ZLOX_SYSCALL_NUMBER;

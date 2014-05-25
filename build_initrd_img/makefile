@@ -3,8 +3,8 @@
 CC = @gcc
 
 CFLAGS = -std=gnu99 -ffreestanding -gdwarf-2 -g3 -Wall -Wextra
-OBJS = cpuid.o uname.o shell.o syscall.o entry.o common.o ls.o ps.o cat.o reboot.o shutdown.o
-INITRD_FILES = licence.txt cpuid uname shell ls ps cat reboot shutdown
+OBJS = cpuid.o uname.o shell.o syscall.o entry.o common.o ls.o ps.o cat.o reboot.o shutdown.o ata.o
+INITRD_FILES = licence.txt cpuid uname shell ls ps cat reboot shutdown ata
 
 initrd.img:make_initrd.c $(INITRD_FILES) $(OBJS)
 	@echo 'building initrd.img'
@@ -42,6 +42,10 @@ ps: ps.o syscall.o entry.o common.o
 cat: cat.o syscall.o entry.o common.o
 	@echo 'building $@'
 	$(CROSS_CC) -Wl,-eentry -o $@ $(CROSS_CLINK_FLAGS) cat.o syscall.o entry.o common.o
+
+ata: ata.o syscall.o entry.o common.o
+	@echo 'building $@'
+	$(CROSS_CC) -Wl,-eentry -o $@ $(CROSS_CLINK_FLAGS) ata.o syscall.o entry.o common.o
 
 cpuid.o: cpuid.s
 	@echo "building $@"
@@ -87,6 +91,10 @@ cat.o: cat.c common.h syscall.h fs.h
 	@echo "building $@"
 	$(CROSS_CC) -c -o $@ $< $(CROSS_CFLAGS)
 
+ata.o: ata.c common.h syscall.h ata.h kheap.h
+	@echo "building $@"
+	$(CROSS_CC) -c -o $@ $< $(CROSS_CFLAGS)
+
 clean:
 	$(RM) $(RMFLAGS) *.o
 	$(RM) $(RMFLAGS) cpuid
@@ -97,6 +105,7 @@ clean:
 	$(RM) $(RMFLAGS) cat
 	$(RM) $(RMFLAGS) reboot
 	$(RM) $(RMFLAGS) shutdown
+	$(RM) $(RMFLAGS) ata
 	$(RM) $(RMFLAGS) make_initrd
 	$(RM) $(RMFLAGS) initrd.img
 

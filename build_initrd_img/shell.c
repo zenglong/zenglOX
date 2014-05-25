@@ -35,7 +35,10 @@ int main(VOID * task, int argc, char * argv[])
 	{
 		ret = syscall_get_tskmsg(task,&msg,TRUE);
 		if(ret != 1)
+		{
+			syscall_idle_cpu();
 			continue;
+		}
 
 		if(msg.type == MT_KEYBOARD)
 		{

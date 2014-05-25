@@ -15,6 +15,19 @@ ZLOX_VOID zlox_outb(ZLOX_UINT16 port,ZLOX_UINT8 value)
 	//asm volatile("outb %%al,(%%dx)"::"d" (port),"a" (value));
 }
 
+// Write a word(2 byte) out to the specified port.
+ZLOX_VOID zlox_outw(ZLOX_UINT16 port,ZLOX_UINT16 value)
+{
+	asm volatile("outw %1,%0"::"dN" (port),"a" (value));
+}
+
+// writes Count words (16-bit) from memory location Data to I/O port
+ZLOX_VOID zlox_outsw(ZLOX_UINT16 port, ZLOX_UINT16 * Data, ZLOX_UINT32 Count)
+{
+	for(; Count; Count--,Data++)
+		asm volatile("outw %1,%0"::"dN" (port),"a" (*Data));
+}
+
 //read a byte from the specified port.
 ZLOX_UINT8 zlox_inb(ZLOX_UINT16 port)
 {
@@ -29,6 +42,13 @@ ZLOX_UINT16 zlox_inw(ZLOX_UINT16 port)
 	ZLOX_UINT16 ret;
 	asm volatile("inw %1,%0":"=a" (ret):"dN" (port));
 	return ret;
+}
+
+//reads Count words (16-bit) from I/O port to memory location Data
+ZLOX_VOID zlox_insw(ZLOX_UINT16 port, ZLOX_UINT16 * Data, ZLOX_UINT32 Count)
+{
+	for(; Count; Count--,Data++)
+		asm volatile("inw %1,%0":"=a" (*Data):"dN" (port));
 }
 
 // Copy len bytes from src to dest.

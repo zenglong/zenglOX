@@ -12,6 +12,7 @@
 #include "zlox_syscall.h"
 #include "zlox_keyboard.h"
 #include "zlox_elf.h"
+#include "zlox_ata.h"
 
 extern ZLOX_UINT32 placement_address;
 extern ZLOX_TASK * current_task;
@@ -62,6 +63,10 @@ ZLOX_SINT32 zlox_kernel_main(ZLOX_MULTIBOOT * mboot_ptr, ZLOX_UINT32 initial_sta
 
 	zlox_syscall_monitor_write("=========================\n");
 
+	zlox_init_ata();
+
+	zlox_syscall_monitor_write("ata is init now!\n");
+
 	// 切换到ring 3的用户模式
 	zlox_switch_to_user_mode();
 
@@ -76,7 +81,8 @@ ZLOX_SINT32 zlox_kernel_main(ZLOX_MULTIBOOT * mboot_ptr, ZLOX_UINT32 initial_sta
 	zlox_syscall_monitor_put('.');
 	zlox_syscall_monitor_write_dec(revision);
 	zlox_syscall_monitor_write("! I will execve a shell\n"
-					"you can input some command: ls , ps , cat , uname , cpuid , shell , reboot ...\n");
+					"you can input some command: ls , ps , cat , uname , cpuid , shell , reboot, shutdown, ata\n");
+	zlox_syscall_monitor_write("new command is ata, you can use 'ata -h' to see the ata's usage!\n");
 
 	zlox_syscall_execve("shell");
 	//zlox_syscall_execve("cpuid");
