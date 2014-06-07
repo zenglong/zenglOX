@@ -76,6 +76,9 @@ typedef struct _ZLOX_IDE_DEVICE {
  * ide_index into the buffer using logical block address lba. */
 ZLOX_SINT32 zlox_atapi_drive_read_sector (ZLOX_UINT32 ide_index, ZLOX_UINT32 lba, ZLOX_UINT8 *buffer);
 
+ZLOX_SINT32 zlox_atapi_drive_read_sectors (ZLOX_UINT32 ide_index, ZLOX_UINT32 lba, ZLOX_UINT32 lba_num, 
+					ZLOX_UINT8 *buffer);
+
 /* read capacity from the given ide_index into the buffer */
 ZLOX_SINT32 zlox_atapi_drive_read_capacity (ZLOX_UINT32 ide_index, ZLOX_UINT8 *buffer);
 

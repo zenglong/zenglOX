@@ -131,6 +131,14 @@ ZLOX_SINT32 zlox_strcmp(ZLOX_CHAR * str1, ZLOX_CHAR * str2)
 	return retval;
 }
 
+ZLOX_SINT32 zlox_strcmpn(ZLOX_CHAR * s1, ZLOX_CHAR * s2, ZLOX_SINT32 n)
+{
+	while (--n >= 0 && *s1 == *s2++)
+		if (*s1++ == '\0')
+			return 0;
+	return(n<0 ? 0 : *s1 - *--s2);
+}
+
 // Copy the NULL-terminated string src into dest, and
 // return dest.
 ZLOX_CHAR * zlox_strcpy(ZLOX_CHAR * dest, const ZLOX_CHAR * src)

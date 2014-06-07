@@ -12,6 +12,8 @@ ZLOX_UINT32 nroot_nodes; // Number of file nodes.
 
 ZLOX_DIRENT dirent;
 
+extern ZLOX_FS_NODE * iso_root;
+
 static ZLOX_UINT32 zlox_initrd_read(ZLOX_FS_NODE * node, ZLOX_UINT32 arg_offset, ZLOX_UINT32 size, ZLOX_UINT8 * buffer)
 {
 	ZLOX_INITRD_FILE_HEADER header = file_headers[node->inode];
@@ -37,7 +39,15 @@ static ZLOX_DIRENT *zlox_initrd_readdir(ZLOX_FS_NODE *node, ZLOX_UINT32 index)
 		return &dirent;
 	}
 
-	if (index-1 >= nroot_nodes)
+	if(index-1 == nroot_nodes)
+	{
+		zlox_strcpy(dirent.name, "iso");
+		dirent.name[3] = 0;
+		dirent.ino = iso_root->inode;
+		return &dirent;
+	}
+
+	if (index-1 > nroot_nodes)
 		return 0;
 
 	zlox_strcpy(dirent.name, root_nodes[index-1].name);
@@ -51,6 +61,16 @@ static ZLOX_FS_NODE *zlox_initrd_finddir(ZLOX_FS_NODE *node, ZLOX_CHAR *name)
 	if (node == initrd_root &&
 		!zlox_strcmp(name, "dev") )
 		return initrd_dev;
+
+	if (node == initrd_root && !zlox_strcmp(name, "iso"))
+		return iso_root;
+
+	if (node == initrd_root && !zlox_strcmpn(name, "iso/",4))
+	{
+		if(iso_root == ZLOX_NULL)
+			return 0;
+		return iso_root->finddir(iso_root, name + 4);
+	}
 
 	ZLOX_UINT32 i;
 	for (i = 0; i < nroot_nodes; i++)

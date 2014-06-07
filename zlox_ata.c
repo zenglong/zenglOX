@@ -7,7 +7,7 @@
 #include "zlox_kheap.h"
 
 extern ZLOX_TASK * current_task;
-ZLOX_TASK * ata_wait_task = ZLOX_NULL;
+volatile ZLOX_TASK * ata_wait_task = ZLOX_NULL;
 
 ZLOX_IDE_DEVICE ide_devices[4];
 
@@ -67,8 +67,22 @@ ZLOX_SINT32 zlox_atapi_drive_read_sector (ZLOX_UINT32 ide_index, ZLOX_UINT32 lba
 	/* Wait for BSY and DRQ to clear, indicating Command Finished */
 	while ((status = zlox_inb (ZLOX_ATA_COMMAND (bus))) & 0x88)
 		asm volatile ("pause");
+
 end:
-	ata_wait_task = ZLOX_NULL;
+	if(ata_wait_task != ZLOX_NULL)
+		ata_wait_task = ZLOX_NULL;
+	return size;
+}
+
+ZLOX_SINT32 zlox_atapi_drive_read_sectors (ZLOX_UINT32 ide_index, ZLOX_UINT32 lba, ZLOX_UINT32 lba_num, 
+					ZLOX_UINT8 *buffer)
+{
+	ZLOX_UINT32 i;
+	ZLOX_SINT32 size = 0;
+	for(i=0;i<lba_num;i++)
+	{
+		size += zlox_atapi_drive_read_sector(ide_index,(lba+i),buffer+(ZLOX_ATAPI_SECTOR_SIZE * i));
+	}
 	return size;
 }
 
@@ -149,7 +163,10 @@ ZLOX_UINT32 zlox_ata_get_ide_info()
 static ZLOX_VOID zlox_ata_callback(/*ZLOX_ISR_REGISTERS * regs*/)
 {
 	if(ata_wait_task != ZLOX_NULL)
+	{
 		ata_wait_task->status = ZLOX_TS_RUNNING;
+		ata_wait_task = ZLOX_NULL;
+	}
 }
 
 ZLOX_VOID zlox_init_ata()
@@ -232,6 +249,10 @@ ZLOX_VOID zlox_init_ata()
 			{
 				ide_devices[count].Model[k] = ide_buf[ZLOX_ATA_IDENT_MODEL + k + 1];
 				ide_devices[count].Model[k + 1] = ide_buf[ZLOX_ATA_IDENT_MODEL + k];
+				if(ide_devices[count].Model[k] == 0) //将0变为空格
+					ide_devices[count].Model[k] = 0x20;
+				if(ide_devices[count].Model[k + 1] == 0) //将0变为空格
+					ide_devices[count].Model[k + 1] = 0x20;
 			}
 			ide_devices[count].Model[40] = 0; // Terminate String.
 inner_end:

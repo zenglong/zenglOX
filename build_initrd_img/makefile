@@ -3,8 +3,8 @@
 CC = @gcc
 
 CFLAGS = -std=gnu99 -ffreestanding -gdwarf-2 -g3 -Wall -Wextra
-OBJS = cpuid.o uname.o shell.o syscall.o entry.o common.o ls.o ps.o cat.o reboot.o shutdown.o ata.o
-INITRD_FILES = licence.txt cpuid uname shell ls ps cat reboot shutdown ata
+OBJS = cpuid.o uname.o shell.o syscall.o entry.o common.o ls.o ps.o cat.o reboot.o shutdown.o ata.o mount.o unmount.o
+INITRD_FILES = licence.txt cpuid uname shell ls ps cat reboot shutdown ata mount unmount
 
 initrd.img:make_initrd.c $(INITRD_FILES) $(OBJS)
 	@echo 'building initrd.img'
@@ -46,6 +46,14 @@ cat: cat.o syscall.o entry.o common.o
 ata: ata.o syscall.o entry.o common.o
 	@echo 'building $@'
 	$(CROSS_CC) -Wl,-eentry -o $@ $(CROSS_CLINK_FLAGS) ata.o syscall.o entry.o common.o
+
+mount: mount.o syscall.o entry.o common.o
+	@echo 'building $@'
+	$(CROSS_CC) -Wl,-eentry -o $@ $(CROSS_CLINK_FLAGS) mount.o syscall.o entry.o common.o
+
+unmount: unmount.o syscall.o entry.o common.o
+	@echo 'building $@'
+	$(CROSS_CC) -Wl,-eentry -o $@ $(CROSS_CLINK_FLAGS) unmount.o syscall.o entry.o common.o
 
 cpuid.o: cpuid.s
 	@echo "building $@"
@@ -95,6 +103,14 @@ ata.o: ata.c common.h syscall.h ata.h kheap.h
 	@echo "building $@"
 	$(CROSS_CC) -c -o $@ $< $(CROSS_CFLAGS)
 
+mount.o: mount.c common.h syscall.h
+	@echo "building $@"
+	$(CROSS_CC) -c -o $@ $< $(CROSS_CFLAGS)
+
+unmount.o: unmount.c common.h syscall.h
+	@echo "building $@"
+	$(CROSS_CC) -c -o $@ $< $(CROSS_CFLAGS)
+
 clean:
 	$(RM) $(RMFLAGS) *.o
 	$(RM) $(RMFLAGS) cpuid
@@ -106,6 +122,8 @@ clean:
 	$(RM) $(RMFLAGS) reboot
 	$(RM) $(RMFLAGS) shutdown
 	$(RM) $(RMFLAGS) ata
+	$(RM) $(RMFLAGS) mount
+	$(RM) $(RMFLAGS) unmount
 	$(RM) $(RMFLAGS) make_initrd
 	$(RM) $(RMFLAGS) initrd.img
 

@@ -34,6 +34,8 @@ typedef enum _SYSCALL_ENUM{
 	SYSCALL_ATAPI_DRIVE_READ_SECTOR,
 	SYSCALL_ATAPI_DRIVE_READ_CAPACITY,
 	SYSCALL_ATA_GET_IDE_INFO,
+	SYSCALL_MOUNT_ISO,
+	SYSCALL_UNMOUNT_ISO,
 }SYSCALL_ENUM;
 
 #define DECL_SYSCALL0(fn) SINT32 syscall_##fn();
@@ -119,6 +121,8 @@ DECL_SYSCALL0(idle_cpu)
 DECL_SYSCALL3(atapi_drive_read_sector,UINT32,UINT32,void *)
 DECL_SYSCALL2(atapi_drive_read_capacity,UINT32,void *)
 DECL_SYSCALL0(ata_get_ide_info)
+DECL_SYSCALL0(mount_iso)
+DECL_SYSCALL0(unmount_iso)
 
 #endif // _SYSCALL_H_
 
