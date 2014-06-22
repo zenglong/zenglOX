@@ -19,6 +19,9 @@ ZLOX_VOID _zlox_shutdown();
 //  _zlox_idle_cpu is in zlox_process.s
 ZLOX_VOID _zlox_idle_cpu();
 
+// defined in zlox_syscall.c
+ZLOX_SINT32 zlox_overflow_test();
+
 ZLOX_DEFN_SYSCALL1(monitor_write, ZLOX_SYSCALL_MONITOR_WRITE, const char*);
 ZLOX_DEFN_SYSCALL1(monitor_write_hex, ZLOX_SYSCALL_MONITOR_WRITE_HEX, ZLOX_UINT32);
 ZLOX_DEFN_SYSCALL1(monitor_write_dec, ZLOX_SYSCALL_MONITOR_WRITE_DEC, ZLOX_UINT32);
@@ -49,6 +52,7 @@ ZLOX_DEFN_SYSCALL2(atapi_drive_read_capacity,ZLOX_SYSCALL_ATAPI_DRIVE_READ_CAPAC
 ZLOX_DEFN_SYSCALL0(ata_get_ide_info,ZLOX_SYSCALL_ATA_GET_IDE_INFO);
 ZLOX_DEFN_SYSCALL0(mount_iso,ZLOX_SYSCALL_MOUNT_ISO);
 ZLOX_DEFN_SYSCALL0(unmount_iso,ZLOX_SYSCALL_UNMOUNT_ISO);
+ZLOX_DEFN_SYSCALL0(overflow_test,ZLOX_SYSCALL_OVERFLOW_TEST);
 
 static ZLOX_VOID * syscalls[ZLOX_SYSCALL_NUMBER] =
 {
@@ -82,6 +86,7 @@ static ZLOX_VOID * syscalls[ZLOX_SYSCALL_NUMBER] =
 	&zlox_ata_get_ide_info,
 	&zlox_mount_iso,
 	&zlox_unmount_iso,
+	&zlox_overflow_test,
 };
 
 ZLOX_UINT32 num_syscalls = ZLOX_SYSCALL_NUMBER;
@@ -102,14 +107,10 @@ static ZLOX_VOID zlox_syscall_handler(ZLOX_ISR_REGISTERS * regs)
 	// Get the required syscall location.
 	ZLOX_VOID * location = syscalls[regs->eax];
 
-	ZLOX_UINT32 oldesp,newesp; 
-
 	// We don't know how many parameters the function wants, so we just
 	// push them all onto the stack in the correct order. The function will
 	// use all the parameters it wants, and we can pop them all back off afterwards.
 	ZLOX_SINT32 ret;
-
-	asm volatile("mov %%esp, %0" : "=r"(oldesp));
 
 	asm volatile (" \
 	  push %1; \
@@ -125,17 +126,9 @@ static ZLOX_VOID zlox_syscall_handler(ZLOX_ISR_REGISTERS * regs)
 	  pop %%ebx; \
 	" : "=a" (ret) : "D" (regs->edi), "S" (regs->esi), "d" (regs->edx), "c" (regs->ecx), "b" (regs->ebx), "0" (location));
 
-	asm volatile("mov %%esp, %0" : "=r"(newesp));
-
-	if(oldesp != newesp)
-	{
-		if(oldesp > newesp)
-			regs = (ZLOX_ISR_REGISTERS *)((ZLOX_UINT32)regs - (oldesp - newesp));
-		else
-			regs = (ZLOX_ISR_REGISTERS *)((ZLOX_UINT32)regs + (newesp - oldesp));
-	}
-
-	if(regs->eax == ZLOX_SYSCALL_EXECVE && ret > 0)
+	if(regs->eax == ZLOX_SYSCALL_EXECVE && 
+		((ret != -1) && ((ZLOX_UINT32)ret > 0))
+		)
 	{
 		regs->eip = ret;
 	}
@@ -148,6 +141,14 @@ ZLOX_SINT32 zlox_get_version(ZLOX_SINT32 * major, ZLOX_SINT32 * minor, ZLOX_SINT
 	*major = ZLOX_MAJOR_VERSION;
 	*minor = ZLOX_MINOR_VERSION;
 	*revision = ZLOX_REVISION;
+	return 0;
+}
+
+ZLOX_SINT32 zlox_overflow_test()
+{
+	ZLOX_CHAR test[128] = {0};
+	test[0] = test[0] + 0;
+	zlox_overflow_test(); // 无穷递归，迫使内核栈溢出，当内核栈溢出时，会触发 double fault，弹出详细的错误信息, 普通的page fault很难检测出内核栈溢出
 	return 0;
 }
 

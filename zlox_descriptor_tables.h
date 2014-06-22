@@ -6,7 +6,7 @@
 
 #include "zlox_common.h"
 
-#define ZLOX_GDT_ENTRY_NUMBER 6
+#define ZLOX_GDT_ENTRY_NUMBER 7
 
 // Initialisation function is publicly accessible.
 ZLOX_VOID zlox_init_descriptor_tables();

@@ -2,9 +2,13 @@
 
 #include "common.h"
 
+UINT32 _commontest_gl = 3; // debug
+
 // Copy len bytes from src to dest.
 VOID memcpy(UINT8 *dest, const UINT8 *src, UINT32 len)
 {
+	_commontest_gl = 3; // debug
+
 	const UINT8 *sp = (const UINT8 *)src;
 	UINT8 *dp = (UINT8 *)dest;
 	if(len == 0)

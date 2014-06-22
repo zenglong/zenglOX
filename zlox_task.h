@@ -4,9 +4,14 @@
 #define _ZLOX_TASK_H_
 
 #include "zlox_common.h"
-#include "zlox_paging.h"
 
-#define ZLOX_KERNEL_STACK_SIZE 2048	// Use a 2kb kernel stack.
+typedef struct _ZLOX_TASK ZLOX_TASK;
+
+#include "zlox_paging.h"
+#include "zlox_elf.h"
+
+#define ZLOX_KERNEL_STACK_SIZE 0x2000	// Use a 8kb kernel stack.
+#define ZLOX_USER_STACK_SIZE 0x2000	// Use a 8kb user stack.
 #define ZLOX_TSK_MSGLIST_SIZE 20		// 任务消息列表的初始化及动态扩容的大小
 #define ZLOX_TSK_SIGN 0x4B534154		// 任务结构体的有效标识，即"TASK"的ASCII码
 #define ZLOX_PID_REUSE_LIST_SIZE 20	// PID重利用列表的初始化及动态扩容的大小
@@ -36,8 +41,6 @@ typedef struct _ZLOX_TASK_MSG_KEYBOARD
 	ZLOX_MSG_KB_TYPE type;
 	ZLOX_UINT32 ascii;
 }ZLOX_TASK_MSG_KEYBOARD;
-
-typedef struct _ZLOX_TASK ZLOX_TASK;
 
 typedef struct _ZLOX_TASK_MSG_FINISH
 {
@@ -73,6 +76,7 @@ struct _ZLOX_TASK
 	ZLOX_PAGE_DIRECTORY * page_directory; // Page directory.
 	ZLOX_UINT32 kernel_stack;   // Kernel stack location.
 	ZLOX_TASK_MSG_LIST msglist; // task message.
+	ZLOX_ELF_LINK_MAP_LIST link_maps; // elf link map list;
 	ZLOX_TSK_STATUS status;	// task status.
 	ZLOX_CHAR * args;	// task args
 	ZLOX_TASK * next; // The next task in a linked list.

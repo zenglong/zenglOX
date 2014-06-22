@@ -6,6 +6,12 @@
 #include "zlox_common.h"
 #include "zlox_isr.h"
 
+typedef struct _ZLOX_PAGE_DIRECTORY ZLOX_PAGE_DIRECTORY;
+
+#include "zlox_task.h"
+
+#define ZLOX_NEXT_PAGE_START(a)	((a + 0x1000) & 0xFFFFF000)
+
 struct _ZLOX_PAGE
 {
 	ZLOX_UINT32 present		: 1;   // Page present in memory
@@ -27,7 +33,7 @@ struct _ZLOX_PAGE_TABLE
 
 typedef struct _ZLOX_PAGE_TABLE ZLOX_PAGE_TABLE;
 
-typedef struct _ZLOX_PAGE_DIRECTORY
+struct _ZLOX_PAGE_DIRECTORY
 {
 	/**
 	   Array of pointers to pagetables.
@@ -45,7 +51,7 @@ typedef struct _ZLOX_PAGE_DIRECTORY
 	   may be in a different location in virtual memory.
 	**/
 	ZLOX_UINT32 physicalAddr;
-}ZLOX_PAGE_DIRECTORY;
+};
 
 ZLOX_VOID zlox_init_paging();
 
@@ -67,6 +73,15 @@ ZLOX_VOID zlox_free_directory(ZLOX_PAGE_DIRECTORY * src);
 
 // 获取内存的位图信息，主要用于系统调用
 ZLOX_SINT32 zlox_get_frame_info(ZLOX_UINT32 ** hold_frames,ZLOX_UINT32 * hold_nframes);
+
+ZLOX_SINT32 zlox_page_Flush_TLB();
+
+ZLOX_SINT32 zlox_pages_alloc(ZLOX_UINT32 addr, ZLOX_UINT32 size);
+
+ZLOX_SINT32 zlox_pages_map(ZLOX_UINT32 dvaddr, ZLOX_PAGE * heap, ZLOX_UINT32 npage);
+
+ZLOX_VOID * zlox_pages_map_to_heap(ZLOX_TASK * task, ZLOX_UINT32 svaddr, ZLOX_UINT32 size, ZLOX_BOOL clear_me_rw,
+					ZLOX_UINT32 * ret_npage);
 
 #endif //_ZLOX_PAGING_H_
 

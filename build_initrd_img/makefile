@@ -3,127 +3,58 @@
 CC = @gcc
 
 CFLAGS = -std=gnu99 -ffreestanding -gdwarf-2 -g3 -Wall -Wextra
-OBJS = cpuid.o uname.o shell.o syscall.o entry.o common.o ls.o ps.o cat.o reboot.o shutdown.o ata.o mount.o unmount.o
-INITRD_FILES = licence.txt cpuid uname shell ls ps cat reboot shutdown ata mount unmount
+DEPS = common.h syscall.h elf.h task.h kheap.h fs.h ata.h
+AS_TARGET = cpuid uname reboot shutdown
+C_TARGET = shell ls ps cat ata mount unmount testoverflow
+C_DEP_LIB = ld.so libcommon.so
+INITRD_FILES = licence.txt $(AS_TARGET) $(C_TARGET) $(C_DEP_LIB)
 
-initrd.img:make_initrd.c $(INITRD_FILES) $(OBJS)
+initrd.img:make_initrd.c $(INITRD_FILES)
 	@echo 'building initrd.img'
 	$(CC) -o make_initrd make_initrd.c $(CFLAGS)
 	./make_initrd $(INITRD_FILES)
 
-cpuid:cpuid.o
+define AS_make_template
+# translation 
+$1: $1.o
+	@echo "building $$@"
+	$(CROSS_LD) -o $$@ $$<
+endef
+
+$(foreach l, $(AS_TARGET), \
+  $(eval $(call AS_make_template,$(l))) \
+)
+
+define C_make_template
+# translation 
+$1: $1.o $(C_DEP_LIB)
+	@echo "building $$@"
+	$(CROSS_CC) -Wl,-emain -Wl,-dynamic-linker,ld.so -o $$@ $$< $(CROSS_CLINK_FLAGS) -L. -lcommon
+endef
+
+$(foreach l, $(C_TARGET), \
+  $(eval $(call C_make_template,$(l))) \
+)
+
+libcommon.so:common.o syscall.c
 	@echo "building $@"
-	$(CROSS_LD) -o $@ $<
+	$(CROSS_CC) -Wl,-shared -o $@ common.o syscall.c $(CROSS_CLINK_FLAGS)
 
-uname:uname.o
+ld.so:ld.c ld.s common.h syscall.h elf.h task.h libcommon.so
 	@echo "building $@"
-	$(CROSS_LD) -o $@ $<
+	$(CROSS_CC) -fPIC -Wl,-shared -Wl,-edl_main -o $@ ld.c ld.s $(CROSS_CLINK_FLAGS) -L. -lcommon
 
-reboot:reboot.o
-	@echo "building $@"
-	$(CROSS_LD) -o $@ $<
-
-shutdown:shutdown.o
-	@echo "building $@"
-	$(CROSS_LD) -o $@ $<
-
-shell: shell.o syscall.o entry.o common.o
-	@echo 'building $@'
-	$(CROSS_CC) -Wl,-eentry -o $@ $(CROSS_CLINK_FLAGS) shell.o syscall.o entry.o common.o
-
-ls: ls.o syscall.o entry.o common.o
-	@echo 'building $@'
-	$(CROSS_CC) -Wl,-eentry -o $@ $(CROSS_CLINK_FLAGS) ls.o syscall.o entry.o common.o
-
-ps: ps.o syscall.o entry.o common.o
-	@echo 'building $@'
-	$(CROSS_CC) -Wl,-eentry -o $@ $(CROSS_CLINK_FLAGS) ps.o syscall.o entry.o common.o
-
-cat: cat.o syscall.o entry.o common.o
-	@echo 'building $@'
-	$(CROSS_CC) -Wl,-eentry -o $@ $(CROSS_CLINK_FLAGS) cat.o syscall.o entry.o common.o
-
-ata: ata.o syscall.o entry.o common.o
-	@echo 'building $@'
-	$(CROSS_CC) -Wl,-eentry -o $@ $(CROSS_CLINK_FLAGS) ata.o syscall.o entry.o common.o
-
-mount: mount.o syscall.o entry.o common.o
-	@echo 'building $@'
-	$(CROSS_CC) -Wl,-eentry -o $@ $(CROSS_CLINK_FLAGS) mount.o syscall.o entry.o common.o
-
-unmount: unmount.o syscall.o entry.o common.o
-	@echo 'building $@'
-	$(CROSS_CC) -Wl,-eentry -o $@ $(CROSS_CLINK_FLAGS) unmount.o syscall.o entry.o common.o
-
-cpuid.o: cpuid.s
+%.o: %.s
 	@echo "building $@"
 	$(CROSS_AS) -o $@ $< $(CROSS_AS_FLAGS)
 
-uname.o: uname.s
+%.o: %.c $(DEPS)
 	@echo "building $@"
-	$(CROSS_AS) -o $@ $< $(CROSS_AS_FLAGS)
-
-reboot.o: reboot.s
-	@echo "building $@"
-	$(CROSS_AS) -o $@ $< $(CROSS_AS_FLAGS)
-
-shutdown.o: shutdown.s
-	@echo "building $@"
-	$(CROSS_AS) -o $@ $< $(CROSS_AS_FLAGS)
-
-common.o: common.c common.h
-	@echo "building $@"
-	$(CROSS_CC) -c -o $@ $< $(CROSS_CFLAGS)
-
-entry.o: entry.c common.h syscall.h task.h
-	@echo "building $@"
-	$(CROSS_CC) -c -o $@ $< $(CROSS_CFLAGS)
-
-syscall.o: syscall.c common.h syscall.h
-	@echo "building $@"
-	$(CROSS_CC) -c -o $@ $< $(CROSS_CFLAGS)
-
-shell.o: shell.c common.h syscall.h task.h
-	@echo "building $@"
-	$(CROSS_CC) -c -o $@ $< $(CROSS_CFLAGS)
-
-ls.o: ls.c common.h syscall.h fs.h
-	@echo "building $@"
-	$(CROSS_CC) -c -o $@ $< $(CROSS_CFLAGS)
-
-ps.o: ps.c common.h syscall.h task.h kheap.h
-	@echo "building $@"
-	$(CROSS_CC) -c -o $@ $< $(CROSS_CFLAGS)
-
-cat.o: cat.c common.h syscall.h fs.h
-	@echo "building $@"
-	$(CROSS_CC) -c -o $@ $< $(CROSS_CFLAGS)
-
-ata.o: ata.c common.h syscall.h ata.h kheap.h
-	@echo "building $@"
-	$(CROSS_CC) -c -o $@ $< $(CROSS_CFLAGS)
-
-mount.o: mount.c common.h syscall.h
-	@echo "building $@"
-	$(CROSS_CC) -c -o $@ $< $(CROSS_CFLAGS)
-
-unmount.o: unmount.c common.h syscall.h
-	@echo "building $@"
-	$(CROSS_CC) -c -o $@ $< $(CROSS_CFLAGS)
+	$(CROSS_CC) -fPIC -c -o $@ $< $(CROSS_CFLAGS)
 
 clean:
 	$(RM) $(RMFLAGS) *.o
-	$(RM) $(RMFLAGS) cpuid
-	$(RM) $(RMFLAGS) uname
-	$(RM) $(RMFLAGS) shell
-	$(RM) $(RMFLAGS) ls
-	$(RM) $(RMFLAGS) ps
-	$(RM) $(RMFLAGS) cat
-	$(RM) $(RMFLAGS) reboot
-	$(RM) $(RMFLAGS) shutdown
-	$(RM) $(RMFLAGS) ata
-	$(RM) $(RMFLAGS) mount
-	$(RM) $(RMFLAGS) unmount
+	$(RM) $(RMFLAGS) $(AS_TARGET) $(C_TARGET) $(C_DEP_LIB)
 	$(RM) $(RMFLAGS) make_initrd
 	$(RM) $(RMFLAGS) initrd.img
 

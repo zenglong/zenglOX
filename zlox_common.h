@@ -21,6 +21,8 @@ typedef ZLOX_UINT8 ZLOX_BOOL;
 #define ZLOX_PANIC(msg) zlox_panic(msg, __FILE__, __LINE__);
 #define ZLOX_ASSERT(b) ((b) ? (void)0 : zlox_panic_assert(__FILE__, __LINE__, #b))
 
+#define ZLOX_UNUSED(x) (void)(x)
+
 // Write a byte out to the specified port.
 ZLOX_VOID zlox_outb(ZLOX_UINT16 port,ZLOX_UINT8 value);
 // Write a word(2 byte) out to the specified port.

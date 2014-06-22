@@ -4,6 +4,7 @@
 #define _TASK_H_
 
 #include "common.h"
+#include "elf.h"
 
 typedef enum _MSG_TYPE
 {
@@ -67,6 +68,7 @@ struct _TASK
 	VOID * page_directory; // Page directory.
 	UINT32 kernel_stack;   // Kernel stack location.
 	TASK_MSG_LIST msglist; // task message.
+	ELF_LINK_MAP_LIST link_maps; // elf link map list;
 	TSK_STATUS status;	// task status.
 	CHAR * args;	// task args
 	TASK * next; // The next task in a linked list.

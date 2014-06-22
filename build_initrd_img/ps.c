@@ -7,7 +7,7 @@
 
 int main(TASK * task, int argc, char * argv[])
 {
-	if(argc == 1)
+	if(argc == 1 || (argc > 1 && strcmp(argv[1],"-d")==0))
 	{
 		TASK * first_task;
 		TASK * tmp_task;
@@ -51,7 +51,32 @@ int main(TASK * task, int argc, char * argv[])
 				syscall_monitor_write(" ParentID:");
 				syscall_monitor_write_dec(tmp_task->parent->id);
 			}
-			syscall_monitor_put('\n');
+			syscall_monitor_write("\n");
+			if((argc > 1 && strcmp(argv[1],"-d")==0))
+			{
+				ELF_LINK_MAP * tmp_map;
+				ELF_LINK_MAP_LIST * maplst = &tmp_task->link_maps;
+				for(SINT32 i = 0; i < maplst->count; i++)
+				{
+					tmp_map = maplst->ptr + i;
+					if(i == 0)
+						syscall_monitor_write("<< exec");
+					else
+					{
+						syscall_monitor_write("<< dyn \"");
+						syscall_monitor_write(tmp_map->soname);
+						syscall_monitor_write("\"");
+					}
+					syscall_monitor_write(" entry:");
+					syscall_monitor_write_hex(tmp_map->entry);
+					syscall_monitor_write(" vaddr:");
+					syscall_monitor_write_hex(tmp_map->vaddr);
+					syscall_monitor_write(" msize:");
+					syscall_monitor_write_dec(tmp_map->msize);
+					syscall_monitor_write(" byte >>\n");
+				}
+				syscall_monitor_write("\n");
+			}
 			tmp_task = tmp_task->next;
 		}while(tmp_task != 0);
 	}
@@ -107,7 +132,7 @@ int main(TASK * task, int argc, char * argv[])
 	}
 	else
 	{
-		syscall_monitor_write("usage: ps [-m]");
+		syscall_monitor_write("usage: ps [-m][-d]");
 	}
 	return 0;
 }

@@ -203,12 +203,16 @@ static ZLOX_SINT32 zlox_find_smallest_hole(ZLOX_UINT32 size, ZLOX_UINT8 page_ali
 			ZLOX_SINT32 offset = 0;
 			ZLOX_SINT32 base_hole_size = (ZLOX_SINT32)(sizeof(ZLOX_KHP_HEADER) + sizeof(ZLOX_KHP_FOOTER));
 			if ( ((location + sizeof(ZLOX_KHP_HEADER)) & 0x00000FFF) != 0)
+			{
 				offset = 0x1000 /* page size */  - (location+sizeof(ZLOX_KHP_HEADER)) % 0x1000;
+				if(offset <= base_hole_size)
+					offset += 0x1000;
+			}
 			ZLOX_SINT32 hole_size = (ZLOX_SINT32)header->size - offset;
 			// Can we fit now?
 			// 去除对齐产生的offset偏移值后,如果剩余的hole尺寸大于等于所需的size,
 			// 且offset因页对齐被剥离出去后可以产生一个新的hole的话,就说明当前找到的hole符合要求
-			if ( (hole_size >= (ZLOX_SINT32)size) && (offset > base_hole_size) )
+			if ( (hole_size >= (ZLOX_SINT32)size) )
 				break;
 		}
 		else if (header->size >= size)
@@ -350,9 +354,12 @@ ZLOX_VOID * zlox_alloc(ZLOX_UINT32 size, ZLOX_UINT8 page_align, ZLOX_HEAP * heap
 		((orig_hole_pos + sizeof(ZLOX_KHP_HEADER)) & 0x00000FFF)
 		)
 	{
-		ZLOX_UINT32 new_location   = orig_hole_pos + 0x1000 /* page size */ - (orig_hole_pos & 0xFFF) - sizeof(ZLOX_KHP_HEADER);
+		ZLOX_SINT32 offset = 0x1000 /* page size */ - (orig_hole_pos + sizeof(ZLOX_KHP_HEADER)) % 0x1000;
+		if(offset <= (ZLOX_SINT32)(sizeof(ZLOX_KHP_HEADER)+sizeof(ZLOX_KHP_FOOTER)))
+			offset += 0x1000;
+		ZLOX_UINT32 new_location   = orig_hole_pos + offset;
 		ZLOX_KHP_HEADER *hole_header = (ZLOX_KHP_HEADER *)orig_hole_pos;
-		hole_header->size	= 0x1000 /* page size */ - (orig_hole_pos & 0xFFF) - sizeof(ZLOX_KHP_HEADER);
+		hole_header->size	= offset;
 		hole_header->magic	= ZLOX_HEAP_MAGIC;
 		hole_header->is_hole = 1;
 		ZLOX_KHP_FOOTER *hole_footer = (ZLOX_KHP_FOOTER *) ( (ZLOX_UINT32)new_location - sizeof(ZLOX_KHP_FOOTER) );

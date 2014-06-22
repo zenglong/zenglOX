@@ -13,6 +13,9 @@ volatile ZLOX_TASK * ready_queue = 0;
 
 volatile ZLOX_TASK * input_focus_task = 0;
 
+// zlox_descriptor_tables.c
+extern ZLOX_TSS_ENTRY tss_entry_double_fault;
+
 // 所需的zlox_paging.c里的全局变量
 extern ZLOX_PAGE_DIRECTORY * kernel_directory;
 extern ZLOX_PAGE_DIRECTORY * current_directory;
@@ -51,11 +54,22 @@ ZLOX_VOID zlox_initialise_tasking()
 	current_task->next = 0;
 	current_task->prev = 0;
 	current_task->parent = 0;
-	current_task->kernel_stack = zlox_kmalloc_a(ZLOX_KERNEL_STACK_SIZE);
+	current_task->kernel_stack = 0xF0000000;
+	for(ZLOX_UINT32 tmp_esp = current_task->kernel_stack - ZLOX_KERNEL_STACK_SIZE; 
+		tmp_esp < current_task->kernel_stack ;tmp_esp += 0x1000)
+	{
+		zlox_page_copy(tmp_esp);
+	}
 	zlox_memset((ZLOX_UINT8 *)(&current_task->msglist),0,sizeof(ZLOX_TASK_MSG_LIST));
+	zlox_memset((ZLOX_UINT8 *)(&current_task->link_maps),0,sizeof(ZLOX_ELF_LINK_MAP_LIST));
 	current_task->status = ZLOX_TS_RUNNING;
 	current_task->args = 0;
 	task_count++;
+
+	tss_entry_double_fault.cr3 = current_directory->physicalAddr;
+	tss_entry_double_fault.esp0 = current_task->kernel_stack;
+	tss_entry_double_fault.esp = current_task->kernel_stack;
+	tss_entry_double_fault.ebp = current_task->kernel_stack;
 
 	// Reenable interrupts.
 	asm volatile("sti");
@@ -181,7 +195,7 @@ ZLOX_VOID zlox_switch_task()
 	current_directory = current_task->page_directory;
 	
 	// Change our kernel stack over.
-	zlox_set_kernel_stack(current_task->kernel_stack + ZLOX_KERNEL_STACK_SIZE);
+	zlox_set_kernel_stack(current_task->kernel_stack);
 
 	_zlox_switch_task_do(eip,esp,ebp,current_directory->physicalAddr);
 }
@@ -210,8 +224,9 @@ ZLOX_SINT32 zlox_fork()
 	new_task->eip = 0;
 	new_task->init_esp = current_task->init_esp;
 	new_task->page_directory = directory;
-	new_task->kernel_stack = zlox_kmalloc_a(ZLOX_KERNEL_STACK_SIZE);
+	new_task->kernel_stack = current_task->kernel_stack;
 	zlox_memset((ZLOX_UINT8 *)(&new_task->msglist),0,sizeof(ZLOX_TASK_MSG_LIST));
+	zlox_memset((ZLOX_UINT8 *)(&new_task->link_maps),0,sizeof(ZLOX_ELF_LINK_MAP_LIST));
 	new_task->status = ZLOX_TS_RUNNING;
 	new_task->args = 0;
 	new_task->next = 0;
@@ -234,48 +249,22 @@ ZLOX_SINT32 zlox_fork()
 		// We are the parent, so set up the esp/ebp/eip for our child.
 		ZLOX_UINT32 esp; asm volatile("mov %%esp, %0" : "=r"(esp));
 		ZLOX_UINT32 ebp; asm volatile("mov %%ebp, %0" : "=r"(ebp));
-		ZLOX_UINT32 tmp_off;
 		ZLOX_UINT32 tmp_esp;
-		ZLOX_UINT32 i;
 		// 为新进程拷贝内核栈数据
-		zlox_memcpy((ZLOX_UINT8 *)new_task->kernel_stack,(ZLOX_UINT8 *)current_task->kernel_stack,ZLOX_KERNEL_STACK_SIZE);
-		// 为新进程拷贝用户栈数据
 		current_directory = new_task->page_directory;		
-		for(tmp_esp = new_task->init_esp - 0x2000; tmp_esp < new_task->init_esp ;tmp_esp += 0x1000)
+		for(tmp_esp = new_task->kernel_stack - ZLOX_KERNEL_STACK_SIZE; tmp_esp < new_task->kernel_stack ;tmp_esp += 0x1000)
+		{
+			zlox_page_copy(tmp_esp);
+		}
+		// 为新进程拷贝用户栈数据
+		for(tmp_esp = new_task->init_esp - ZLOX_USER_STACK_SIZE; tmp_esp < new_task->init_esp ;tmp_esp += 0x1000)
 		{
 			zlox_page_copy(tmp_esp);
 		}
 		current_directory = current_task->page_directory;
 
-		tmp_off = esp - current_task->kernel_stack;
-		new_task->esp = new_task->kernel_stack + tmp_off;
-		tmp_off = ebp - current_task->kernel_stack;
-		new_task->ebp = new_task->kernel_stack + tmp_off;
-		if(new_task->kernel_stack > current_task->kernel_stack)
-			tmp_off = new_task->kernel_stack - current_task->kernel_stack;
-		else
-			tmp_off = current_task->kernel_stack - new_task->kernel_stack;
-
-		// Backtrace through the original stack, copying new values into
-		// the new stack.  
-		for(i = (ZLOX_UINT32)new_task->ebp; 
-			(i >= new_task->esp && (i < (ZLOX_UINT32)(new_task->kernel_stack + ZLOX_KERNEL_STACK_SIZE))); )
-		{
-			ZLOX_UINT32 tmp = * (ZLOX_UINT32*)i;
-			// it is a base pointer and remap it. 
-			if (( esp < tmp) && (tmp < (current_task->kernel_stack + ZLOX_KERNEL_STACK_SIZE)))
-			{
-				if(new_task->kernel_stack > current_task->kernel_stack)
-					tmp = tmp + tmp_off;
-				else
-					tmp = tmp - tmp_off;
-				ZLOX_UINT32 *tmp2 = (ZLOX_UINT32 *)i;
-				*tmp2 = tmp;
-				i = tmp;
-			}
-			else
-				break;
-		}
+		new_task->esp = esp;
+		new_task->ebp = ebp;
 		new_task->eip = eip;
 		asm volatile("sti");
 
@@ -296,7 +285,7 @@ ZLOX_SINT32 zlox_getpid()
 ZLOX_VOID zlox_switch_to_user_mode()
 {
 	// Set up our kernel stack.
-	zlox_set_kernel_stack(current_task->kernel_stack + ZLOX_KERNEL_STACK_SIZE);
+	zlox_set_kernel_stack(current_task->kernel_stack);
 	
 	// Set up a stack structure for switching to user mode.
 	asm volatile(
@@ -480,8 +469,9 @@ ZLOX_SINT32 zlox_finish(ZLOX_TASK * task)
 		task->status != ZLOX_TS_FINISH)
 		return -1;
 	zlox_free_directory(task->page_directory);
-	zlox_kfree((ZLOX_VOID *)task->kernel_stack);
 	zlox_kfree(task->msglist.ptr);
+	zlox_elf_free_lnk_maplst(&task->link_maps);
+	zlox_kfree(task->link_maps.ptr);
 	zlox_kfree(task->args);
 	prev_task = task->prev;
 	next_task = task->next;

@@ -16,13 +16,19 @@ static ZLOX_VOID zlox_gdt_set_gate(ZLOX_SINT32 num, ZLOX_UINT32 base, ZLOX_UINT3
 									ZLOX_UINT8 access, ZLOX_UINT8 gran);
 static ZLOX_VOID zlox_idt_set_gate(ZLOX_UINT8 num, ZLOX_UINT32 base, ZLOX_UINT16 sel,
 									ZLOX_UINT8 flags);
+
+static ZLOX_VOID zlox_write_task_gate_db_fault(ZLOX_UINT8 num, ZLOX_UINT8 flags);
+
 static ZLOX_VOID zlox_write_tss(ZLOX_SINT32 num, ZLOX_UINT16 ss0, ZLOX_UINT32 esp0);
+
+static ZLOX_VOID zlox_write_tss_db_fault(ZLOX_SINT32 num, ZLOX_UINT16 ss0, ZLOX_UINT32 esp0);
 
 ZLOX_GDT_ENTRY gdt_entries[ZLOX_GDT_ENTRY_NUMBER];
 ZLOX_GDT_PTR gdt_ptr;
 ZLOX_IDT_ENTRY idt_entries[256];
 ZLOX_IDT_PTR idt_ptr;
 ZLOX_TSS_ENTRY tss_entry;
+ZLOX_TSS_ENTRY tss_entry_double_fault;
 
 // Extern the ISR handler array so we can nullify them on startup.
 extern ZLOX_ISR_CALLBACK interrupt_callbacks[];
@@ -52,6 +58,7 @@ static ZLOX_VOID zlox_init_gdt()
 	zlox_gdt_set_gate(3, 0, 0xFFFFFFFF, 0xFA, 0xCF);	// User mode code segment
 	zlox_gdt_set_gate(4, 0, 0xFFFFFFFF, 0xF2, 0xCF);	// User mode data segment
 	zlox_write_tss(5, 0x10, 0x0);
+	zlox_write_tss_db_fault(6, 0x10, 0x0);
 
 	_zlox_gdt_flush((ZLOX_UINT32)&gdt_ptr);
 	_zlox_tss_flush();
@@ -90,6 +97,28 @@ static ZLOX_VOID zlox_write_tss(ZLOX_SINT32 num, ZLOX_UINT16 ss0, ZLOX_UINT32 es
     
     // tss_entry.cs   = 0x0b;     
     // tss_entry.ss = tss_entry.ds = tss_entry.es = tss_entry.fs = tss_entry.gs = 0x13;
+}
+
+// Initialise our task state segment structure for double fault.
+static ZLOX_VOID zlox_write_tss_db_fault(ZLOX_SINT32 num, ZLOX_UINT16 ss0, ZLOX_UINT32 esp0)
+{
+    // Firstly, let's compute the base and limit of our entry into the GDT.
+    ZLOX_UINT32 base = (ZLOX_UINT32) &tss_entry_double_fault;
+    ZLOX_UINT32 limit = sizeof(tss_entry_double_fault) - 1;
+    
+    // Now, add our TSS descriptor's address to the GDT.
+    zlox_gdt_set_gate(num, base, limit, 0xE9, 0x00);
+
+    // Ensure the descriptor is initially zero.
+    zlox_memset((ZLOX_UINT8 *)&tss_entry_double_fault, 0, sizeof(tss_entry_double_fault));
+
+    tss_entry_double_fault.ss0  = ss0;  // Set the kernel stack segment.
+    tss_entry_double_fault.esp0 = esp0; // Set the kernel stack pointer.
+    
+    tss_entry_double_fault.cs   = 0x08;
+    tss_entry_double_fault.ss = tss_entry_double_fault.ds = tss_entry_double_fault.es = tss_entry_double_fault.fs
+	 = tss_entry_double_fault.gs = 0x10;
+    tss_entry_double_fault.eip = (ZLOX_UINT32)_zlox_isr_8;
 }
 
 ZLOX_VOID zlox_set_kernel_stack(ZLOX_UINT32 stack)
@@ -134,7 +163,8 @@ static ZLOX_VOID zlox_init_idt()
 	zlox_idt_set_gate( 5, (ZLOX_UINT32)_zlox_isr_5 , 0x08, 0x8E);
 	zlox_idt_set_gate( 6, (ZLOX_UINT32)_zlox_isr_6 , 0x08, 0x8E);
 	zlox_idt_set_gate( 7, (ZLOX_UINT32)_zlox_isr_7 , 0x08, 0x8E);
-	zlox_idt_set_gate( 8, (ZLOX_UINT32)_zlox_isr_8 , 0x08, 0x8E);
+	//zlox_idt_set_gate( 8, (ZLOX_UINT32)_zlox_isr_8 , 0x08, 0x8E);
+	zlox_write_task_gate_db_fault(8, 0xE5);
 	zlox_idt_set_gate( 9, (ZLOX_UINT32)_zlox_isr_9 , 0x08, 0x8E);
 	zlox_idt_set_gate(10, (ZLOX_UINT32)_zlox_isr_10, 0x08, 0x8E);
 	zlox_idt_set_gate(11, (ZLOX_UINT32)_zlox_isr_11, 0x08, 0x8E);
@@ -189,5 +219,12 @@ static ZLOX_VOID zlox_idt_set_gate(ZLOX_UINT8 num, ZLOX_UINT32 base, ZLOX_UINT16
 	idt_entries[num].sel     = sel;
 	idt_entries[num].always0 = 0;
 	idt_entries[num].flags   = flags  | 0x60;
+}
+
+static ZLOX_VOID zlox_write_task_gate_db_fault(ZLOX_UINT8 num, ZLOX_UINT8 flags)
+{
+	ZLOX_UINT32 base = 0;
+	ZLOX_UINT16 sel = 0x33;
+	zlox_idt_set_gate(num, base, sel, flags);
 }
 

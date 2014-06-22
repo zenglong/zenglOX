@@ -84,11 +84,9 @@ ZLOX_SINT32 zlox_kernel_main(ZLOX_MULTIBOOT * mboot_ptr, ZLOX_UINT32 initial_sta
 	zlox_syscall_monitor_write("! I will execve a shell\n"
 				"you can input some command: ls , ps , cat , uname , cpuid , shell ,"
 				" reboot , shutdown , ata , mount , unmount\n\n"
-				"you can use \"mount iso\" to mount cdrom to [iso] directory,"
-				" or you can use \"unmount iso\" to unmount it! enjoy yourself!\n");
+				" this version use dynamic library technology, you can use \"ps -d\" to see loaded shared library!\n");
 
 	zlox_syscall_execve("shell");
-	//zlox_syscall_execve("cpuid");
 
 	zlox_syscall_wait(current_task);
 

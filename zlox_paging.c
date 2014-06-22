@@ -4,6 +4,7 @@
 #include "zlox_kheap.h"
 #include "zlox_monitor.h"
 #include "zlox_isr.h"
+#include "zlox_descriptor_tables.h"
 
 // The kernel's page directory
 ZLOX_PAGE_DIRECTORY *kernel_directory=0;
@@ -18,15 +19,22 @@ ZLOX_UINT32 nframes;
 // Defined in zlox_kheap.c
 extern ZLOX_UINT32 placement_address;
 extern ZLOX_HEAP *kheap;
+// Defined in zlox_task.c
+extern ZLOX_TASK * current_task;
 
 // Defined in zlox_process.s
 extern ZLOX_VOID _zlox_copy_page_physical(ZLOX_UINT32 src,ZLOX_UINT32 dest);
+
+// Defined in zlox_descriptor_tables.c
+extern ZLOX_TSS_ENTRY tss_entry;
+extern ZLOX_TSS_ENTRY tss_entry_double_fault;
 
 // Macros used in the bitset algorithms.
 #define ZLOX_INDEX_FROM_BIT(a) (a/(8*4))
 #define ZLOX_OFFSET_FROM_BIT(a) (a%(8*4))
 
 ZLOX_VOID zlox_page_fault(ZLOX_ISR_REGISTERS * regs);
+ZLOX_VOID zlox_double_fault(ZLOX_ISR_REGISTERS * regs);
 static ZLOX_PAGE_TABLE * zlox_clone_table(ZLOX_PAGE_TABLE * src, ZLOX_UINT32 * physAddr, ZLOX_UINT32 needCopy);
 
 // Static function to set a bit in the frames bitset
@@ -177,6 +185,7 @@ ZLOX_VOID zlox_init_paging()
 
 	// Before we enable paging, we must register our page fault handler.
 	zlox_register_interrupt_callback(14,zlox_page_fault);
+	zlox_register_interrupt_callback(8,zlox_double_fault);
 
 	// Now, enable paging!
 	zlox_switch_page_directory(kernel_directory);
@@ -227,6 +236,8 @@ ZLOX_PAGE *zlox_get_page(ZLOX_UINT32 address, ZLOX_SINT32 make, ZLOX_PAGE_DIRECT
 ZLOX_VOID zlox_page_copy(ZLOX_UINT32 copy_address)
 {
 	ZLOX_UINT32 phys;
+	ZLOX_BOOL need_flushTLB = ZLOX_FALSE;
+	ZLOX_BOOL need_copy_page_physical = ZLOX_FALSE;
 	ZLOX_PAGE_TABLE * newTable;
 	copy_address /= 0x1000;
 	ZLOX_UINT32 table_idx = copy_address / 1024;
@@ -234,24 +245,88 @@ ZLOX_VOID zlox_page_copy(ZLOX_UINT32 copy_address)
 	if( (current_directory->tablesPhysical[table_idx] & 0x2) == 0)
 	{
 		newTable = zlox_clone_table(current_directory->tables[table_idx],&phys,0);
+		need_flushTLB = ZLOX_TRUE;
 	}
 	else
 		newTable = current_directory->tables[table_idx];
 
-	ZLOX_PAGE oldPage = current_directory->tables[table_idx]->pages[page_idx];
-	zlox_alloc_frame_do(&newTable->pages[page_idx], 0, 1);
-	if (oldPage.present) newTable->pages[page_idx].present = 1;
-	if (oldPage.user) newTable->pages[page_idx].user = 1;
-	if (oldPage.accessed) newTable->pages[page_idx].accessed = 1;
-	if (oldPage.dirty) newTable->pages[page_idx].dirty = 1;
-	newTable->pages[page_idx].rw = 1;
-	_zlox_copy_page_physical(oldPage.frame*0x1000, 
-				newTable->pages[page_idx].frame*0x1000);
+	ZLOX_PAGE oldPage;
+	if(newTable->pages[page_idx].frame == 0 || newTable->pages[page_idx].rw == 0)
+	{
+		oldPage = current_directory->tables[table_idx]->pages[page_idx];
+		zlox_alloc_frame_do(&newTable->pages[page_idx], 0, 1);
+		if (oldPage.present) newTable->pages[page_idx].present = 1;
+		if (oldPage.user) newTable->pages[page_idx].user = 1;
+		if (oldPage.accessed) newTable->pages[page_idx].accessed = 1;
+		if (oldPage.dirty) newTable->pages[page_idx].dirty = 1;
+		newTable->pages[page_idx].rw = 1;
+		need_flushTLB = ZLOX_TRUE;
+		need_copy_page_physical = ZLOX_TRUE;
+	}
+
 	if( (current_directory->tablesPhysical[table_idx] & 0x2) == 0)
 	{
 		current_directory->tables[table_idx] = newTable;
 		current_directory->tablesPhysical[table_idx] = phys | 0x07;
 	}
+	
+	if(need_flushTLB && (current_task->page_directory == current_directory))
+		zlox_page_Flush_TLB();
+
+	if(need_copy_page_physical)
+		_zlox_copy_page_physical(oldPage.frame*0x1000, 
+					newTable->pages[page_idx].frame*0x1000);
+}
+
+ZLOX_VOID zlox_double_fault(ZLOX_ISR_REGISTERS * regs)
+{
+	ZLOX_UNUSED(regs);
+
+	zlox_monitor_write("double fault! following is some info dumps: \n");
+	if(tss_entry.esp > 0xE0000000 && tss_entry.esp < tss_entry.esp0)
+	{
+		zlox_monitor_write("*** kernel stack overflow! *** \n");
+	}
+	zlox_monitor_write("cs : ");
+	zlox_monitor_write_hex(tss_entry.cs);
+	zlox_monitor_write("  eip: ");
+	zlox_monitor_write_hex(tss_entry.eip);
+	zlox_monitor_write("\nss : ");
+	zlox_monitor_write_hex(tss_entry.ss);
+	zlox_monitor_write("  esp: ");
+	zlox_monitor_write_hex(tss_entry.esp);
+	zlox_monitor_write("  ebp: ");
+	zlox_monitor_write_hex(tss_entry.ebp);
+	zlox_monitor_write("\nss0: ");
+	zlox_monitor_write_hex(tss_entry.ss0);
+	zlox_monitor_write("  esp0: ");
+	zlox_monitor_write_hex(tss_entry.esp0);
+	zlox_monitor_write("\nds : ");
+	zlox_monitor_write_hex(tss_entry.ds);
+	zlox_monitor_write("  fs : ");
+	zlox_monitor_write_hex(tss_entry.fs);
+	zlox_monitor_write("\ngs : ");
+	zlox_monitor_write_hex(tss_entry.gs);
+	zlox_monitor_write("  es : ");
+	zlox_monitor_write_hex(tss_entry.es);
+	zlox_monitor_write("\neflags: ");
+	zlox_monitor_write_hex(tss_entry.eflags);
+	zlox_monitor_write("  cr3: ");
+	zlox_monitor_write_hex(tss_entry.cr3);
+	zlox_monitor_write("\neax: ");
+	zlox_monitor_write_hex(tss_entry.eax);
+	zlox_monitor_write("  ebx: ");
+	zlox_monitor_write_hex(tss_entry.ebx);
+	zlox_monitor_write("\necx: ");
+	zlox_monitor_write_hex(tss_entry.ecx);
+	zlox_monitor_write("  edx: ");
+	zlox_monitor_write_hex(tss_entry.edx);
+	zlox_monitor_write("\nesi: ");
+	zlox_monitor_write_hex(tss_entry.esi);
+	zlox_monitor_write("  edi: ");
+	zlox_monitor_write_hex(tss_entry.edi);
+	zlox_monitor_write("\n\n");
+	ZLOX_PANIC("system halt");
 }
 
 ZLOX_VOID zlox_page_fault(ZLOX_ISR_REGISTERS * regs)
@@ -285,7 +360,13 @@ ZLOX_VOID zlox_page_fault(ZLOX_ISR_REGISTERS * regs)
 	zlox_monitor_write("Page fault! ( ");
 
 	if (present)  
+	{
 		zlox_monitor_write("present ");
+		if(faulting_address > 0xc0000000 && faulting_address < 0xE0000000)
+		{
+			zlox_monitor_write("and user stack overflow... ");
+		}
+	}
 	if (rw)
 		zlox_monitor_write("read-only ");
 	if (us) 
@@ -302,6 +383,12 @@ ZLOX_VOID zlox_page_fault(ZLOX_ISR_REGISTERS * regs)
 	zlox_monitor_write_hex(regs->eip);
 	zlox_monitor_write("\n");
 
+	// 如果只是用户态程式出错，则只需结束掉当前任务，而无需 ZLOX_PANIC 挂掉整个系统
+	if(regs->eip >= 0x8048000 && regs->eip < 0xc0000000)
+	{
+		zlox_exit(-1);
+	}
+
 	ZLOX_PANIC("Page fault");
 }
 
@@ -311,6 +398,9 @@ static ZLOX_PAGE_TABLE * zlox_clone_table(ZLOX_PAGE_TABLE * src, ZLOX_UINT32 * p
 	ZLOX_PAGE_TABLE * table = (ZLOX_PAGE_TABLE *)zlox_kmalloc_ap(sizeof(ZLOX_PAGE_TABLE), physAddr);
 	// Ensure that the new table is blank.
 	zlox_memset((ZLOX_UINT8 *)table, 0, sizeof(ZLOX_PAGE_TABLE));
+
+	if(src == ZLOX_NULL)
+		return table;
 
 	// For every entry in the table...
 	ZLOX_SINT32 i;
@@ -421,5 +511,110 @@ ZLOX_SINT32 zlox_get_frame_info(ZLOX_UINT32 ** hold_frames,ZLOX_UINT32 * hold_nf
 	(*hold_frames) = frames;
 	(*hold_nframes) = nframes;
 	return 0;
+}
+
+ZLOX_SINT32 zlox_page_Flush_TLB()
+{
+	// Flush the TLB(translation lookaside buffer) by reading and writing the page directory address again.
+	ZLOX_UINT32 pd_addr;
+	asm volatile("mov %%cr3, %0" : "=r" (pd_addr));
+	asm volatile("mov %0, %%cr3" : : "r" (pd_addr));
+	return 0;
+}
+
+ZLOX_BOOL zlox_page_alloc(ZLOX_UINT32 alloc_address, ZLOX_BOOL need_newpage)
+{
+	ZLOX_UINT32 phys;
+	ZLOX_PAGE_TABLE * newTable;
+	ZLOX_BOOL need_FlushTLB = ZLOX_FALSE;
+	alloc_address /= 0x1000;
+	ZLOX_UINT32 table_idx = alloc_address / 1024;
+	ZLOX_UINT32 page_idx = alloc_address % 1024;
+	if( (current_directory->tablesPhysical[table_idx] & 0x2) == 0)
+	{
+		newTable = zlox_clone_table(current_directory->tables[table_idx],&phys,0);
+		need_FlushTLB = ZLOX_TRUE;
+	}
+	else
+		newTable = current_directory->tables[table_idx];
+
+	if(need_newpage)
+	{
+		if(newTable->pages[page_idx].frame == 0 || newTable->pages[page_idx].rw == 0)
+		{
+			zlox_alloc_frame_do(&newTable->pages[page_idx], 0, 1);
+			newTable->pages[page_idx].rw = newTable->pages[page_idx].present = newTable->pages[page_idx].user = 1;
+			newTable->pages[page_idx].accessed = newTable->pages[page_idx].dirty = 0;
+			need_FlushTLB = ZLOX_TRUE;
+		}
+	}
+
+	if( (current_directory->tablesPhysical[table_idx] & 0x2) == 0)
+	{
+		current_directory->tables[table_idx] = newTable;
+		current_directory->tablesPhysical[table_idx] = phys | 0x07;
+	}
+	return need_FlushTLB;
+}
+
+ZLOX_SINT32 zlox_pages_alloc(ZLOX_UINT32 addr, ZLOX_UINT32 size)
+{
+	ZLOX_BOOL need_FlushTLB = ZLOX_FALSE;
+	ZLOX_UINT32 j;
+	for( j = addr; j < (addr + size); (j = ZLOX_NEXT_PAGE_START(j)) )
+	{
+		if((zlox_page_alloc(j, ZLOX_TRUE) == ZLOX_TRUE))
+			need_FlushTLB = ZLOX_TRUE;
+	}
+	if(need_FlushTLB == ZLOX_TRUE && (current_task->page_directory == current_directory))
+		zlox_page_Flush_TLB();
+	return 0;
+}
+
+ZLOX_SINT32 zlox_pages_map(ZLOX_UINT32 dvaddr, ZLOX_PAGE * heap, ZLOX_UINT32 npage)
+{
+	ZLOX_BOOL need_FlushTLB = ZLOX_FALSE;
+	ZLOX_UINT32 d, dtable_idx, dpage_idx, i;
+	for( d = dvaddr, i = 0 ; i < npage; (d = ZLOX_NEXT_PAGE_START(d)) , i++)
+	{
+		dtable_idx = (d / 0x1000) / 1024;
+		if((current_directory->tables[dtable_idx] == 0) || 
+			((current_directory->tablesPhysical[dtable_idx] & 0x2) == 0))
+		{
+			zlox_page_alloc(d, ZLOX_FALSE);
+		}
+		dpage_idx = (d / 0x1000) % 1024;
+		current_directory->tables[dtable_idx]->pages[dpage_idx] = heap[i];
+		current_directory->tables[dtable_idx]->pages[dpage_idx].rw = 0;
+		need_FlushTLB = ZLOX_TRUE;
+	}
+	if(need_FlushTLB == ZLOX_TRUE && (current_task->page_directory == current_directory))
+		zlox_page_Flush_TLB();
+	return 0;
+}
+
+ZLOX_VOID * zlox_pages_map_to_heap(ZLOX_TASK * task, ZLOX_UINT32 svaddr, ZLOX_UINT32 size, ZLOX_BOOL clear_me_rw,
+					ZLOX_UINT32 * ret_npage)
+{
+	ZLOX_PAGE_DIRECTORY * src_dir = task->page_directory;
+	ZLOX_UINT32 s, stable_idx, spage_idx;
+	ZLOX_UINT32 npage = 0,i;
+	for(s = svaddr ; s < (svaddr + size); (s = ZLOX_NEXT_PAGE_START(s)) )
+	{
+		npage++;
+	}
+	ZLOX_PAGE * heap = (ZLOX_PAGE *)zlox_kmalloc(npage * sizeof(ZLOX_PAGE));
+	for(i=0, s = svaddr; i < npage ; i++, (s = ZLOX_NEXT_PAGE_START(s)))
+	{
+		stable_idx = (s / 0x1000) / 1024;
+		spage_idx = (s / 0x1000) % 1024;
+		heap[i] = src_dir->tables[stable_idx]->pages[spage_idx];
+		if(clear_me_rw)
+			src_dir->tables[stable_idx]->pages[spage_idx].rw = 0;
+	}
+	if(clear_me_rw && (current_task->page_directory == src_dir))
+		zlox_page_Flush_TLB();
+	(*ret_npage) = npage;
+	return (ZLOX_VOID *)heap;
 }
 
