@@ -11,6 +11,153 @@ volatile ZLOX_TASK * ata_wait_task = ZLOX_NULL;
 
 ZLOX_IDE_DEVICE ide_devices[4];
 
+// Read/Write From ATA Drive, direction == 0 is read, direction == 1 is write
+ZLOX_SINT32 zlox_ide_ata_access(ZLOX_UINT8 direction, ZLOX_UINT8 ide_index, ZLOX_UINT32 lba, 
+                             ZLOX_UINT8 numsects, ZLOX_UINT8 * buffer)
+{
+	ZLOX_UINT8 lba_mode /* 0: CHS, 1:LBA28, 2: LBA48 */, cmd;
+	ZLOX_UINT8 lba_io[6];
+	ZLOX_UINT32 words = 256; // Almost every ATA drive has a sector-size of 512-byte.
+	ZLOX_UINT32 bus, drive;
+	ZLOX_UINT16 cyl, i;
+	ZLOX_UINT8 head, sect, control_orig, status;
+
+	if(ide_index > 3)
+		return -1;
+	if((ide_devices[ide_index].Reserved == 0) || (ide_devices[ide_index].Type == ZLOX_IDE_ATAPI))
+		return -1;
+
+	bus = ide_devices[ide_index].Bus;
+	drive = ide_devices[ide_index].Drive;
+
+	control_orig = zlox_inb(ZLOX_ATA_DCR(bus));
+	zlox_outb(ZLOX_ATA_DCR(bus), control_orig & ((~2) & 0xff));
+	
+	// (I) Select one from LBA48, LBA28 or CHS;
+	if(lba >= 0x10000000)
+	{
+		// if not support LBA48 , then return -1
+		if(!(ide_devices[ide_index].CommandSets & (1 << 26)))
+			return -1;
+
+		// LBA48:
+		lba_mode  = 2;
+		lba_io[0] = (lba & 0x000000FF) >> 0;
+		lba_io[1] = (lba & 0x0000FF00) >> 8;
+		lba_io[2] = (lba & 0x00FF0000) >> 16;
+		lba_io[3] = (lba & 0xFF000000) >> 24;
+		lba_io[4] = 0; // lba is integer, so 32-bits are enough to access 2TB.
+		lba_io[5] = 0; // lba is integer, so 32-bits are enough to access 2TB.
+		head      = 0; // Lower 4-bits of HDDEVSEL are not used here.
+	}
+	else if (ide_devices[ide_index].Capabilities & 0x200)
+	{
+		// Drive supports LBA?
+		// LBA28:
+		lba_mode  = 1;
+		lba_io[0] = (lba & 0x00000FF) >> 0;
+		lba_io[1] = (lba & 0x000FF00) >> 8;
+		lba_io[2] = (lba & 0x0FF0000) >> 16;
+		lba_io[3] = 0; // These Registers are not used here.
+		lba_io[4] = 0; // These Registers are not used here.
+		lba_io[5] = 0; // These Registers are not used here.
+		head      = (lba & 0xF000000) >> 24;
+	} 
+	else 
+	{
+		// CHS:
+		lba_mode  = 0;
+		sect      = (lba % 63) + 1;
+		cyl       = (lba + 1  - sect) / (16 * 63);
+		lba_io[0] = sect;
+		lba_io[1] = (cyl >> 0) & 0xFF;
+		lba_io[2] = (cyl >> 8) & 0xFF;
+		lba_io[3] = 0;
+		lba_io[4] = 0;
+		lba_io[5] = 0;
+		head      = (lba + 1  - sect) % (16 * 63) / (63); // Head number is written to HDDEVSEL lower 4-bits.
+	}
+
+	// (II) Wait if the drive is busy;
+	while ((status = zlox_inb (ZLOX_ATA_COMMAND (bus))) & 0x80)     /* BUSY */
+		asm volatile ("pause");
+
+	// (III) Select Drive from the controller;
+	if (lba_mode == 0)
+		zlox_outb(ZLOX_ATA_DRIVE_SELECT (bus), ((drive & (1 << 4)) | 0xA0 | head)); // Drive & CHS.
+	else
+		zlox_outb(ZLOX_ATA_DRIVE_SELECT (bus), ((drive & (1 << 4)) | 0xE0 | head)); // Drive & LBA
+
+	// (IV) Write Parameters;
+	if (lba_mode == 2) {
+		// enable HOB(high order byte) of control register
+		zlox_outb(ZLOX_ATA_DCR(bus), zlox_inb(ZLOX_ATA_DCR(bus)) | 0x80);
+		zlox_outb(ZLOX_ATA_SECTOR_COUNT(bus), 0);
+		zlox_outb(ZLOX_ATA_ADDRESS1(bus), lba_io[3]);
+		zlox_outb(ZLOX_ATA_ADDRESS2(bus), lba_io[4]);
+		zlox_outb(ZLOX_ATA_ADDRESS3(bus), lba_io[5]);
+		// disable HOB
+		zlox_outb(ZLOX_ATA_DCR(bus), zlox_inb(ZLOX_ATA_DCR(bus)) & 0x7f);
+	}
+	zlox_outb(ZLOX_ATA_SECTOR_COUNT(bus), numsects);
+	zlox_outb(ZLOX_ATA_ADDRESS1(bus), lba_io[0]);
+	zlox_outb(ZLOX_ATA_ADDRESS2(bus), lba_io[1]);
+	zlox_outb(ZLOX_ATA_ADDRESS3(bus), lba_io[2]);
+
+	// (V) Select the command and send it;
+	if (lba_mode == 0 && direction == 0)
+		cmd = 0x20; // READ SECTOR(S) command
+	if (lba_mode == 1 && direction == 0) 
+		cmd = 0x20; // READ SECTOR(S) command
+	if (lba_mode == 2 && direction == 0) 
+		cmd = 0x24; // READ SECTOR(S) EXT command (support from ATA-ATAPI-6)
+	if (lba_mode == 0 && direction == 1) 
+		cmd = 0x30; // WRITE SECTOR(S) command
+	if (lba_mode == 1 && direction == 1)
+		cmd = 0x30; // WRITE SECTOR(S) command
+	if (lba_mode == 2 && direction == 1) 
+		cmd = 0x34; // WRITE SECTOR(S) EXT command (support from ATA-ATAPI-6)
+	zlox_outb (ZLOX_ATA_COMMAND (bus), cmd);
+
+	// PIO Read.
+	if (direction == 0)
+	{
+		for (i = 0; i < numsects; i++) 
+		{
+			while ((status = zlox_inb (ZLOX_ATA_COMMAND (bus))) & 0x80)     /* BUSY */
+				asm volatile ("pause");
+			while (!((status = zlox_inb (ZLOX_ATA_COMMAND (bus))) & 0x8) && !(status & 0x1))
+				asm volatile ("pause");
+			/* DRQ or ERROR set */
+			if (status & 0x1) {
+				return -1;
+			}
+			/* Read data. */
+			zlox_insw (ZLOX_ATA_DATA (bus), (ZLOX_UINT16 *)buffer, words);
+			buffer += (words*2);
+		}
+	}
+	else // PIO Write.
+	{
+		for (i = 0; i < numsects; i++) 
+		{
+			while ((status = zlox_inb (ZLOX_ATA_COMMAND (bus))) & 0x80)     /* BUSY */
+				asm volatile ("pause");
+			/* write data. */
+			zlox_outsw (ZLOX_ATA_DATA (bus), (ZLOX_UINT16 *)buffer, words);
+			buffer += (words*2);
+		}
+		zlox_outb (ZLOX_ATA_COMMAND (bus), (char []) {0xE7 /*FLUSH CACHE command*/,
+                        0xE7 /*FLUSH CACHE command*/ ,
+                        0xEA /*FLUSH CACHE EXT command*/}[lba_mode]);
+		while ((status = zlox_inb (ZLOX_ATA_COMMAND (bus))) & 0x80)
+			asm volatile ("pause");
+	}
+
+	zlox_outb(ZLOX_ATA_DCR(bus), control_orig);
+	return 0;
+}
+
 /* Use the ATAPI protocol to read a single sector from the given
  * ide_index into the buffer using logical block address lba. */
 ZLOX_SINT32 zlox_atapi_drive_read_sector (ZLOX_UINT32 ide_index, ZLOX_UINT32 lba, ZLOX_UINT8 *buffer)
@@ -271,10 +418,13 @@ inner_end:
 				zlox_monitor_write("Found ATA Drive ");
 			else
 				zlox_monitor_write("Found ATAPI Drive ");
-			if(ide_devices[i].Type == ZLOX_IDE_ATA && !(ide_devices[i].CommandSets & (1 << 26)))
+			// if(ide_devices[i].Type == ZLOX_IDE_ATA && !(ide_devices[i].CommandSets & (1 << 26)))
+			if(ide_devices[i].Type == ZLOX_IDE_ATA && (ide_devices[i].Size != 0))
 			{
-				zlox_monitor_write_dec(ide_devices[i].Size * ZLOX_ATA_SECTOR_SIZE / 1024 / 1024);
-				zlox_monitor_write("MB - ");
+				zlox_monitor_write_dec((ide_devices[i].Size + 1) * ZLOX_ATA_SECTOR_SIZE / 1024 / 1024);
+				zlox_monitor_write("MB and Last LBA is ");
+				zlox_monitor_write_dec(ide_devices[i].Size);
+				zlox_monitor_write(" - ");
 			}
 			else
 				zlox_monitor_write(" - ");

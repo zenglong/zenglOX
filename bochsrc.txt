@@ -20,6 +20,8 @@ mouse: enabled=0, toggle=f12
 ata0: enabled=1, ioaddr1=0x1f0, ioaddr2=0x3f0, irq=14
 ata1: enabled=1, ioaddr1=0x170, ioaddr2=0x370, irq=15
 
+# hard disk image
+ata0-master: type=disk, path="hd.img", mode=growing, cylinders=1040, heads=16, spt=63
 # CD-ROM image
 ata0-slave:  type=cdrom, path="zenglOX.iso", status=inserted
 boot: cdrom

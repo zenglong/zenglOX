@@ -83,8 +83,8 @@ ZLOX_SINT32 zlox_kernel_main(ZLOX_MULTIBOOT * mboot_ptr, ZLOX_UINT32 initial_sta
 	zlox_syscall_monitor_write_dec(revision);
 	zlox_syscall_monitor_write("! I will execve a shell\n"
 				"you can input some command: ls , ps , cat , uname , cpuid , shell ,"
-				" reboot , shutdown , ata , mount , unmount\n\n"
-				" this version use dynamic library technology, you can use \"ps -d\" to see loaded shared library!\n");
+				" reboot , shutdown , ata , mount , unmount , testoverflow\n\n"
+				" this version we can use ata to read and write data to the hard disk, use 'ata -h' to see the help info!\n");
 
 	zlox_syscall_execve("shell");
 

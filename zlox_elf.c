@@ -113,6 +113,8 @@ ZLOX_ELF_KERNEL_MAP * zlox_add_elf_kernel_map(ZLOX_CHAR * soname, ZLOX_VOID * ta
 		maps->count = 0;
 		maps->isInit = ZLOX_TRUE;
 	}
+	// 当动态数组里的元素个数等于可用容量时，
+	// 就对数组进行动态扩容
 	else if(maps->count == maps->size)
 	{
 		ZLOX_ELF_KERNEL_MAP * tmp_ptr = maps->ptr;
@@ -129,6 +131,12 @@ ZLOX_ELF_KERNEL_MAP * zlox_add_elf_kernel_map(ZLOX_CHAR * soname, ZLOX_VOID * ta
 		if(maps->ptr[i].isValid == ZLOX_FALSE)
 		{
 			zlox_strcpy(maps->ptr[i].soname, soname);
+			// 通过zlox_pages_map_to_heap函数，将动态链接库
+			// 的虚拟内存页表映射到heap堆里，这样，所有依赖该
+			// 动态链接库的任务都可以直接从该heap堆里将动态库的页表项
+			// 映射到自己的页表项中，除了heap堆里的页表项的读写位为1外，
+			// 其他所有依赖该动态链接库的任务的页表项的读写位都为0，这样，
+			// 当对该动态库进行写入操作时，将会触发写时复制。
 			maps->ptr[i].heap = zlox_pages_map_to_heap(task, vaddr, msize, ZLOX_TRUE, &maps->ptr[i].npage);
 			maps->ptr[i].msize = msize;
 			maps->ptr[i].index = i;
@@ -204,19 +212,28 @@ not_valid_shlib:
 	}
 }
 
+// 通过zlox_shlib_loadToVAddr函数将buf文件缓冲里需要加载的数据
+// 给加载到vaddr指定的起始虚拟内存位置
 ZLOX_UINT32 zlox_shlib_loadToVAddr(ZLOX_ELF32_EHDR *hdr, ZLOX_UINT8 * buf, ZLOX_UINT32 vaddr)
 {
 	ZLOX_ELF32_PHDR * phdr = (ZLOX_ELF32_PHDR *)((ZLOX_UINT32)hdr + hdr->e_phoff);
 	ZLOX_UINT32 i, first_load = 0, last_load = 0;
 	ZLOX_BOOL isFirst = ZLOX_TRUE;
+	// 循环遍历动态链接库的每个program header结构
 	for(i = 0; i < hdr->e_phnum; i++)
 	{
 		switch(phdr[i].p_type)
 		{
 		case ZLOX_PT_LOAD:
+			// 将动态链接库LOAD类型指定的p_offset偏移处的p_filesz大小的数据
+			// 加载到p_vaddr + vaddr对应的虚拟内存位置，
+			// 该虚拟内存的尺寸为p_memsz字节大小
 			zlox_pages_alloc((phdr[i].p_vaddr + vaddr), phdr[i].p_memsz);
 			zlox_memcpy((ZLOX_UINT8 *)(phdr[i].p_vaddr + vaddr),
 					(ZLOX_UINT8 *)(buf + phdr[i].p_offset),phdr[i].p_filesz);
+			// 如果虚拟内存的大小p_memsz大于文件里的数据大小p_filesz时，
+			// 则将虚拟内存里多出来的空间给清空为0
+			// (当包含bss段时，p_memsz就会大于p_filesz)
 			if(phdr[i].p_memsz > phdr[i].p_filesz)
 			{
 				zlox_memset((ZLOX_UINT8 *)(phdr[i].p_vaddr + vaddr + phdr[i].p_filesz), 0 , 
@@ -231,6 +248,7 @@ ZLOX_UINT32 zlox_shlib_loadToVAddr(ZLOX_ELF32_EHDR *hdr, ZLOX_UINT8 * buf, ZLOX_
 			break;
 		}
 	}
+	// 计算出加载到虚拟内存里的数据的总字节数
 	ZLOX_UINT32 msize = (phdr[last_load].p_vaddr + phdr[last_load].p_memsz) - phdr[first_load].p_vaddr;
 	return msize;
 }
@@ -270,11 +288,14 @@ ZLOX_ELF_LINK_MAP * zlox_elf_make_link_map(ZLOX_UINT32 kmap_index, ZLOX_CHAR * s
 	ZLOX_ELF32_PHDR * phdr = (ZLOX_ELF32_PHDR *)((ZLOX_UINT32)hdr + hdr->e_phoff);
 	ZLOX_ELF32_DYN * Dynamic = ZLOX_NULL;
 	ZLOX_ELF_LINK_MAP * tmp_map;
+	// 通过zlox_push_elf_link_map函数向动态数组中添加一个
+	// ZLOX_ELF_LINK_MAP结构
 	tmp_map = zlox_push_elf_link_map(vaddr, msize);
 	tmp_map->maplst = &current_task->link_maps;
 	tmp_map->kmap_index = kmap_index;
 	tmp_map->soname = soname;
 	tmp_map->entry = hdr->e_entry + (tmp_map->index != 0 ? vaddr : 0);
+	// 循环遍历program header table，找到Dynamic节的实际虚拟内存地址
 	for(ZLOX_UINT32 i = 0; i < hdr->e_phnum; i++)
 	{
 		if(phdr[i].p_type == ZLOX_PT_DYNAMIC)
@@ -285,11 +306,17 @@ ZLOX_ELF_LINK_MAP * zlox_elf_make_link_map(ZLOX_UINT32 kmap_index, ZLOX_CHAR * s
 	}
 	if(Dynamic == ZLOX_NULL)
 		return tmp_map;
+	// 循环遍历Dynamic节，将节里所需项目的值缓存起来
 	while(Dynamic->d_tag != 0)
 	{
 		switch(Dynamic->d_tag)
 		{
 		case ZLOX_DT_HASH:
+			// tmp_map->index == 0时，表示是ELF可执行文件，
+			// ELF可执行文件的虚拟内存地址都是固定的值。
+			// tmp_map->index != 0则表示是动态链接库，
+			// 动态链接库里的地址信息都是非固定的值，需要
+			// 加上vaddr(即动态链接库被加载的起始虚拟地址)
 			tmp_map->dyn.hash = Dynamic->d_un.d_ptr + (tmp_map->index != 0 ? vaddr : 0);
 			break;
 		case ZLOX_DT_STRTAB:
@@ -495,6 +522,7 @@ ZLOX_BOOL zlox_elf_set_plt_got(ZLOX_ELF_LINK_MAP * map)
 	return ZLOX_TRUE;
 }
 
+// 将soname对应的动态链接库加载到vaddr对应的起始虚拟内存位置处
 ZLOX_UINT32 zlox_load_shared_library(ZLOX_CHAR * soname, ZLOX_UINT32 vaddr)
 {
 	ZLOX_ELF_LINK_MAP * map = zlox_exists_link_map(soname);
@@ -512,6 +540,8 @@ ZLOX_UINT32 zlox_load_shared_library(ZLOX_CHAR * soname, ZLOX_UINT32 vaddr)
 		ZLOX_UINT8 * buf = zlox_shlib_readfile(soname);
 		if(buf == ZLOX_NULL)
 			return 0;
+		// 如果是系统里第一次加载该动态链接库的话，
+		// 就通过上面定义的zlox_shlib_loadToVAddr函数来完成加载工作
 		ZLOX_UINT32 msize = zlox_shlib_loadToVAddr((ZLOX_ELF32_EHDR *)buf, (ZLOX_UINT8 *)buf, vaddr);
 		kmap = zlox_add_elf_kernel_map(soname, current_task, vaddr, msize);
 		if(kmap == ZLOX_NULL)
@@ -527,14 +557,24 @@ ZLOX_UINT32 zlox_load_shared_library(ZLOX_CHAR * soname, ZLOX_UINT32 vaddr)
 		return 0;
 	
 	ZLOX_ELF32_DYN * Dynamic = map->dyn.Dynamic;
+	// 循环遍历Dynamic节，将NEEDED类型指定的动态库
+	// 给加载到虚拟内存中
 	while(Dynamic->d_tag != 0)
 	{
 		if(Dynamic->d_tag == ZLOX_DT_NEEDED)
 		{
+			// NEEDED类型的d_un.d_val值是strtab(字符串表)里的                
+			// 偏移值，通过Dynamic->d_un.d_val + map->dyn.strtab
+			// 就可以得到动态库的名称字符串
 			ZLOX_CHAR * tmp_soname = (ZLOX_CHAR *)(Dynamic->d_un.d_val + map->dyn.strtab);
+			// tmp_vaddr里存储着动态库需要被加载到的虚拟内存地址
+			// 新的动态库需要被放置在之前加载的最后一个动态库的结束
+			// 地址的下一页
 			ZLOX_UINT32 tmp_vaddr = map->maplst->ptr[map->maplst->count - 1].vaddr;
 			tmp_vaddr += map->maplst->ptr[map->maplst->count - 1].msize;
 			tmp_vaddr = ZLOX_NEXT_PAGE_START(tmp_vaddr);
+			// 通过递归调用zlox_load_shared_library函数来将
+			// 依赖的动态链接库给加载到虚拟内存中
 			if(zlox_load_shared_library(tmp_soname, tmp_vaddr) == 0)
 			{
 				zlox_monitor_write("shared library Error:load \"");
@@ -548,16 +588,22 @@ ZLOX_UINT32 zlox_load_shared_library(ZLOX_CHAR * soname, ZLOX_UINT32 vaddr)
 	return map->entry;
 }
 
+// 通过zlox_load_elf函数将ELF可执行文件及其依赖的
+// 动态链接库文件给加载到虚拟内存空间里
 ZLOX_UINT32 zlox_load_elf(ZLOX_ELF32_EHDR *hdr,ZLOX_UINT8 * buf)
 {
 	ZLOX_ELF32_PHDR * phdr = (ZLOX_ELF32_PHDR *)((ZLOX_UINT32)hdr + hdr->e_phoff);
 	ZLOX_CHAR * interp = ZLOX_NULL;
 	ZLOX_UINT32 i,vaddr = 0,last_load,ret;
+	// 循环遍历动态链接库的每个program header结构
 	for(i = 0; i < hdr->e_phnum; i++)
 	{
 		switch(phdr[i].p_type)
 		{
 		case ZLOX_PT_LOAD:
+			// 将ELF可执行文件中LOAD类型指定的p_offset偏移处的p_filesz大小的数据
+			// 加载到p_vaddr对应的虚拟内存位置，该虚拟内存的
+			// 尺寸为p_memsz字节大小
 			zlox_pages_alloc(phdr[i].p_vaddr, phdr[i].p_memsz);
 			zlox_memcpy((ZLOX_UINT8 *)phdr[i].p_vaddr,
 					(ZLOX_UINT8 *)(buf + phdr[i].p_offset),phdr[i].p_filesz);
@@ -570,6 +616,7 @@ ZLOX_UINT32 zlox_load_elf(ZLOX_ELF32_EHDR *hdr,ZLOX_UINT8 * buf)
 				vaddr = phdr[i].p_vaddr;
 			last_load = i;
 			break;
+		// 得到动态链接库解释器的字符串名称，如：ld.so
 		case ZLOX_PT_INTERP:
 			interp = (ZLOX_CHAR *)(buf + phdr[i].p_offset);
 			break;
@@ -583,10 +630,15 @@ ZLOX_UINT32 zlox_load_elf(ZLOX_ELF32_EHDR *hdr,ZLOX_UINT8 * buf)
 
 	if(interp != ZLOX_NULL)
 	{
+		// 通过上面定义的zlox_load_shared_library函数将ld.so之类的
+		// 动态库解释器加载到ZLOX_ELF_LD_SO_VADDR对应的
+		// 虚拟内存位置
 		ret = zlox_load_shared_library(interp, ZLOX_ELF_LD_SO_VADDR);
 		if(ret == 0)
 			return 0;
 		ZLOX_ELF32_DYN * Dynamic = map->dyn.Dynamic;
+		// 循环遍历Dynamic节，将NEEDED类型指定的动态库
+		// 给加载到虚拟内存中
 		if(Dynamic != 0)
 			while(Dynamic->d_tag != 0)
 			{
@@ -689,6 +741,8 @@ ZLOX_SINT32 zlox_execve(const ZLOX_CHAR * filename)
 
 			if((sz > 0) && zlox_elf_check_supported((ZLOX_ELF32_EHDR *)buf, ZLOX_ET_EXEC) )
 			{
+				// zlox_execve会通过zlox_load_elf函数将ELF格式
+				// 的可执行文件及其依赖的动态链接库给加载到内存中
 				if((addr = zlox_load_elf((ZLOX_ELF32_EHDR *)buf,(ZLOX_UINT8 *)buf)) > 0)
 				{
 					zlox_kfree(buf);

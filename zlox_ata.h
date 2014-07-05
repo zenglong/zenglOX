@@ -72,6 +72,10 @@ typedef struct _ZLOX_IDE_DEVICE {
 	ZLOX_UINT8  Model[41]; // Model in string.
 } ZLOX_IDE_DEVICE;
 
+// Read/Write From ATA Drive, direction == 0 is read, direction == 1 is write
+ZLOX_SINT32 zlox_ide_ata_access(ZLOX_UINT8 direction, ZLOX_UINT8 ide_index, ZLOX_UINT32 lba, 
+                             ZLOX_UINT8 numsects, ZLOX_UINT8 * buffer);
+
 /* Use the ATAPI protocol to read a single sector from the given
  * ide_index into the buffer using logical block address lba. */
 ZLOX_SINT32 zlox_atapi_drive_read_sector (ZLOX_UINT32 ide_index, ZLOX_UINT32 lba, ZLOX_UINT8 *buffer);

@@ -37,6 +37,7 @@ typedef enum _SYSCALL_ENUM{
 	SYSCALL_MOUNT_ISO,
 	SYSCALL_UNMOUNT_ISO,
 	SYSCALL_OVERFLOW_TEST,
+	SYSCALL_IDE_ATA_ACCESS,
 }SYSCALL_ENUM;
 
 #define DECL_SYSCALL0(fn) SINT32 syscall_##fn();
@@ -125,6 +126,7 @@ DECL_SYSCALL0(ata_get_ide_info)
 DECL_SYSCALL0(mount_iso)
 DECL_SYSCALL0(unmount_iso)
 DECL_SYSCALL0(overflow_test)
+DECL_SYSCALL5(ide_ata_access, UINT8, UINT8, UINT32, UINT8, UINT8 *)
 
 #endif // _SYSCALL_H_
 

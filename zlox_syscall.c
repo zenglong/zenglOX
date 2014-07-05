@@ -53,6 +53,7 @@ ZLOX_DEFN_SYSCALL0(ata_get_ide_info,ZLOX_SYSCALL_ATA_GET_IDE_INFO);
 ZLOX_DEFN_SYSCALL0(mount_iso,ZLOX_SYSCALL_MOUNT_ISO);
 ZLOX_DEFN_SYSCALL0(unmount_iso,ZLOX_SYSCALL_UNMOUNT_ISO);
 ZLOX_DEFN_SYSCALL0(overflow_test,ZLOX_SYSCALL_OVERFLOW_TEST);
+ZLOX_DEFN_SYSCALL5(ide_ata_access, ZLOX_SYSCALL_IDE_ATA_ACCESS, ZLOX_UINT8, ZLOX_UINT8, ZLOX_UINT32, ZLOX_UINT8, ZLOX_UINT8 *);
 
 static ZLOX_VOID * syscalls[ZLOX_SYSCALL_NUMBER] =
 {
@@ -87,6 +88,7 @@ static ZLOX_VOID * syscalls[ZLOX_SYSCALL_NUMBER] =
 	&zlox_mount_iso,
 	&zlox_unmount_iso,
 	&zlox_overflow_test,
+	&zlox_ide_ata_access,
 };
 
 ZLOX_UINT32 num_syscalls = ZLOX_SYSCALL_NUMBER;

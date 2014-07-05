@@ -38,10 +38,13 @@ int main(VOID * task, int argc, char * argv[])
 						syscall_monitor_write(" ATA Drive ");
 					else
 						syscall_monitor_write(" ATAPI Drive ");
-					if(ide_devices[i].Type == IDE_ATA && !(ide_devices[i].CommandSets & (1 << 26)))
+					//if(ide_devices[i].Type == IDE_ATA && !(ide_devices[i].CommandSets & (1 << 26)))
+					if(ide_devices[i].Type == IDE_ATA && (ide_devices[i].Size != 0))
 					{
 						syscall_monitor_write_dec(ide_devices[i].Size * ATA_SECTOR_SIZE / 1024 / 1024);
-						syscall_monitor_write("MB - ");
+						syscall_monitor_write("MB and Last LBA is ");
+						syscall_monitor_write_dec(ide_devices[i].Size);
+						syscall_monitor_write(" - ");
 					}
 					else if(ide_devices[i].Type == IDE_ATAPI)
 					{
@@ -73,7 +76,8 @@ int main(VOID * task, int argc, char * argv[])
 			syscall_monitor_write("usage: ata [-h][-s][-r ide_index lba show_num]\n"
 				"ata -h: to show the help about ata's usage\n"
 				"ata -s: to show the ide infos\n"
-				"ata -r ide_index lba show_num: from ide_index device to get lba block and shows the data with show_num\n");
+				"ata -r ide_index lba show_num: from ide_index device to get lba block and shows the data with show_num\n"
+				"ata -w ide_index lba data...: write data... to the lba block of the ide_index device\n");
 			return 0;
 		}
 	}
@@ -83,44 +87,104 @@ int main(VOID * task, int argc, char * argv[])
 		UINT32 ide_index = strToUInt(argv[2]);
 		UINT32 lba = strToUInt(argv[3]);
 		UINT32 show_num = strToUInt(argv[4]);
-		SINT32 ata_ret = syscall_atapi_drive_read_sector(ide_index,lba,buffer);
-		if(ata_ret == -1)
+		IDE_DEVICE * ide_devices = (IDE_DEVICE *)syscall_ata_get_ide_info();
+		if((ide_index > 3) || (ide_devices[ide_index].Reserved == 0))
 		{
-			IDE_DEVICE * ide_devices = (IDE_DEVICE *)syscall_ata_get_ide_info();
-			if((ide_index > 3) || (ide_devices[ide_index].Reserved == 0))
+			syscall_monitor_write("\nide_index [");
+			syscall_monitor_write_dec(ide_index);
+			syscall_monitor_write("] has no drive!\n");
+			syscall_ufree(buffer);
+			return -1;
+		}
+
+		if(ide_devices[ide_index].Type == IDE_ATA)
+		{
+			SINT32 ata_ret = syscall_ide_ata_access(0, ide_index, lba, 1, buffer);
+			if(ata_ret == -1)
 			{
-				syscall_monitor_write("\nide_index [");
+				syscall_monitor_write("\nata read sector failed for ide index [");
 				syscall_monitor_write_dec(ide_index);
-				syscall_monitor_write("] has no drive!\n");
+				syscall_monitor_write("]\n");
+				syscall_ufree(buffer);
+				return -1;
 			}
-			else if(ide_devices[ide_index].Type == IDE_ATA)
-			{
-				syscall_monitor_write("\nata now can only read from atapi device , ide_index [");
-				syscall_monitor_write_dec(ide_index);
-				syscall_monitor_write("] is an ata device\n");
-			}
-			else
+		}
+		else if(ide_devices[ide_index].Type == IDE_ATAPI)
+		{
+			SINT32 ata_ret = syscall_atapi_drive_read_sector(ide_index,lba,buffer);
+			if(ata_ret == -1)
 			{
 				syscall_monitor_write("\natapi read sector failed for ide index [");
 				syscall_monitor_write_dec(ide_index);
 				syscall_monitor_write("]\n");
+				syscall_ufree(buffer);
+				return -1;
 			}
+		}
+		
+		syscall_monitor_put('\n');
+		for(UINT32 i=0;i< show_num;i++)
+		{
+			syscall_monitor_write_hex((UINT32)(buffer[i]));
+			syscall_monitor_put(' ');
+		}
+		syscall_monitor_put('\n');
+		syscall_ufree(buffer);
+		return 0;
+	}
+	else if(argc >= 5 && strcmp(argv[1],"-w")==0)
+	{
+		UINT8 *buffer = (UINT8 *)syscall_umalloc(ATA_SECTOR_SIZE+5);
+		UINT32 ide_index = strToUInt(argv[2]);
+		UINT32 lba = strToUInt(argv[3]);
+		IDE_DEVICE * ide_devices = (IDE_DEVICE *)syscall_ata_get_ide_info();
+		if((ide_index > 3) || (ide_devices[ide_index].Reserved == 0))
+		{
+			syscall_monitor_write("\nide_index [");
+			syscall_monitor_write_dec(ide_index);
+			syscall_monitor_write("] has no drive!\n");
+			syscall_ufree(buffer);
+			return -1;
+		}
+		else if(ide_devices[ide_index].Type == IDE_ATAPI)
+		{
+			syscall_monitor_write("\natapi drive can't write data now! ide_index [");
+			syscall_monitor_write_dec(ide_index);
+			syscall_monitor_write("]\n");
+			syscall_ufree(buffer);
+			return -1;
+		}
+		
+		SINT32 ata_ret = syscall_ide_ata_access(0, ide_index, lba, 1, buffer);
+		if(ata_ret == -1)
+		{
+			syscall_monitor_write("\nata read sector failed for ide index [");
+			syscall_monitor_write_dec(ide_index);
+			syscall_monitor_write("]\n");
+			syscall_ufree(buffer);
+			return -1;
+		}
+		SINT32 i,j;
+		for(i = 4,j=0; i < argc ;i++,j++)
+		{
+			buffer[j] = strToUInt(argv[i]);
+		}
+		ata_ret = syscall_ide_ata_access(1, ide_index, lba, 1, buffer);
+		if(ata_ret == -1)
+		{
+			syscall_monitor_write("\nata write sector failed for ide index [");
+			syscall_monitor_write_dec(ide_index);
+			syscall_monitor_write("]\n");
+			syscall_ufree(buffer);
+			return -1;
 		}
 		else
-		{
-			syscall_monitor_put('\n');
-			for(UINT32 i=0;i< show_num;i++)
-			{
-				syscall_monitor_write_hex((UINT32)(buffer[i]));
-				syscall_monitor_put(' ');
-			}
-			syscall_monitor_put('\n');
-		}
+			syscall_monitor_write("\nata write sector success, you can use 'ata -r' to see the data! \n");
 		syscall_ufree(buffer);
 		return 0;
 	}
 
-	syscall_monitor_write("usage: ata [-h][-s][-r ide_index lba show_num]");
+	syscall_monitor_write("usage: ata [-h][-s][-r ide_index lba show_num][-w ide_index lba data...]");
 	return 0;
 }
 
