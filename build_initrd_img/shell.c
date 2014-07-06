@@ -71,9 +71,13 @@ int main(VOID * task, int argc, char * argv[])
 
 			if(count < (MAX_INPUT-1))
 			{
-				input[count++] = msg.keyboard.ascii;
-				input[count]='\0';
-				syscall_monitor_put((char)msg.keyboard.ascii);
+				// input里目前只存放可显示字符，可显示字符的范围为十进制格式的32到126
+				if(msg.keyboard.ascii >= 32 && msg.keyboard.ascii <= 126)
+				{
+					input[count++] = msg.keyboard.ascii;
+					input[count]='\0';
+					syscall_monitor_put((char)msg.keyboard.ascii);
+				}
 			}
 		}
 		else if(msg.type == MT_TASK_FINISH)

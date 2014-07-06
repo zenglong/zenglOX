@@ -134,6 +134,7 @@ static ZLOX_VOID zlox_keyboard_callback(/*ZLOX_ISR_REGISTERS * regs*/)
 {
 	ZLOX_UINT32 key = zlox_inb(0x60);
 	ZLOX_UINT32 key_ascii = 0;	
+	ZLOX_UINT32 scanMaxNum = sizeof(scanToAscii_table) / (8 * 4);
 	
 	/* 'LED Keys', ie, Scroll lock, Num lock, and Caps lock */
 	if(key == 0x3A)	/* Caps Lock */
@@ -166,22 +167,22 @@ static ZLOX_VOID zlox_keyboard_callback(/*ZLOX_ISR_REGISTERS * regs*/)
 		control_keys &= (0xFF - ZLOX_CK_ALT);
 		
 	if((control_keys & ZLOX_CK_SHIFT) && (led_status & ZLOX_LED_CAPS_LOCK)) 
-		key_ascii = scanToAscii_table[key][6]; 
+		key_ascii = key < scanMaxNum ? scanToAscii_table[key][6] : 0; 
 	else if(control_keys & ZLOX_CK_SHIFT) 
-		key_ascii = scanToAscii_table[key][1];
+		key_ascii = key < scanMaxNum ? scanToAscii_table[key][1] : 0; 
 	else if(control_keys & ZLOX_CK_CTRL) 
-		key_ascii = scanToAscii_table[key][2];
+		key_ascii = key < scanMaxNum ? scanToAscii_table[key][2] : 0;
 	else if(control_keys & ZLOX_CK_ALT) 
 		//key_ascii = scanToAscii_table[key][3];
-		key_ascii = scanToAscii_table[key][0];		
+		key_ascii = key < scanMaxNum ? scanToAscii_table[key][0] : 0;	
 	else if((control_keys & ZLOX_CK_SHIFT) && (led_status & ZLOX_LED_NUM_LOCK)) 
-		key_ascii = scanToAscii_table[key][7];
+		key_ascii = key < scanMaxNum ? scanToAscii_table[key][7] : 0;
 	else if(led_status & ZLOX_LED_CAPS_LOCK) 
-		key_ascii = scanToAscii_table[key][5];
+		key_ascii = key < scanMaxNum ? scanToAscii_table[key][5] : 0;
 	else if(led_status & ZLOX_LED_NUM_LOCK) 
-		key_ascii = scanToAscii_table[key][4];
+		key_ascii = key < scanMaxNum ? scanToAscii_table[key][4] : 0;
 	else if(control_keys == 0) 
-		key_ascii = scanToAscii_table[key][0];
+		key_ascii = key < scanMaxNum ? scanToAscii_table[key][0] : 0;
 
 	if(key_ascii != 0)
 	{
