@@ -15,6 +15,9 @@
 #define IDE_ATA        0x00
 #define IDE_ATAPI      0x01
 
+#define IDE_ATA_READ	0
+#define IDE_ATA_WRITE 1
+
 typedef struct _ATAPI_READ_CAPACITY
 {
 	UINT32 lastLBA;

@@ -28,7 +28,10 @@ struct _FS_NODE
 	VOID * open;
 	VOID * close;
 	VOID * readdir;
+	VOID * writedir;
 	VOID * finddir;
+	VOID * remove;
+	VOID * rename;
 	FS_NODE * ptr; // Used by mountpoints and symlinks.
 };
 

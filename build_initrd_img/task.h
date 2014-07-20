@@ -12,9 +12,18 @@ typedef enum _MSG_TYPE
 	MT_TASK_FINISH,
 }MSG_TYPE;
 
+typedef enum _MSG_KB_KEY
+{
+	MKK_CURSOR_UP_PRESS = 0xE048,
+	MKK_CURSOR_DOWN_PRESS = 0xE050,
+	MKK_CURSOR_LEFT_PRESS = 0xE04B,
+	MKK_CURSOR_RIGHT_PRESS = 0xE04D,
+} MSG_KB_KEY;
+
 typedef enum _MSG_KB_TYPE
 {
 	MKT_ASCII,
+	MKT_KEY,
 }MSG_KB_TYPE;
 
 typedef enum _TSK_STATUS
@@ -30,6 +39,7 @@ typedef struct _TASK_MSG_KEYBOARD
 {
 	MSG_KB_TYPE type;
 	UINT32 ascii;
+	MSG_KB_KEY key;
 }TASK_MSG_KEYBOARD;
 
 typedef struct _TASK TASK;

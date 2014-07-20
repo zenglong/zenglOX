@@ -83,8 +83,8 @@ ZLOX_SINT32 zlox_kernel_main(ZLOX_MULTIBOOT * mboot_ptr, ZLOX_UINT32 initial_sta
 	zlox_syscall_monitor_write_dec(revision);
 	zlox_syscall_monitor_write("! I will execve a shell\n"
 				"you can input some command: ls , ps , cat , uname , cpuid , shell ,"
-				" reboot , shutdown , ata , mount , unmount , testoverflow\n\n"
-				" this version we can use ata to read and write data to the hard disk, use 'ata -h' to see the help info!\n");
+				" reboot , shutdown , ata , mount , unmount , testoverflow , fdisk , format , file\n\n"
+				" this version we have zenglfs file system , first use \"fdisk\" to make MBR , then use \"format\" to format a partition , then use \"mount hd ... \" to mount the formated partition to hd directory , at last use \"file\" to read or write to the hd directory , zenglfs support read or write file , make sub directory , remove file or directory , and rename file or directory , enjoy yourself!\n");
 
 	zlox_syscall_execve("shell");
 

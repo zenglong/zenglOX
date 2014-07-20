@@ -18,6 +18,9 @@
 #define ZLOX_IDE_ATA        0x00
 #define ZLOX_IDE_ATAPI      0x01
 
+#define ZLOX_IDE_ATA_READ 0
+#define ZLOX_IDE_ATA_WRITE 1
+
 // identification space
 #define ZLOX_ATA_IDENT_DEVICETYPE   0
 #define ZLOX_ATA_IDENT_CYLINDERS    2

@@ -29,12 +29,14 @@ VOID reverse_memcpy(UINT8 *dest, const UINT8 *src, UINT32 len);
 VOID memset(UINT8 *dest, UINT8 val, UINT32 len);
 // Compare two strings. return 0 if they are equal or 1 otherwise.
 SINT32 strcmp(CHAR * str1, CHAR * str2);
+SINT32 strcmpn(CHAR * s1, CHAR * s2, SINT32 n);
 // Copy the NULL-terminated string src into dest, and
 // return dest.
 CHAR * strcpy(CHAR * dest, const CHAR * src);
 SINT32 strlen(CHAR *src);
 // convert string to unsigned int
 UINT32 strToUInt(CHAR *c);
+BOOL strIsNum(CHAR *c);
 
 #endif // _COMMON_H_
 

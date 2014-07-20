@@ -110,6 +110,14 @@ SINT32 strcmp(CHAR * str1, CHAR * str2)
 	return retval;
 }
 
+SINT32 strcmpn(CHAR * s1, CHAR * s2, SINT32 n)
+{
+	while (--n >= 0 && *s1 == *s2++)
+		if (*s1++ == '\0')
+			return 0;
+	return(n<0 ? 0 : *s1 - *--s2);
+}
+
 // Copy the NULL-terminated string src into dest, and
 // return dest.
 CHAR * strcpy(CHAR * dest, const CHAR * src)
@@ -172,5 +180,18 @@ UINT32 strToUInt(CHAR *c)
 		c++;
 	}
 	return result;
+}
+
+BOOL strIsNum(CHAR *c)
+{
+	while(*c != 0)
+	{
+		if((*c) < 48 || (*c) > 57)
+		{
+			return FALSE;
+		}
+		c++;
+	}
+	return TRUE;
 }
 

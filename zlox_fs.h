@@ -19,6 +19,9 @@ typedef ZLOX_VOID (*ZLOX_OPEN_CALLBACK)(ZLOX_FS_NODE *);
 typedef ZLOX_VOID (*ZLOX_CLOSE_CALLBACK)(ZLOX_FS_NODE *);
 typedef ZLOX_DIRENT * (*ZLOX_READDIR_CALLBACK)(ZLOX_FS_NODE *,ZLOX_UINT32);
 typedef ZLOX_FS_NODE * (*ZLOX_FINDDIR_CALLBACK)(ZLOX_FS_NODE *,ZLOX_CHAR *name);
+typedef ZLOX_FS_NODE * (*ZLOX_WRITEDIR_CALLBACK)(ZLOX_FS_NODE *,ZLOX_CHAR *name,ZLOX_UINT16 type);
+typedef ZLOX_UINT32 (*ZLOX_REMOVE_CALLBACK)(ZLOX_FS_NODE *);
+typedef ZLOX_UINT32 (*ZLOX_RENAME_CALLBACK)(ZLOX_FS_NODE *node, ZLOX_CHAR * rename);
 
 struct _ZLOX_FS_NODE
 {
@@ -35,7 +38,10 @@ struct _ZLOX_FS_NODE
 	ZLOX_OPEN_CALLBACK open;
 	ZLOX_CLOSE_CALLBACK close;
 	ZLOX_READDIR_CALLBACK readdir;
+	ZLOX_WRITEDIR_CALLBACK writedir;
 	ZLOX_FINDDIR_CALLBACK finddir;
+	ZLOX_REMOVE_CALLBACK remove;
+	ZLOX_RENAME_CALLBACK rename;
 	ZLOX_FS_NODE * ptr; // Used by mountpoints and symlinks.
 };
 
@@ -48,8 +54,12 @@ struct _ZLOX_DIRENT
 extern ZLOX_FS_NODE * fs_root; // The root of the filesystem.
 
 ZLOX_UINT32 zlox_read_fs(ZLOX_FS_NODE *node, ZLOX_UINT32 offset, ZLOX_UINT32 size, ZLOX_UINT8 *buffer);
+ZLOX_UINT32 zlox_write_fs(ZLOX_FS_NODE *node, ZLOX_UINT32 offset, ZLOX_UINT32 size, ZLOX_UINT8 *buffer);
+ZLOX_FS_NODE * zlox_writedir_fs(ZLOX_FS_NODE *node, ZLOX_CHAR *name, ZLOX_UINT16 type);
 ZLOX_DIRENT * zlox_readdir_fs(ZLOX_FS_NODE *node, ZLOX_UINT32 index);
 ZLOX_FS_NODE * zlox_finddir_fs(ZLOX_FS_NODE *node, ZLOX_CHAR *name);
+ZLOX_UINT32 zlox_remove_fs(ZLOX_FS_NODE *node);
+ZLOX_UINT32 zlox_rename_fs(ZLOX_FS_NODE *node, ZLOX_CHAR * rename);
 // get the root of the filesystem.
 ZLOX_FS_NODE * zlox_get_fs_root();
 

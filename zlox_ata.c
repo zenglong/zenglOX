@@ -269,10 +269,19 @@ ZLOX_SINT32 zlox_atapi_drive_read_capacity (ZLOX_UINT32 ide_index, ZLOX_UINT8 *b
 	/* Send ATAPI/SCSI command */
 	zlox_outsw (ZLOX_ATA_DATA (bus), (ZLOX_UINT16 *) read_cmd, 6);
 	/* Tell the scheduler that this process is using the ATA subsystem. */
-	current_task->status = ZLOX_TS_ATA_WAIT;
-	ata_wait_task = current_task;
+	//current_task->status = ZLOX_TS_ATA_WAIT;
+	//ata_wait_task = current_task;
 	/* Wait for IRQ that says the data is ready. */
-	zlox_switch_task();
+	//zlox_switch_task();
+	while ((status = zlox_inb (ZLOX_ATA_COMMAND (bus))) & 0x80)     /* BUSY */
+		asm volatile ("pause");
+	while (!((status = zlox_inb (ZLOX_ATA_COMMAND (bus))) & 0x8) && !(status & 0x1))
+		asm volatile ("pause");
+	/* DRQ or ERROR set */
+	if (status & 0x1) {
+		size = -1;
+		goto end;
+	}
 	/* Read actual size */
 	size = (((ZLOX_SINT32) zlox_inb (ZLOX_ATA_ADDRESS3 (bus))) << 8) | 
 		(ZLOX_SINT32) (zlox_inb (ZLOX_ATA_ADDRESS2 (bus)));

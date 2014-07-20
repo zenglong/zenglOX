@@ -203,7 +203,7 @@ ZLOX_VOID zlox_switch_task()
 ZLOX_SINT32 zlox_fork()
 {
 	// We are modifying kernel structures, and so cannot interrupt
-	asm volatile("cli");
+	//asm volatile("cli");
 
 	// Take a pointer to this process' task struct for later reference.
 	ZLOX_TASK * parent_task = (ZLOX_TASK *)current_task;
@@ -266,7 +266,7 @@ ZLOX_SINT32 zlox_fork()
 		new_task->esp = esp;
 		new_task->ebp = ebp;
 		new_task->eip = eip;
-		asm volatile("sti");
+		//asm volatile("sti");
 
 		return new_task->id;
 	}
@@ -370,7 +370,8 @@ ZLOX_SINT32 zlox_send_tskmsg(ZLOX_TASK * task , ZLOX_TASK_MSG * msg)
 
 	if(msg->type == ZLOX_MT_KEYBOARD)
 	{
-		if(msg->keyboard.type == ZLOX_MKT_ASCII)
+		if(msg->keyboard.type == ZLOX_MKT_ASCII || 
+			msg->keyboard.type == ZLOX_MKT_KEY)
 		{
 			retval = zlox_push_tskmsg(&task->msglist,msg);
 		}

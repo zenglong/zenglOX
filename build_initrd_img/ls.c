@@ -16,12 +16,15 @@ int main(VOID * task, int argc, char * argv[])
 		while ( (node = (DIRENT *)syscall_readdir_fs(fs_root, i)) != 0)
 		{
 			FS_NODE *fsnode = (FS_NODE *)syscall_finddir_fs(fs_root, node->name);
-			if ((fsnode->flags & 0x7) == FS_FILE)
+			if(fsnode == NULL)
+				;
+			else if ((fsnode->flags & 0x7) == FS_FILE)
 			{
 				syscall_monitor_write(node->name);
 				syscall_monitor_put(' ');
 			}
-			else if((fsnode->flags & 0x7) == FS_DIRECTORY && !strcmp(node->name,"iso"))
+			else if((fsnode->flags & 0x7) == FS_DIRECTORY && (!strcmp(node->name,"iso") 
+				|| !strcmp(node->name,"hd")))
 			{
 				syscall_monitor_write("[");
 				syscall_monitor_write(node->name);
@@ -54,7 +57,9 @@ int main(VOID * task, int argc, char * argv[])
 			while ( (node = (DIRENT *)syscall_readdir_fs(arg_node, i)) != 0)
 			{
 				FS_NODE *fsnode = (FS_NODE *)syscall_finddir_fs(arg_node, node->name);
-				if ((fsnode->flags & 0x7) == FS_FILE)
+				if(fsnode == NULL)
+					;
+				else if ((fsnode->flags & 0x7) == FS_FILE)
 				{
 					syscall_monitor_write(node->name);
 					syscall_monitor_put(' ');

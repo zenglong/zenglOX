@@ -341,6 +341,7 @@ ZLOX_FS_NODE * zlox_mount_iso()
 
 		// 初始化ISO文件系统的根节点
 		iso_root = (ZLOX_FS_NODE *)zlox_kmalloc(sizeof(ZLOX_FS_NODE));
+		zlox_memset((ZLOX_UINT8 *)iso_root, 0, sizeof(ZLOX_FS_NODE));
 		zlox_strcpy(iso_root->name, "iso");
 		iso_root->mask = iso_root->uid = iso_root->gid = iso_root->inode = iso_root->length = 0;
 		iso_root->flags = ZLOX_FS_DIRECTORY;

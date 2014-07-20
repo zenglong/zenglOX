@@ -13,6 +13,9 @@ ZLOX_UINT32 nroot_nodes; // Number of file nodes.
 ZLOX_DIRENT dirent;
 
 extern ZLOX_FS_NODE * iso_root;
+extern ZLOX_FS_NODE * zenglfs_root;
+
+ZLOX_FS_NODE * zlox_zenglfs_finddir_ext(ZLOX_FS_NODE *node, ZLOX_CHAR *name);
 
 static ZLOX_UINT32 zlox_initrd_read(ZLOX_FS_NODE * node, ZLOX_UINT32 arg_offset, ZLOX_UINT32 size, ZLOX_UINT8 * buffer)
 {
@@ -46,14 +49,32 @@ static ZLOX_DIRENT *zlox_initrd_readdir(ZLOX_FS_NODE *node, ZLOX_UINT32 index)
 		dirent.ino = iso_root->inode;
 		return &dirent;
 	}
+	else if(index-1 == nroot_nodes + 1)
+	{
+		zlox_strcpy(dirent.name, "hd");
+		dirent.name[2] = 0;
+		dirent.ino = zenglfs_root->inode;
+		return &dirent;
+	}
 
-	if (index-1 > nroot_nodes)
+	if (index-1 > nroot_nodes + 1)
 		return 0;
 
 	zlox_strcpy(dirent.name, root_nodes[index-1].name);
 	dirent.name[zlox_strlen(root_nodes[index-1].name)] = 0;
 	dirent.ino = root_nodes[index-1].inode;
 	return &dirent;
+}
+
+static ZLOX_FS_NODE * zlox_initrd_writedir(ZLOX_FS_NODE *node, ZLOX_CHAR *name, ZLOX_UINT16 type)
+{
+	if(node == initrd_root && !zlox_strcmpn(name, "hd/",3))
+	{
+		if(zenglfs_root == ZLOX_NULL)
+			return ZLOX_NULL;
+		return zenglfs_root->writedir(zenglfs_root, name + 3, type);
+	}
+	return ZLOX_NULL;
 }
 
 static ZLOX_FS_NODE *zlox_initrd_finddir(ZLOX_FS_NODE *node, ZLOX_CHAR *name)
@@ -64,12 +85,20 @@ static ZLOX_FS_NODE *zlox_initrd_finddir(ZLOX_FS_NODE *node, ZLOX_CHAR *name)
 
 	if (node == initrd_root && !zlox_strcmp(name, "iso"))
 		return iso_root;
+	else if (node == initrd_root && !zlox_strcmp(name, "hd"))
+		return zenglfs_root;
 
 	if (node == initrd_root && !zlox_strcmpn(name, "iso/",4))
 	{
 		if(iso_root == ZLOX_NULL)
 			return 0;
 		return iso_root->finddir(iso_root, name + 4);
+	}
+	else if(node == initrd_root && !zlox_strcmpn(name, "hd/",3))
+	{
+		if(zenglfs_root == ZLOX_NULL)
+			return 0;
+		return zlox_zenglfs_finddir_ext(zenglfs_root, name + 3);
 	}
 
 	ZLOX_UINT32 i;
@@ -87,6 +116,7 @@ ZLOX_FS_NODE * zlox_initialise_initrd(ZLOX_UINT32 location)
 
 	// Initialise the root directory.
 	initrd_root = (ZLOX_FS_NODE *)zlox_kmalloc(sizeof(ZLOX_FS_NODE));
+	zlox_memset((ZLOX_UINT8 *)initrd_root, 0, sizeof(ZLOX_FS_NODE));
 	zlox_strcpy(initrd_root->name, "initrd");
 	initrd_root->mask = initrd_root->uid = initrd_root->gid = initrd_root->inode = initrd_root->length = 0;
 	initrd_root->flags = ZLOX_FS_DIRECTORY;
@@ -95,12 +125,14 @@ ZLOX_FS_NODE * zlox_initialise_initrd(ZLOX_UINT32 location)
 	initrd_root->open = 0;
 	initrd_root->close = 0;
 	initrd_root->readdir = &zlox_initrd_readdir;
+	initrd_root->writedir = &zlox_initrd_writedir;
 	initrd_root->finddir = &zlox_initrd_finddir;
 	initrd_root->ptr = 0;
 	initrd_root->impl = 0;
 
 	// Initialise the /dev directory (required!)
 	initrd_dev = (ZLOX_FS_NODE *)zlox_kmalloc(sizeof(ZLOX_FS_NODE));
+	zlox_memset((ZLOX_UINT8 *)initrd_dev, 0, sizeof(ZLOX_FS_NODE));
 	zlox_strcpy(initrd_dev->name, "dev");
 	initrd_dev->mask = initrd_dev->uid = initrd_dev->gid = initrd_dev->inode = initrd_dev->length = 0;
 	initrd_dev->flags = ZLOX_FS_DIRECTORY;
@@ -114,6 +146,7 @@ ZLOX_FS_NODE * zlox_initialise_initrd(ZLOX_UINT32 location)
 	initrd_dev->impl = 0;
 
 	root_nodes = (ZLOX_FS_NODE *)zlox_kmalloc(sizeof(ZLOX_FS_NODE) * initrd_header->nfiles);
+	zlox_memset((ZLOX_UINT8 *)root_nodes, 0, sizeof(ZLOX_FS_NODE) * initrd_header->nfiles);
 	nroot_nodes = initrd_header->nfiles;
 
 	// For every file...

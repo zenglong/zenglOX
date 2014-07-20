@@ -21,6 +21,8 @@ ZLOX_UINT8 led_status = 0;
 
 ZLOX_UINT8 control_keys = 0;
 
+ZLOX_UINT8 press_key = 0;
+
 /* keyboard_buffer stores every key typed */
 ZLOX_UINT8 keyboard_buffer[255];
 /* keyboard_buffer_size stores the number of keys in the buffer */
@@ -134,8 +136,36 @@ static ZLOX_VOID zlox_keyboard_callback(/*ZLOX_ISR_REGISTERS * regs*/)
 {
 	ZLOX_UINT32 key = zlox_inb(0x60);
 	ZLOX_UINT32 key_ascii = 0;	
+	ZLOX_UINT32 key_code = 0;
 	ZLOX_UINT32 scanMaxNum = sizeof(scanToAscii_table) / (8 * 4);
 	
+	if(press_key == 0xE0)
+	{
+		switch(key)
+		{
+		case 0x48:
+			key_code = ZLOX_MKK_CURSOR_UP_PRESS;
+			break;
+		case 0x50:
+			key_code = ZLOX_MKK_CURSOR_DOWN_PRESS;
+			break;
+		case 0x4B:
+			key_code = ZLOX_MKK_CURSOR_LEFT_PRESS;
+			break;
+		case 0x4D:
+			key_code = ZLOX_MKK_CURSOR_RIGHT_PRESS;
+			break;
+		default:
+			key_code = 0;
+			break;
+		}
+		press_key = 0;
+	}
+	else if(key == 0xE0)
+	{
+		press_key = key;
+	}
+
 	/* 'LED Keys', ie, Scroll lock, Num lock, and Caps lock */
 	if(key == 0x3A)	/* Caps Lock */
 	{
@@ -184,13 +214,18 @@ static ZLOX_VOID zlox_keyboard_callback(/*ZLOX_ISR_REGISTERS * regs*/)
 	else if(control_keys == 0) 
 		key_ascii = key < scanMaxNum ? scanToAscii_table[key][0] : 0;
 
-	if(key_ascii != 0)
+	if(key_code != 0)
+	{
+		ZLOX_TASK_MSG ascii_msg = {0};
+		ascii_msg.type = ZLOX_MT_KEYBOARD;
+		ascii_msg.keyboard.type = ZLOX_MKT_KEY;
+		ascii_msg.keyboard.key = key_code;
+		zlox_send_tskmsg(input_focus_task,&ascii_msg);
+	}
+	else if(key_ascii != 0)
 	{
 		if(key_ascii <= 0xFF)
 		{
-			//keyboard_buffer[keyboard_buffer_size] = key_ascii;
-			//keyboard_buffer_size++;
-			//zlox_monitor_put(key_ascii);
 			ZLOX_TASK_MSG ascii_msg = {0};
 			ascii_msg.type = ZLOX_MT_KEYBOARD;
 			ascii_msg.keyboard.type = ZLOX_MKT_ASCII;

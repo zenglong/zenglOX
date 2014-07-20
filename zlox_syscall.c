@@ -11,6 +11,7 @@
 #include "zlox_paging.h"
 #include "zlox_ata.h"
 #include "zlox_iso.h"
+#include "zlox_zenglfs.h"
 
 static ZLOX_VOID zlox_syscall_handler(ZLOX_ISR_REGISTERS * regs);
 // _zlox_reboot() and _zlox_shutdown() is in zlox_shutdown.s
@@ -54,6 +55,12 @@ ZLOX_DEFN_SYSCALL0(mount_iso,ZLOX_SYSCALL_MOUNT_ISO);
 ZLOX_DEFN_SYSCALL0(unmount_iso,ZLOX_SYSCALL_UNMOUNT_ISO);
 ZLOX_DEFN_SYSCALL0(overflow_test,ZLOX_SYSCALL_OVERFLOW_TEST);
 ZLOX_DEFN_SYSCALL5(ide_ata_access, ZLOX_SYSCALL_IDE_ATA_ACCESS, ZLOX_UINT8, ZLOX_UINT8, ZLOX_UINT32, ZLOX_UINT8, ZLOX_UINT8 *);
+ZLOX_DEFN_SYSCALL2(mount_zenglfs, ZLOX_SYSCALL_MOUNT_ZENGLFS, ZLOX_UINT32, ZLOX_UINT32);
+ZLOX_DEFN_SYSCALL0(unmount_zenglfs, ZLOX_SYSCALL_UNMOUNT_ZENGLFS);
+ZLOX_DEFN_SYSCALL4(write_fs, ZLOX_SYSCALL_WRITE_FS, void *, ZLOX_UINT32 , ZLOX_UINT32 , ZLOX_UINT8 *);
+ZLOX_DEFN_SYSCALL3(writedir_fs, ZLOX_SYSCALL_WRITEDIR_FS, void *, ZLOX_CHAR *, ZLOX_UINT16);
+ZLOX_DEFN_SYSCALL1(remove_fs, ZLOX_SYSCALL_REMOVE_FS, void *);
+ZLOX_DEFN_SYSCALL2(rename_fs, ZLOX_SYSCALL_RENAME_FS, void *, ZLOX_CHAR *);
 
 static ZLOX_VOID * syscalls[ZLOX_SYSCALL_NUMBER] =
 {
@@ -89,6 +96,12 @@ static ZLOX_VOID * syscalls[ZLOX_SYSCALL_NUMBER] =
 	&zlox_unmount_iso,
 	&zlox_overflow_test,
 	&zlox_ide_ata_access,
+	&zlox_mount_zenglfs,
+	&zlox_unmount_zenglfs,
+	&zlox_write_fs,
+	&zlox_writedir_fs,
+	&zlox_remove_fs,
+	&zlox_rename_fs,
 };
 
 ZLOX_UINT32 num_syscalls = ZLOX_SYSCALL_NUMBER;
