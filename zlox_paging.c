@@ -5,6 +5,7 @@
 #include "zlox_monitor.h"
 #include "zlox_isr.h"
 #include "zlox_descriptor_tables.h"
+#include "zlox_vga.h"
 
 // The kernel's page directory
 ZLOX_PAGE_DIRECTORY *kernel_directory=0;
@@ -28,6 +29,9 @@ extern ZLOX_VOID _zlox_copy_page_physical(ZLOX_UINT32 src,ZLOX_UINT32 dest);
 // Defined in zlox_descriptor_tables.c
 extern ZLOX_TSS_ENTRY tss_entry;
 extern ZLOX_TSS_ENTRY tss_entry_double_fault;
+
+// zlox_vga.c
+extern ZLOX_UINT32 vga_current_mode;
 
 // Macros used in the bitset algorithms.
 #define ZLOX_INDEX_FROM_BIT(a) (a/(8*4))
@@ -356,6 +360,8 @@ ZLOX_VOID zlox_page_fault(ZLOX_ISR_REGISTERS * regs)
 		return ;
 	}
 
+print_page_error_message:
+
 	// Output an error message.
 	zlox_monitor_write("Page fault! ( ");
 
@@ -386,6 +392,11 @@ ZLOX_VOID zlox_page_fault(ZLOX_ISR_REGISTERS * regs)
 	// 如果只是用户态程式出错，则只需结束掉当前任务，而无需 ZLOX_PANIC 挂掉整个系统
 	if(regs->eip >= 0x8048000 && regs->eip < 0xc0000000)
 	{
+		if(vga_current_mode != ZLOX_VGA_MODE_80X25_TEXT)
+		{
+			zlox_vga_exit_graphic_mode();
+			goto print_page_error_message;
+		}
 		zlox_exit(-1);
 	}
 

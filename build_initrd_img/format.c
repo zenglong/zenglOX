@@ -247,6 +247,10 @@ int main(VOID * task, int argc, char * argv[])
 	else if(argc == 7)
 	{
 		FORMAT_PARAM param = {0};
+		/*
+		先通过parse_param函数将用户输入的参数设置到
+		param结构体变量。
+		*/
 		if(parse_param(&param, argc, argv) == -1)
 			return -1;
 		UINT8 *buffer = (UINT8 *)syscall_umalloc(ATA_SECTOR_SIZE * 2);
@@ -270,6 +274,9 @@ int main(VOID * task, int argc, char * argv[])
 			return -1;
 		}
 		
+		/*
+		将lba对应的0号扇区即MBR里的数据读取到buffer缓冲
+		*/
 		SINT32 ata_ret = syscall_ide_ata_access(IDE_ATA_READ, ide_index, lba, 1, buffer); // read MBR
 		if(ata_ret == -1)
 		{
@@ -283,6 +290,18 @@ int main(VOID * task, int argc, char * argv[])
 		MBR_PT * partition_ptr = (MBR_PT *)(buffer + MBR_PT_START);
 		partition_ptr += (param.pt - 1);
 		MBR_PT partition = (*partition_ptr);
+		/*
+		因为要为inode array节点数组预留一段空间，每个
+		节点占用128字节，而节点数组是1024的倍数(一个节点位图为128
+		字节即1024个二进制位，每个二进制代表一个文件节点的占用情况)，
+		因此节点数组最少需要预留1024 * 128 = 131072即128K字节的空间，
+		在节点数组前还有5个部分如super block部分，
+		每个部分按最小1K即一个逻辑块来算，
+		那么，就需要128K + 5K = 133K，此外，文件节点还需要一些空间来存储
+		内容数据，因此最小的分区大小至少要200K以上。
+		而下面的450个扇区的尺寸为450 * 512 = 230400即225K字节的大小，
+		符合要求，所以，目前就以450个扇区作为最小的可供格式化的分区扇区数。
+		*/
 		if(partition.secNum < 450)
 		{
 			syscall_monitor_write("this partition is too small , must at least have 450 sectors \n");
@@ -295,9 +314,16 @@ int main(VOID * task, int argc, char * argv[])
 			syscall_ufree(buffer);
 			return -1;
 		}
+		/*
+		partition.startLBA + 2就可以跳过分区的Reserved预留块，而
+		定位到super block超级块
+		*/
 		lba = partition.startLBA + 2;
+		/*将超级块的内容读取出来，因为一个逻辑块是2个扇区的大小，因此，
+		下面就一次读取了2个扇区的数据*/
 		syscall_ide_ata_access(IDE_ATA_READ, ide_index, lba, 2, buffer); // read superblock
 		SUPER_BLOCK * superblock_ptr = (SUPER_BLOCK *)buffer;
+		/*下面对超级块的各个字段依次进行设置*/
 		superblock_ptr->sign = SUPER_BLOCK_SIGN;
 		superblock_ptr->startLBA = partition.startLBA;
 		superblock_ptr->TotalBlock = partition.secNum / 2;
@@ -320,6 +346,7 @@ int main(VOID * task, int argc, char * argv[])
 		GROUP_INFO * groupinfo;
 		BOOL needClear = FALSE;
 		memset(buffer, 0, ATA_SECTOR_SIZE * 2);
+		/*设置group数组里的各个group信息*/
 		for(i = 0;i < superblock.GroupBlocks;i++)
 		{
 			lba = (superblock.GroupAddr + i) * 2 + superblock.startLBA;
@@ -354,6 +381,8 @@ int main(VOID * task, int argc, char * argv[])
 			}
 		}
 		t = superblock.allocBlocks;
+		/*因为super block等需要占用一些逻辑块，因此将逻辑块位图中
+		对应的二进制位设置为占用状态*/
 		for(i = 0;i < superblock.BlockMapBlocks;i++)
 		{
 			lba = (superblock.BlockBitMapBlockAddr + i) * 2 + superblock.startLBA;
@@ -377,6 +406,8 @@ int main(VOID * task, int argc, char * argv[])
 				needClear = FALSE;
 			}
 		}
+		/*format在格式化时会设置一个root根目录的文件节点，因此，
+		下面将文件节点位图中对应的二进制位设置为占用状态*/
 		for(i = 0;i < superblock.InodeMapBlocks;i++)
 		{
 			lba = (superblock.InodeBitMapBlockAddr + i) * 2 + superblock.startLBA;
@@ -393,6 +424,9 @@ int main(VOID * task, int argc, char * argv[])
 			}
 		}
 		INODE_DATA * root_inode = (INODE_DATA *)buffer;
+		/*设置root根目录的文件节点，其实就是简单的将该文件节点
+		的类型设置为目录类型，至于文件节点的内容则只有在使用过程
+		中才会进行分配*/
 		root_inode->type = INODE_TYPE_DIRECTORY;
 		lba = superblock.InodeTableBlockAddr * 2 + superblock.startLBA;
 		syscall_ide_ata_access(IDE_ATA_WRITE, ide_index, lba, 2, buffer); // write root inode

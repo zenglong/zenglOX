@@ -12,6 +12,7 @@
 #include "zlox_ata.h"
 #include "zlox_iso.h"
 #include "zlox_zenglfs.h"
+#include "zlox_vga.h"
 
 static ZLOX_VOID zlox_syscall_handler(ZLOX_ISR_REGISTERS * regs);
 // _zlox_reboot() and _zlox_shutdown() is in zlox_shutdown.s
@@ -61,6 +62,9 @@ ZLOX_DEFN_SYSCALL4(write_fs, ZLOX_SYSCALL_WRITE_FS, void *, ZLOX_UINT32 , ZLOX_U
 ZLOX_DEFN_SYSCALL3(writedir_fs, ZLOX_SYSCALL_WRITEDIR_FS, void *, ZLOX_CHAR *, ZLOX_UINT16);
 ZLOX_DEFN_SYSCALL1(remove_fs, ZLOX_SYSCALL_REMOVE_FS, void *);
 ZLOX_DEFN_SYSCALL2(rename_fs, ZLOX_SYSCALL_RENAME_FS, void *, ZLOX_CHAR *);
+ZLOX_DEFN_SYSCALL1(vga_set_mode, ZLOX_SYSCALL_VGA_SET_MODE, ZLOX_UINT32);
+ZLOX_DEFN_SYSCALL2(vga_update_screen, ZLOX_SYSCALL_VGA_UPDATE_SCREEN, ZLOX_UINT8 *, ZLOX_UINT32);
+ZLOX_DEFN_SYSCALL0(vga_get_text_font, ZLOX_SYSCALL_VGA_GET_TEXT_FONT);
 
 static ZLOX_VOID * syscalls[ZLOX_SYSCALL_NUMBER] =
 {
@@ -102,6 +106,9 @@ static ZLOX_VOID * syscalls[ZLOX_SYSCALL_NUMBER] =
 	&zlox_writedir_fs,
 	&zlox_remove_fs,
 	&zlox_rename_fs,
+	&zlox_vga_set_mode,
+	&zlox_vga_update_screen,
+	&zlox_vga_get_text_font,
 };
 
 ZLOX_UINT32 num_syscalls = ZLOX_SYSCALL_NUMBER;

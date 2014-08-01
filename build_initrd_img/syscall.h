@@ -44,6 +44,9 @@ typedef enum _SYSCALL_ENUM{
 	SYSCALL_WRITEDIR_FS,
 	SYSCALL_REMOVE_FS,
 	SYSCALL_RENAME_FS,
+	SYSCALL_VGA_SET_MODE,
+	SYSCALL_VGA_UPDATE_SCREEN,
+	SYSCALL_VGA_GET_TEXT_FONT,
 }SYSCALL_ENUM;
 
 #define DECL_SYSCALL0(fn) SINT32 syscall_##fn();
@@ -139,6 +142,9 @@ DECL_SYSCALL4(write_fs, void *, UINT32 , UINT32 , UINT8 *)
 DECL_SYSCALL3(writedir_fs, void *, CHAR *, UINT16)
 DECL_SYSCALL1(remove_fs, void *)
 DECL_SYSCALL2(rename_fs, void *, CHAR *)
+DECL_SYSCALL1(vga_set_mode, UINT32)
+DECL_SYSCALL2(vga_update_screen, UINT8 *, UINT32)
+DECL_SYSCALL0(vga_get_text_font)
 
 #endif // _SYSCALL_H_
 

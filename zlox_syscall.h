@@ -5,10 +5,10 @@
 
 #include "zlox_common.h"
 
-#define ZLOX_SYSCALL_NUMBER 38
+#define ZLOX_SYSCALL_NUMBER 41
 
 #define ZLOX_MAJOR_VERSION 1 //zenglOX 主版本号
-#define ZLOX_MINOR_VERSION 5 //zenglOX 子版本号
+#define ZLOX_MINOR_VERSION 6 //zenglOX 子版本号
 #define ZLOX_REVISION 0      //zenglOX 修正版本号
 
 typedef enum _ZLOX_SYSCALL_ENUM{
@@ -50,6 +50,9 @@ typedef enum _ZLOX_SYSCALL_ENUM{
 	ZLOX_SYSCALL_WRITEDIR_FS,
 	ZLOX_SYSCALL_REMOVE_FS,
 	ZLOX_SYSCALL_RENAME_FS,
+	ZLOX_SYSCALL_VGA_SET_MODE,
+	ZLOX_SYSCALL_VGA_UPDATE_SCREEN,
+	ZLOX_SYSCALL_VGA_GET_TEXT_FONT,
 }ZLOX_SYSCALL_ENUM;
 
 ZLOX_VOID zlox_initialise_syscalls();
@@ -147,6 +150,9 @@ ZLOX_DECL_SYSCALL4(write_fs, void *, ZLOX_UINT32 , ZLOX_UINT32 , ZLOX_UINT8 *)
 ZLOX_DECL_SYSCALL3(writedir_fs, void *, ZLOX_CHAR *, ZLOX_UINT16)
 ZLOX_DECL_SYSCALL1(remove_fs, void *)
 ZLOX_DECL_SYSCALL2(rename_fs, void *, ZLOX_CHAR *)
+ZLOX_DECL_SYSCALL1(vga_set_mode, ZLOX_UINT32)
+ZLOX_DECL_SYSCALL2(vga_update_screen, ZLOX_UINT8 *, ZLOX_UINT32)
+ZLOX_DECL_SYSCALL0(vga_get_text_font)
 
 ZLOX_SINT32 zlox_get_version(ZLOX_SINT32 * major, ZLOX_SINT32 * minor, ZLOX_SINT32 * revision);
 

@@ -203,6 +203,11 @@ int main(VOID * task, int argc, char * argv[])
 				return -1;
 			}
 			
+			/*
+			通过syscall_ide_ata_access系统调用来读取0号扇区(MBR)的
+			数据到buffer缓冲里，lba(逻辑块地址)在之前
+			已经被设置为了0
+			*/
 			SINT32 ata_ret = syscall_ide_ata_access(0, ide_index, lba, 1, buffer); // read MBR
 			if(ata_ret == -1)
 			{
@@ -212,8 +217,14 @@ int main(VOID * task, int argc, char * argv[])
 				syscall_ufree(buffer);
 				return -1;
 			}
+			/*
+			将buffer(即MBR缓冲)里的分区表的起始位置赋值给partition指针变量
+			*/
 			MBR_PT * partition = (MBR_PT *)(buffer + MBR_PT_START);
 			SINT32 i;
+			/*
+			通过for循环，将4个分区表的信息给依次显示出来
+			*/
 			for(i=0;i < 4;i++,partition++)
 			{
 				syscall_monitor_write("[");
@@ -225,6 +236,11 @@ int main(VOID * task, int argc, char * argv[])
 				if(partition->secNum != 0)
 				{
 					syscall_monitor_write(" [");
+					/*
+					通过分区的总扇区数来计算出分区的尺寸大小，
+					并根据尺寸大小来设置具体的单位，比如MB，
+					KB以及Byte
+					*/
 					if(partition->secNum * 512 / 1024 / 1024 != 0)
 					{
 						syscall_monitor_write_dec(partition->secNum * 512 / 1024 / 1024);
@@ -242,6 +258,15 @@ int main(VOID * task, int argc, char * argv[])
 					}
 				}
 				syscall_monitor_write(" filesystem: ");
+				/*
+				根据分区表的System ID字段即下面的
+				partition->fs_type成员的值来判断分区所设置
+				的文件系统类型，zenglfs文件系统的类型值为0x23，
+				即下面MBR_FS_TYPE_ZENGLFS宏所对应的值。如果fs_type
+				类型值为MBR_FS_TYPE_EMPTY即0的话，就说明该分区表是
+				empty(空的)。其他的文件系统类型值，目前统一显示为other，
+				以表示zenglOX目前不能识别和处理的分区类型。
+				*/
 				switch(partition->fs_type)
 				{
 				case MBR_FS_TYPE_ZENGLFS:
@@ -264,6 +289,11 @@ int main(VOID * task, int argc, char * argv[])
 	else if(argc == 11)
 	{
 		FDISK_PARAM param = {0};
+		/*
+		通过parse_param函数，将用户的参数设置到param结构体变量中，
+		例如，start参数的值会被设置到param.start成员，
+		num参数的值会被设置到param.num成员
+		*/
 		if(parse_param(&param, argc, argv) == -1)
 			return -1;
 		UINT8 *buffer = (UINT8 *)syscall_umalloc(ATA_SECTOR_SIZE+5);
@@ -287,6 +317,11 @@ int main(VOID * task, int argc, char * argv[])
 			return -1;
 		}
 
+		/*
+		通过syscall_ide_ata_access系统调用来读取0号扇区(MBR)的
+		数据到buffer缓冲里，lba(逻辑块地址)在之前
+		已经被设置为了0
+		*/
 		SINT32 ata_ret = syscall_ide_ata_access(0, ide_index, lba, 1, buffer); // read MBR
 		if(ata_ret == -1)
 		{
@@ -298,7 +333,20 @@ int main(VOID * task, int argc, char * argv[])
 		}
 
 		MBR_PT * partition = (MBR_PT *)(buffer + MBR_PT_START);
+		/*
+		通过用户设置的pt参数来定位到buffer缓冲中
+		的指定分区
+		*/
 		partition += (param.pt - 1);
+		/*
+		将不需要的flag(分区引导标志)字段设置为0，
+		以及将不需要的head(起始磁头号),sec_cyl(起始柱面号)等
+		设置为0xff(二进制位的值全部设置为1，以表示无效的值)，
+		fs_type即文件系统类型字段设置为用户type参数所指定的值，
+		startLBA即起始逻辑块地址字段设置为用户start参数所指定
+		的值，secNum即分区拥有的总扇区数字段设置为用户num参数
+		所指定的值。
+		*/
 		partition->flag = 0;
 		partition->head = partition->end_head = (param.num !=0) ? 0xff : 0;
 		partition->sec_cyl = partition->end_sec_cyl = (param.num !=0) ? 0xffff : 0;
@@ -306,11 +354,18 @@ int main(VOID * task, int argc, char * argv[])
 		partition->startLBA = param.start;
 		partition->secNum = param.num;
 
+		/*
+		对用户设置的起始扇区号进行必要的调整，让其按照2个扇区
+		进行对齐，因为zenglOX里使用的逻辑块都是2个磁盘扇区的大小
+		*/
 		partition->startLBA = (partition->startLBA % 2 == 0) ? partition->startLBA : 
 						(partition->startLBA + 1);
 		partition->secNum = (partition->secNum % 2 == 0) ? partition->secNum : 
 						(partition->secNum + 1);
 
+		/*
+		对用户设置的参数进行必要的检测，不符合要求的设置则返回错误信息。
+		*/
 		if(partition->secNum != 0 && partition->startLBA == 0)
 			partition->startLBA = 2;
 		if(partition->secNum != 0 && 
@@ -330,6 +385,10 @@ int main(VOID * task, int argc, char * argv[])
 			return -1;
 		}
 
+		/*
+		最后通过syscall_ide_ata_access系统调用将buffer缓冲区里设置过
+		的分区表信息写入到硬盘的MBR里。
+		*/
 		ata_ret = syscall_ide_ata_access(1, ide_index, lba, 1, buffer);
 		if(ata_ret == -1)
 		{

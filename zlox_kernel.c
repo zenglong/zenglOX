@@ -83,8 +83,8 @@ ZLOX_SINT32 zlox_kernel_main(ZLOX_MULTIBOOT * mboot_ptr, ZLOX_UINT32 initial_sta
 	zlox_syscall_monitor_write_dec(revision);
 	zlox_syscall_monitor_write("! I will execve a shell\n"
 				"you can input some command: ls , ps , cat , uname , cpuid , shell ,"
-				" reboot , shutdown , ata , mount , unmount , testoverflow , fdisk , format , file\n\n"
-				" this version we have zenglfs file system , first use \"fdisk\" to make MBR , then use \"format\" to format a partition , then use \"mount hd ... \" to mount the formated partition to hd directory , at last use \"file\" to read or write to the hd directory , zenglfs support read or write file , make sub directory , remove file or directory , and rename file or directory , enjoy yourself!\n");
+				" reboot , shutdown , ata , mount , unmount , testoverflow , fdisk , format , file , vga\n\n"
+				" this version we have vga graphic driver , you can use \"vga\" command to see the 320x200x256 graphic mode , or use \"vga 640\" to see the 640x480x16 graphic mode\n");
 
 	zlox_syscall_execve("shell");
 
