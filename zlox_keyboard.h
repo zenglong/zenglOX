@@ -5,7 +5,7 @@
 
 #include "zlox_common.h"
 
-ZLOX_VOID zlox_initKeyboard();
+ZLOX_BOOL zlox_initKeyboard();
 
 #endif // _ZLOX_KEYBOARD_H_
 

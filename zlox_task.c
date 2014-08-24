@@ -4,6 +4,7 @@
 #include "zlox_paging.h"
 #include "zlox_kheap.h"
 #include "zlox_descriptor_tables.h"
+#include "zlox_network.h"
 
 // The currently running task.
 volatile ZLOX_TASK * current_task = 0;
@@ -12,6 +13,9 @@ volatile ZLOX_TASK * current_task = 0;
 volatile ZLOX_TASK * ready_queue = 0;
 
 volatile ZLOX_TASK * input_focus_task = 0;
+
+// zlox_network.c
+extern ZLOX_TASK * network_focus_task;
 
 // zlox_descriptor_tables.c
 extern ZLOX_TSS_ENTRY tss_entry_double_fault;
@@ -381,6 +385,10 @@ ZLOX_SINT32 zlox_send_tskmsg(ZLOX_TASK * task , ZLOX_TASK_MSG * msg)
 		retval = zlox_push_tskmsg(&task->msglist,msg);
 		task->msglist.finish_task_num++;
 	}
+	else
+	{
+		retval = zlox_push_tskmsg(&task->msglist,msg);
+	}
 	return retval;
 }
 
@@ -450,6 +458,14 @@ ZLOX_SINT32 zlox_exit(ZLOX_SINT32 exit_code)
 			return -1;
 		}
 		notify_task = (ZLOX_TASK *)ready_queue;
+	}
+
+	if(input_focus_task == current_task)
+		input_focus_task = 0;
+	if(network_focus_task == current_task)
+	{
+		zlox_network_free_packets(network_focus_task);
+		network_focus_task = 0;
 	}
 
 	current_task->status = ZLOX_TS_FINISH;

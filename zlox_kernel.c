@@ -14,6 +14,9 @@
 #include "zlox_elf.h"
 #include "zlox_ata.h"
 #include "zlox_iso.h"
+#include "zlox_pci.h"
+#include "zlox_network.h"
+#include "zlox_ps2.h"
 
 extern ZLOX_UINT32 placement_address;
 extern ZLOX_TASK * current_task;
@@ -45,7 +48,16 @@ ZLOX_SINT32 zlox_kernel_main(ZLOX_MULTIBOOT * mboot_ptr, ZLOX_UINT32 initial_sta
 	placement_address = initrd_end;
 
 	// 开启分页,并创建堆
-	zlox_init_paging();
+	zlox_init_paging_start();
+
+	zlox_pci_init();
+
+	zlox_pci_list();
+
+	if(zlox_network_init() == ZLOX_TRUE)
+		zlox_monitor_write("network is init now!\n");
+
+	zlox_init_paging_end();
 
 	// 初始化任务系统
 	zlox_initialise_tasking();
@@ -56,13 +68,16 @@ ZLOX_SINT32 zlox_kernel_main(ZLOX_MULTIBOOT * mboot_ptr, ZLOX_UINT32 initial_sta
 	// 初始化系统调用
 	zlox_initialise_syscalls();
 
-	zlox_initKeyboard();
-
-	zlox_syscall_monitor_write("=========================\n");	
-
-	zlox_syscall_monitor_write("Keyboard is init now!\n");
-
-	zlox_syscall_monitor_write("=========================\n");
+	if(zlox_ps2_init(ZLOX_FALSE) == ZLOX_TRUE)
+	{
+		zlox_syscall_monitor_write("PS2 Controller is init now!\n");
+		if(zlox_initKeyboard() == ZLOX_TRUE)
+		{
+			zlox_syscall_monitor_write("=========================\n");	
+			zlox_syscall_monitor_write("Keyboard is init now!\n");
+			zlox_syscall_monitor_write("=========================\n");
+		}
+	}
 
 	zlox_init_ata();
 
@@ -83,8 +98,8 @@ ZLOX_SINT32 zlox_kernel_main(ZLOX_MULTIBOOT * mboot_ptr, ZLOX_UINT32 initial_sta
 	zlox_syscall_monitor_write_dec(revision);
 	zlox_syscall_monitor_write("! I will execve a shell\n"
 				"you can input some command: ls , ps , cat , uname , cpuid , shell ,"
-				" reboot , shutdown , ata , mount , unmount , testoverflow , fdisk , format , file , vga\n\n"
-				" this version we have vga graphic driver , you can use \"vga\" command to see the 320x200x256 graphic mode , or use \"vga 640\" to see the 640x480x16 graphic mode\n");
+				" reboot , shutdown , ata , mount , unmount , testoverflow , fdisk , format , file , vga , dhcp ...\n\n"
+				" this version we have e1000 driver, we can use network! please see www.zengl.com \n");
 
 	zlox_syscall_execve("shell");
 

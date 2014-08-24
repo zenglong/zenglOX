@@ -5,10 +5,10 @@
 
 #include "zlox_common.h"
 
-#define ZLOX_SYSCALL_NUMBER 41
+#define ZLOX_SYSCALL_NUMBER 48
 
-#define ZLOX_MAJOR_VERSION 1 //zenglOX 主版本号
-#define ZLOX_MINOR_VERSION 6 //zenglOX 子版本号
+#define ZLOX_MAJOR_VERSION 2 //zenglOX 主版本号
+#define ZLOX_MINOR_VERSION 0 //zenglOX 子版本号
 #define ZLOX_REVISION 0      //zenglOX 修正版本号
 
 typedef enum _ZLOX_SYSCALL_ENUM{
@@ -53,6 +53,13 @@ typedef enum _ZLOX_SYSCALL_ENUM{
 	ZLOX_SYSCALL_VGA_SET_MODE,
 	ZLOX_SYSCALL_VGA_UPDATE_SCREEN,
 	ZLOX_SYSCALL_VGA_GET_TEXT_FONT,
+	ZLOX_SYSCALL_NETWORK_GETINFO,
+	ZLOX_SYSCALL_NETWORK_SET_FOCUS_TASK,
+	ZLOX_SYSCALL_NETWORK_SEND,
+	ZLOX_SYSCALL_NETWORK_GET_PACKET,
+	ZLOX_SYSCALL_TIMER_GET_TICK,
+	ZLOX_SYSCALL_NETWORK_SETINFO,
+	ZLOX_SYSCALL_PCI_GET_DEVCONF_LST,
 }ZLOX_SYSCALL_ENUM;
 
 ZLOX_VOID zlox_initialise_syscalls();
@@ -153,6 +160,13 @@ ZLOX_DECL_SYSCALL2(rename_fs, void *, ZLOX_CHAR *)
 ZLOX_DECL_SYSCALL1(vga_set_mode, ZLOX_UINT32)
 ZLOX_DECL_SYSCALL2(vga_update_screen, ZLOX_UINT8 *, ZLOX_UINT32)
 ZLOX_DECL_SYSCALL0(vga_get_text_font)
+ZLOX_DECL_SYSCALL1(network_getinfo, void *)
+ZLOX_DECL_SYSCALL1(network_set_focus_task, void *)
+ZLOX_DECL_SYSCALL2(network_send, ZLOX_UINT8 *, ZLOX_UINT16)
+ZLOX_DECL_SYSCALL4(network_get_packet, void *, ZLOX_SINT32 , ZLOX_UINT8 *, ZLOX_UINT16)
+ZLOX_DECL_SYSCALL0(timer_get_tick)
+ZLOX_DECL_SYSCALL1(network_setinfo, void *)
+ZLOX_DECL_SYSCALL1(pci_get_devconf_lst, void *)
 
 ZLOX_SINT32 zlox_get_version(ZLOX_SINT32 * major, ZLOX_SINT32 * minor, ZLOX_SINT32 * revision);
 

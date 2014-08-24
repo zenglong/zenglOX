@@ -208,6 +208,12 @@ static ZLOX_VOID zlox_init_idt()
 	zlox_idt_set_gate(ZLOX_IRQ15, (ZLOX_UINT32)_zlox_irq_15, 0x08, 0x8E);
 
 	_zlox_idt_flush((ZLOX_UINT32)&idt_ptr);
+
+	// Send dummy EOI (end of interrupt) signal to the PICs.
+	// Send reset signal to slave.
+	zlox_outb(0xA0, 0x20);
+	// Send reset signal to master.
+	zlox_outb(0x20, 0x20);
 }
 
 static ZLOX_VOID zlox_idt_set_gate(ZLOX_UINT8 num, ZLOX_UINT32 base, ZLOX_UINT16 sel,

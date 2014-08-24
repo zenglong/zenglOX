@@ -47,6 +47,13 @@ typedef enum _SYSCALL_ENUM{
 	SYSCALL_VGA_SET_MODE,
 	SYSCALL_VGA_UPDATE_SCREEN,
 	SYSCALL_VGA_GET_TEXT_FONT,
+	SYSCALL_NETWORK_GETINFO,
+	SYSCALL_NETWORK_SET_FOCUS_TASK,
+	SYSCALL_NETWORK_SEND,
+	SYSCALL_NETWORK_GET_PACKET,
+	SYSCALL_TIMER_GET_TICK,
+	SYSCALL_NETWORK_SETINFO,
+	SYSCALL_PCI_GET_DEVCONF_LST,
 }SYSCALL_ENUM;
 
 #define DECL_SYSCALL0(fn) SINT32 syscall_##fn();
@@ -145,6 +152,13 @@ DECL_SYSCALL2(rename_fs, void *, CHAR *)
 DECL_SYSCALL1(vga_set_mode, UINT32)
 DECL_SYSCALL2(vga_update_screen, UINT8 *, UINT32)
 DECL_SYSCALL0(vga_get_text_font)
+DECL_SYSCALL1(network_getinfo, void *)
+DECL_SYSCALL1(network_set_focus_task, void *)
+DECL_SYSCALL2(network_send, UINT8 *, UINT16)
+DECL_SYSCALL4(network_get_packet, void *, SINT32 , UINT8 *, UINT16)
+DECL_SYSCALL0(timer_get_tick)
+DECL_SYSCALL1(network_setinfo, void *)
+DECL_SYSCALL1(pci_get_devconf_lst, void *)
 
 #endif // _SYSCALL_H_
 

@@ -1,4 +1,4 @@
-# A super simple BOCHSRC.TXT file which boots zenglOS in Bochs 2.4.5+
+# A super simple BOCHSRC.TXT file which boots zenglOX in Bochs 2.4.5+
 
 gdbstub:enabled=1,port=1234,text_base=0,data_base=0,bss_base=0
 log: bochsout.log
@@ -26,3 +26,6 @@ ata0-master: type=disk, path="hd.img", mode=growing, cylinders=1040, heads=16, s
 ata0-slave:  type=cdrom, path="zenglOX.iso", status=inserted
 boot: cdrom
 i440fxsupport: enabled=1
+
+e1000: enabled=1, mac=52:54:00:12:34:56, ethmod=linux, ethdev=eth0
+

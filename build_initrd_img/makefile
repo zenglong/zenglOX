@@ -3,11 +3,13 @@
 CC = @gcc
 
 CFLAGS = -std=gnu99 -ffreestanding -gdwarf-2 -g3 -Wall -Wextra
-DEPS = common.h syscall.h elf.h task.h kheap.h fs.h ata.h fdisk.h format.h vga.h
+DEPS = common.h syscall.h elf.h task.h kheap.h fs.h ata.h fdisk.h format.h vga.h network.h pci.h
 AS_TARGET = cpuid uname reboot shutdown
-C_TARGET = shell ls ps cat ata mount unmount testoverflow fdisk format file vga
+C_TARGET = shell ls ps cat ata mount unmount testoverflow fdisk format file vga lspci
+C_NET_TARGET = arp dhcp ipconf ping
 C_DEP_LIB = ld.so libcommon.so
-INITRD_FILES = licence.txt $(AS_TARGET) $(C_TARGET) $(C_DEP_LIB)
+C_DEP_NET_LIB = libnetwork.so
+INITRD_FILES = licence.txt $(AS_TARGET) $(C_TARGET) $(C_NET_TARGET) $(C_DEP_LIB) $(C_DEP_NET_LIB)
 
 initrd.img:make_initrd.c $(INITRD_FILES)
 	@echo 'building initrd.img'
@@ -32,13 +34,28 @@ $1: $1.o $(C_DEP_LIB)
 	$(CROSS_CC) -Wl,-emain -Wl,-dynamic-linker,ld.so -o $$@ $$< $(CROSS_CLINK_FLAGS) -L. -lcommon
 endef
 
+define C_NET_make_template
+# translation 
+$1: $1.o $(C_DEP_LIB) $(C_DEP_NET_LIB)
+	@echo "building $$@"
+	$(CROSS_CC) -Wl,-emain -Wl,-dynamic-linker,ld.so -o $$@ $$< $(CROSS_CLINK_FLAGS) -L. -lcommon -lnetwork
+endef
+
 $(foreach l, $(C_TARGET), \
   $(eval $(call C_make_template,$(l))) \
+)
+
+$(foreach l, $(C_NET_TARGET), \
+  $(eval $(call C_NET_make_template,$(l))) \
 )
 
 libcommon.so:common.o syscall.c
 	@echo "building $@"
 	$(CROSS_CC) -Wl,-shared -o $@ common.o syscall.c $(CROSS_CLINK_FLAGS)
+
+libnetwork.so:network.c network.h common.h libcommon.so
+	@echo "building $@"
+	$(CROSS_CC) -fPIC -Wl,-shared -o $@ network.c $(CROSS_CLINK_FLAGS) -L. -lcommon
 
 ld.so:ld.c ld.s common.h syscall.h elf.h task.h libcommon.so
 	@echo "building $@"
@@ -54,7 +71,7 @@ ld.so:ld.c ld.s common.h syscall.h elf.h task.h libcommon.so
 
 clean:
 	$(RM) $(RMFLAGS) *.o
-	$(RM) $(RMFLAGS) $(AS_TARGET) $(C_TARGET) $(C_DEP_LIB)
+	$(RM) $(RMFLAGS) $(AS_TARGET) $(C_TARGET) $(C_NET_TARGET) $(C_DEP_LIB) $(C_DEP_NET_LIB)
 	$(RM) $(RMFLAGS) make_initrd
 	$(RM) $(RMFLAGS) initrd.img
 

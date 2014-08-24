@@ -125,7 +125,14 @@ int main(TASK * task, int argc, char * argv[])
 		syscall_monitor_write_hex(kheap->end_address);
 		syscall_monitor_write(" size: ");
 		syscall_monitor_write_dec(kheap->end_address - kheap->start_address);
-		syscall_monitor_write(" byte \n");
+		syscall_monitor_write(" byte ");
+		if(kheap->end_address - kheap->start_address > 1024)
+		{
+			syscall_monitor_write("[");
+			syscall_monitor_write_dec((kheap->end_address - kheap->start_address) / 1024);
+			syscall_monitor_write(" Kbyte]");
+		}
+		syscall_monitor_put('\n');
 		syscall_monitor_write("kheap hole number: ");
 		syscall_monitor_write_dec(kheap->index.size);
 		syscall_monitor_put('\n');

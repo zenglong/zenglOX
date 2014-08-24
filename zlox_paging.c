@@ -107,6 +107,14 @@ ZLOX_VOID zlox_alloc_frame_do(ZLOX_PAGE *page, ZLOX_SINT32 is_kernel, ZLOX_SINT3
 	page->frame = tmp_page;
 }
 
+ZLOX_VOID zlox_alloc_frame_do_ext(ZLOX_PAGE *page, ZLOX_UINT32 frame_addr, ZLOX_SINT32 is_kernel, ZLOX_SINT32 is_writeable)
+{
+	page->present = 1;
+	page->rw = (is_writeable==1)?1:0;
+	page->user = (is_kernel==1)?0:1;
+	page->frame = frame_addr / 0x1000;
+}
+
 // Function to allocate a frame.
 ZLOX_VOID zlox_alloc_frame(ZLOX_PAGE *page, ZLOX_SINT32 is_kernel, ZLOX_SINT32 is_writeable)
 {
@@ -136,7 +144,7 @@ ZLOX_VOID zlox_free_frame(ZLOX_PAGE *page)
 	}
 }
 
-ZLOX_VOID zlox_init_paging()
+ZLOX_VOID zlox_init_paging_start()
 {
 	ZLOX_UINT32 i;
 	// The size of physical memory. For the moment we 
@@ -196,7 +204,10 @@ ZLOX_VOID zlox_init_paging()
 
 	// 在0xc0000000线性地址处创建一个新的堆,用于后面的zlox_kmalloc,zlox_kfree之类的分配及释放操作
 	kheap = zlox_create_heap(ZLOX_KHEAP_START,ZLOX_KHEAP_START+ZLOX_KHEAP_INITIAL_SIZE,0xCFFFF000, 0, 0);
+}
 
+ZLOX_VOID zlox_init_paging_end()
+{
 	current_directory = zlox_clone_directory(kernel_directory,1);
 	zlox_switch_page_directory(current_directory);
 }

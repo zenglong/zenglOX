@@ -14,6 +14,9 @@
 #define ZLOX_CK_CTRL		4
 
 extern ZLOX_TASK * input_focus_task;
+extern ZLOX_BOOL ps2_first_port_status;
+
+ZLOX_BOOL fire_key_interrupt = ZLOX_FALSE;
 
 ZLOX_VOID zlox_setleds();
 
@@ -139,6 +142,9 @@ static ZLOX_VOID zlox_keyboard_callback(/*ZLOX_ISR_REGISTERS * regs*/)
 	ZLOX_UINT32 key_code = 0;
 	ZLOX_UINT32 scanMaxNum = sizeof(scanToAscii_table) / (8 * 4);
 	
+	if(!fire_key_interrupt)
+		fire_key_interrupt = ZLOX_TRUE;
+
 	if(press_key == 0xE0)
 	{
 		switch(key)
@@ -249,11 +255,16 @@ ZLOX_VOID zlox_setleds()
 	while(zlox_inb(0x64) & 2);
 }
 
-ZLOX_VOID zlox_initKeyboard()
+ZLOX_BOOL zlox_initKeyboard()
 {
-	zlox_register_interrupt_callback(ZLOX_IRQ1,&zlox_keyboard_callback);
+	if(ps2_first_port_status == ZLOX_TRUE)
+	{
+		zlox_register_interrupt_callback(ZLOX_IRQ1,&zlox_keyboard_callback);
 
-	led_status = 0; /* All leds off */
-	zlox_setleds();
+		led_status = 0; /* All leds off */
+		zlox_setleds();
+		return ZLOX_TRUE;
+	}
+	return ZLOX_FALSE;
 }
 

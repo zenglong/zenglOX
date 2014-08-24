@@ -5,17 +5,47 @@
 #include "zlox_monitor.h"
 #include "zlox_task.h"
 
+extern ZLOX_BOOL fire_key_interrupt;
+
 ZLOX_UINT32 tick = 0;
+ZLOX_BOOL timer_switch_flag = ZLOX_TRUE;
+
+ZLOX_VOID zlox_test_ps2_keyboard();
 
 static ZLOX_VOID zlox_timer_callback(/*ZLOX_ISR_REGISTERS * regs*/)
 {
 	tick++;
+	if(!fire_key_interrupt)
+		zlox_test_ps2_keyboard();
 	//zlox_monitor_write("zenglOX Tick: ");
 	//zlox_monitor_write_dec(tick);
 	//zlox_monitor_write("\n");
 
-	zlox_switch_task();
-	
+	if(timer_switch_flag)
+		zlox_switch_task();
+}
+
+ZLOX_VOID zlox_timer_sleep(ZLOX_UINT32 Ticks, ZLOX_BOOL need_switch)
+{
+	ZLOX_UINT32 ETicks = 0;
+	ETicks = Ticks + tick;
+	ZLOX_BOOL orig_timer_switch_flag = timer_switch_flag;
+	if(need_switch == ZLOX_FALSE)
+		timer_switch_flag = ZLOX_FALSE;
+	else
+		timer_switch_flag = ZLOX_TRUE;
+	asm("pushf; sti");
+	do
+	{
+		asm("pause");
+	}while(ETicks > tick);
+	asm("popf");
+	timer_switch_flag = orig_timer_switch_flag;
+}
+
+ZLOX_UINT32 zlox_timer_get_tick()
+{
+	return tick;
 }
 
 ZLOX_VOID zlox_init_timer(ZLOX_UINT32 frequency)

@@ -13,6 +13,9 @@
 #include "zlox_iso.h"
 #include "zlox_zenglfs.h"
 #include "zlox_vga.h"
+#include "zlox_network.h"
+#include "zlox_time.h"
+#include "zlox_pci.h"
 
 static ZLOX_VOID zlox_syscall_handler(ZLOX_ISR_REGISTERS * regs);
 // _zlox_reboot() and _zlox_shutdown() is in zlox_shutdown.s
@@ -65,6 +68,13 @@ ZLOX_DEFN_SYSCALL2(rename_fs, ZLOX_SYSCALL_RENAME_FS, void *, ZLOX_CHAR *);
 ZLOX_DEFN_SYSCALL1(vga_set_mode, ZLOX_SYSCALL_VGA_SET_MODE, ZLOX_UINT32);
 ZLOX_DEFN_SYSCALL2(vga_update_screen, ZLOX_SYSCALL_VGA_UPDATE_SCREEN, ZLOX_UINT8 *, ZLOX_UINT32);
 ZLOX_DEFN_SYSCALL0(vga_get_text_font, ZLOX_SYSCALL_VGA_GET_TEXT_FONT);
+ZLOX_DEFN_SYSCALL1(network_getinfo, ZLOX_SYSCALL_NETWORK_GETINFO, void *);
+ZLOX_DEFN_SYSCALL1(network_set_focus_task, ZLOX_SYSCALL_NETWORK_SET_FOCUS_TASK, void *);
+ZLOX_DEFN_SYSCALL2(network_send, ZLOX_SYSCALL_NETWORK_SEND, ZLOX_UINT8 *, ZLOX_UINT16);
+ZLOX_DEFN_SYSCALL4(network_get_packet, ZLOX_SYSCALL_NETWORK_GET_PACKET, void *, ZLOX_SINT32 , ZLOX_UINT8 *, ZLOX_UINT16);
+ZLOX_DEFN_SYSCALL0(timer_get_tick, ZLOX_SYSCALL_TIMER_GET_TICK);
+ZLOX_DEFN_SYSCALL1(network_setinfo, ZLOX_SYSCALL_NETWORK_SETINFO, void *);
+ZLOX_DEFN_SYSCALL1(pci_get_devconf_lst, ZLOX_SYSCALL_PCI_GET_DEVCONF_LST, void *);
 
 static ZLOX_VOID * syscalls[ZLOX_SYSCALL_NUMBER] =
 {
@@ -109,6 +119,13 @@ static ZLOX_VOID * syscalls[ZLOX_SYSCALL_NUMBER] =
 	&zlox_vga_set_mode,
 	&zlox_vga_update_screen,
 	&zlox_vga_get_text_font,
+	&zlox_network_getinfo,
+	&zlox_network_set_focus_task,
+	&zlox_network_send,
+	&zlox_network_get_packet,
+	&zlox_timer_get_tick,
+	&zlox_network_setinfo,
+	&zlox_pci_get_devconf_lst,
 };
 
 ZLOX_UINT32 num_syscalls = ZLOX_SYSCALL_NUMBER;

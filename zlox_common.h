@@ -5,6 +5,8 @@
 
 // Some nice typedefs, to standardise sizes across platforms.
 // These typedefs are written for 32-bit X86.
+typedef unsigned long long int ZLOX_UINT64;
+typedef long long int ZLOX_SINT64;
 typedef unsigned int ZLOX_UINT32;
 typedef	int ZLOX_SINT32;
 typedef unsigned short ZLOX_UINT16;
@@ -27,6 +29,8 @@ typedef ZLOX_UINT8 ZLOX_BOOL;
 ZLOX_VOID zlox_outb(ZLOX_UINT16 port,ZLOX_UINT8 value);
 // Write a word(2 byte) out to the specified port.
 ZLOX_VOID zlox_outw(ZLOX_UINT16 port,ZLOX_UINT16 value);
+// Write a dword(4 byte) out to the specified port.
+ZLOX_VOID zlox_outl(ZLOX_UINT16 port, ZLOX_UINT32 value);
 // writes Count words (16-bit) from memory location Data to I/O port
 ZLOX_VOID zlox_outsw(ZLOX_UINT16 port, ZLOX_UINT16 * Data, ZLOX_UINT32 Count);
 
@@ -34,6 +38,8 @@ ZLOX_VOID zlox_outsw(ZLOX_UINT16 port, ZLOX_UINT16 * Data, ZLOX_UINT32 Count);
 ZLOX_UINT8 zlox_inb(ZLOX_UINT16 port);
 //read a word(2 byte) from the specified port.
 ZLOX_UINT16 zlox_inw(ZLOX_UINT16 port);
+//read a dword(4 byte) from the specified port.
+ZLOX_UINT32 zlox_inl(ZLOX_UINT16 port);
 //reads Count words (16-bit) from I/O port to memory location Data
 ZLOX_VOID zlox_insw(ZLOX_UINT16 port, ZLOX_UINT16 * Data, ZLOX_UINT32 Count);
 

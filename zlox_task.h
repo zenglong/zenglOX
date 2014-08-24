@@ -20,6 +20,7 @@ typedef enum _ZLOX_MSG_TYPE
 {
 	ZLOX_MT_KEYBOARD,
 	ZLOX_MT_TASK_FINISH,
+	ZLOX_MT_NET_PACKET,
 }ZLOX_MSG_TYPE;
 
 typedef enum _ZLOX_MSG_KB_KEY
@@ -62,6 +63,7 @@ typedef struct _ZLOX_TASK_MSG
 {
 	ZLOX_MSG_TYPE type;
 	ZLOX_TASK_MSG_KEYBOARD keyboard;
+	ZLOX_SINT32 packet_idx;
 	ZLOX_TASK_MSG_FINISH finish_task; // 消息中存储的结束任务的相关信息
 }ZLOX_TASK_MSG;
 

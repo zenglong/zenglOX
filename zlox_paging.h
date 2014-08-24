@@ -53,11 +53,15 @@ struct _ZLOX_PAGE_DIRECTORY
 	ZLOX_UINT32 physicalAddr;
 };
 
-ZLOX_VOID zlox_init_paging();
+ZLOX_VOID zlox_init_paging_start();
+
+ZLOX_VOID zlox_init_paging_end();
 
 ZLOX_VOID zlox_switch_page_directory(ZLOX_PAGE_DIRECTORY *dir);
 
 ZLOX_VOID zlox_alloc_frame_do(ZLOX_PAGE *page, ZLOX_SINT32 is_kernel, ZLOX_SINT32 is_writeable);
+
+ZLOX_VOID zlox_alloc_frame_do_ext(ZLOX_PAGE *page, ZLOX_UINT32 frame_addr, ZLOX_SINT32 is_kernel, ZLOX_SINT32 is_writeable);
 
 ZLOX_VOID zlox_alloc_frame(ZLOX_PAGE *page, ZLOX_SINT32 is_kernel, ZLOX_SINT32 is_writeable);
 

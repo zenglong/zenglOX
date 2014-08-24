@@ -10,6 +10,7 @@ typedef enum _MSG_TYPE
 {
 	MT_KEYBOARD,
 	MT_TASK_FINISH,
+	MT_NET_PACKET,
 }MSG_TYPE;
 
 typedef enum _MSG_KB_KEY
@@ -54,6 +55,7 @@ typedef struct _TASK_MSG
 {
 	MSG_TYPE type;
 	TASK_MSG_KEYBOARD keyboard;
+	SINT32 packet_idx;
 	TASK_MSG_FINISH finish_task; // 消息中存储的结束任务的相关信息
 }TASK_MSG;
 
