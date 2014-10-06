@@ -38,6 +38,10 @@ ZLOX_VOID zlox_move_stack(ZLOX_VOID * new_stack_start, ZLOX_UINT32 size);
 ZLOX_SINT32 zlox_push_pid(ZLOX_SINT32 pid);
 ZLOX_SINT32 zlox_pop_pid(ZLOX_BOOL needPop);
 
+//zlox_monitor.c
+ZLOX_VOID zlox_monitor_set_single(ZLOX_BOOL flag);
+extern ZLOX_BOOL single_line_out;
+
 ZLOX_VOID zlox_initialise_tasking()
 {
 	// Rather important stuff happening, no interrupts please!
@@ -55,6 +59,8 @@ ZLOX_VOID zlox_initialise_tasking()
 	current_task->eip = 0;
 	current_task->init_esp = 0xE0000000;
 	current_task->page_directory = current_directory;
+	current_task->heap = zlox_create_uheap(ZLOX_UHEAP_START, ZLOX_UHEAP_START + ZLOX_UHEAP_INITIAL_SIZE, ZLOX_UHEAP_MAX,
+						0, 0);
 	current_task->next = 0;
 	current_task->prev = 0;
 	current_task->parent = 0;
@@ -228,6 +234,7 @@ ZLOX_SINT32 zlox_fork()
 	new_task->eip = 0;
 	new_task->init_esp = current_task->init_esp;
 	new_task->page_directory = directory;
+	new_task->heap = 0;
 	new_task->kernel_stack = current_task->kernel_stack;
 	zlox_memset((ZLOX_UINT8 *)(&new_task->msglist),0,sizeof(ZLOX_TASK_MSG_LIST));
 	zlox_memset((ZLOX_UINT8 *)(&new_task->link_maps),0,sizeof(ZLOX_ELF_LINK_MAP_LIST));
@@ -277,6 +284,8 @@ ZLOX_SINT32 zlox_fork()
 	else
 	{
 		// We are the child.
+		current_task->heap = zlox_create_uheap(ZLOX_UHEAP_START, ZLOX_UHEAP_START + ZLOX_UHEAP_INITIAL_SIZE, ZLOX_UHEAP_MAX,
+						0, 0);
 		return 0;
 	}
 }
@@ -468,6 +477,9 @@ ZLOX_SINT32 zlox_exit(ZLOX_SINT32 exit_code)
 		network_focus_task = 0;
 	}
 
+	if(single_line_out) //退出单行输出模式
+		zlox_monitor_set_single(ZLOX_FALSE);
+
 	current_task->status = ZLOX_TS_FINISH;
 	ascii_msg.type = ZLOX_MT_TASK_FINISH;
 	ascii_msg.finish_task.exit_task = (ZLOX_TASK *)current_task;
@@ -486,6 +498,7 @@ ZLOX_SINT32 zlox_finish(ZLOX_TASK * task)
 		task->status != ZLOX_TS_FINISH)
 		return -1;
 	zlox_free_directory(task->page_directory);
+	zlox_kfree(task->heap);
 	zlox_kfree(task->msglist.ptr);
 	zlox_elf_free_lnk_maplst(&task->link_maps);
 	zlox_kfree(task->link_maps.ptr);

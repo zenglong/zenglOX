@@ -7,6 +7,7 @@ ZLOX_UINT16 * video_memory = (ZLOX_UINT16 *)0xB8000;
 // Stores the cursor position.
 ZLOX_UINT8 cursor_x = 0;
 ZLOX_UINT8 cursor_y = 0;
+ZLOX_BOOL single_line_out = ZLOX_FALSE;
 
 // Updates the hardware cursor.
 static ZLOX_VOID zlox_move_cursor()
@@ -54,6 +55,54 @@ static ZLOX_VOID zlox_scroll()
 	}
 }
 
+// 删除当前光标所在的行
+ZLOX_SINT32 zlox_monitor_del_line()
+{
+	// Get a space character with the default colour attributes.
+	ZLOX_UINT8 attributeByte = (0 /*black*/ << 4) | (15 /*white*/ & 0x0F);
+	ZLOX_UINT16 blank = 0x20 /* space */ | (attributeByte << 8);
+
+	ZLOX_UINT16 * d = video_memory + cursor_y * 80;
+	ZLOX_UINT16 * s = cursor_y < 24 ? (d + 80) : (d);
+	ZLOX_UINT32 bytes = (24 - cursor_y) * 80 * 2;
+	if(cursor_y < 24)
+	{
+		zlox_memcpy((ZLOX_UINT8 *)d, (ZLOX_UINT8 *)s, bytes);
+	}
+	ZLOX_SINT32 i;
+	// The last line should now be blank. Do this by writing
+	// 80 spaces to it.
+	for (i = 24*80; i < 25*80; i++)
+	{
+		video_memory[i] = blank;
+	}
+	return 0;
+}
+
+// 在当前光标所在的行之前插入一个新行
+ZLOX_SINT32 zlox_monitor_insert_line()
+{
+	// Get a space character with the default colour attributes.
+	ZLOX_UINT8 attributeByte = (0 /*black*/ << 4) | (15 /*white*/ & 0x0F);
+	ZLOX_UINT16 blank = 0x20 /* space */ | (attributeByte << 8);
+
+	ZLOX_UINT16 * s_start = video_memory + cursor_y * 80;
+	ZLOX_UINT16 * d_start = cursor_y < 24 ? (s_start + 80) : (s_start);
+	ZLOX_UINT32 bytes = (24 - cursor_y) * 80 * 2;
+	ZLOX_UINT8 * s_end = (bytes != 0) ? ((ZLOX_UINT8 *)s_start + bytes - 1) : ((ZLOX_UINT8 *)s_start + 80 * 2 - 1);
+	ZLOX_UINT8 * d_end = (bytes != 0) ? ((ZLOX_UINT8 *)d_start + bytes - 1) : s_end;
+	if(cursor_y < 24)
+	{
+		zlox_reverse_memcpy(d_end, s_end, bytes);
+	}
+	ZLOX_SINT32 i;
+	for(i = 0; i < 80 ;i++)
+	{
+		s_start[i] = blank;
+	}
+	return 0;
+}
+
 // Writes a single character out to the screen.
 ZLOX_VOID zlox_monitor_put(ZLOX_CHAR c)
 {
@@ -70,9 +119,18 @@ ZLOX_VOID zlox_monitor_put(ZLOX_CHAR c)
 	ZLOX_UINT16 *location;
 
 	// Handle a backspace, by moving the cursor back one space
-	if (c == 0x08 && cursor_x)
+	if (c == 0x08)
 	{
-		cursor_x--;
+		if(cursor_x)
+			cursor_x--;
+		else if(cursor_x == 0)
+		{
+			if(cursor_y != 0)
+			{
+				cursor_y = (cursor_y - 1);
+				cursor_x = 79;
+			}
+		}
 	}
 
 	// Handle a tab by increasing the cursor's X, but only to a point
@@ -110,8 +168,24 @@ ZLOX_VOID zlox_monitor_put(ZLOX_CHAR c)
 		cursor_y ++;
 	}
 
-	// Scroll the screen if needed.
-	zlox_scroll();
+	if(!single_line_out)
+	{
+		// Scroll the screen if needed.
+		zlox_scroll();
+		// Move the hardware cursor.
+		zlox_move_cursor();
+	}
+}
+
+ZLOX_VOID zlox_monitor_set_single(ZLOX_BOOL flag)
+{
+	single_line_out = flag;
+}
+
+ZLOX_VOID zlox_monitor_set_cursor(ZLOX_UINT8 x, ZLOX_UINT8 y)
+{
+	cursor_x = x;
+	cursor_y = y;
 	// Move the hardware cursor.
 	zlox_move_cursor();
 }
@@ -139,9 +213,33 @@ ZLOX_VOID zlox_monitor_clear()
 ZLOX_VOID zlox_monitor_write(const ZLOX_CHAR * c)
 {
 	ZLOX_SINT32 i = 0;
-	while (c[i])
+	if(!single_line_out)
 	{
-		zlox_monitor_put(c[i++]);
+		while (c[i])
+		{
+			zlox_monitor_put(c[i++]);
+		}
+	}
+	else
+	{
+		ZLOX_UINT8 orig_x = cursor_x;
+		ZLOX_UINT8 orig_y = cursor_y;
+		while(c[i] && cursor_y == orig_y)
+		{
+			zlox_monitor_put(c[i++]);
+		}
+		// 将行尾清空为空格
+		if(cursor_y == orig_y)
+		{
+			ZLOX_CHAR tmp_c = ' ';
+			while(cursor_y == orig_y)
+			{
+				zlox_monitor_put(tmp_c);
+			}
+		}
+		cursor_x = orig_x;
+		cursor_y = orig_y;
+		zlox_move_cursor();
 	}
 }
 

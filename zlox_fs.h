@@ -56,8 +56,11 @@ extern ZLOX_FS_NODE * fs_root; // The root of the filesystem.
 ZLOX_UINT32 zlox_read_fs(ZLOX_FS_NODE *node, ZLOX_UINT32 offset, ZLOX_UINT32 size, ZLOX_UINT8 *buffer);
 ZLOX_UINT32 zlox_write_fs(ZLOX_FS_NODE *node, ZLOX_UINT32 offset, ZLOX_UINT32 size, ZLOX_UINT8 *buffer);
 ZLOX_FS_NODE * zlox_writedir_fs(ZLOX_FS_NODE *node, ZLOX_CHAR *name, ZLOX_UINT16 type);
+ZLOX_SINT32 zlox_writedir_fs_safe(ZLOX_FS_NODE * node, ZLOX_CHAR *name, ZLOX_UINT16 type, ZLOX_FS_NODE * output);
 ZLOX_DIRENT * zlox_readdir_fs(ZLOX_FS_NODE *node, ZLOX_UINT32 index);
+ZLOX_SINT32 zlox_readdir_fs_safe(ZLOX_FS_NODE *node, ZLOX_UINT32 index, ZLOX_DIRENT * output);
 ZLOX_FS_NODE * zlox_finddir_fs(ZLOX_FS_NODE *node, ZLOX_CHAR *name);
+ZLOX_SINT32 zlox_finddir_fs_safe(ZLOX_FS_NODE *node, ZLOX_CHAR *name, ZLOX_FS_NODE * output);
 ZLOX_UINT32 zlox_remove_fs(ZLOX_FS_NODE *node);
 ZLOX_UINT32 zlox_rename_fs(ZLOX_FS_NODE *node, ZLOX_CHAR * rename);
 // get the root of the filesystem.

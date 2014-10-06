@@ -98,8 +98,9 @@ ZLOX_SINT32 zlox_kernel_main(ZLOX_MULTIBOOT * mboot_ptr, ZLOX_UINT32 initial_sta
 	zlox_syscall_monitor_write_dec(revision);
 	zlox_syscall_monitor_write("! I will execve a shell\n"
 				"you can input some command: ls , ps , cat , uname , cpuid , shell ,"
-				" reboot , shutdown , ata , mount , unmount , testoverflow , fdisk , format , file , vga , dhcp ...\n\n"
-				" this version we have e1000 driver, we can use network! please see www.zengl.com \n");
+				" reboot , shutdown , ata , mount , unmount , testoverflow , fdisk , "
+				"format , file , vga , dhcp isoget...\n\n"
+				" this version we have ee(easy editor), libc.so and so on... \n\n");
 
 	zlox_syscall_execve("shell");
 

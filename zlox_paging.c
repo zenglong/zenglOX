@@ -203,7 +203,7 @@ ZLOX_VOID zlox_init_paging_start()
 	zlox_switch_page_directory(kernel_directory);
 
 	// 在0xc0000000线性地址处创建一个新的堆,用于后面的zlox_kmalloc,zlox_kfree之类的分配及释放操作
-	kheap = zlox_create_heap(ZLOX_KHEAP_START,ZLOX_KHEAP_START+ZLOX_KHEAP_INITIAL_SIZE,0xCFFFF000, 0, 0);
+	kheap = zlox_create_heap(ZLOX_KHEAP_START,ZLOX_KHEAP_START+ZLOX_KHEAP_INITIAL_SIZE,0xCFFFF000, 0, 1);
 }
 
 ZLOX_VOID zlox_init_paging_end()
@@ -463,10 +463,16 @@ ZLOX_PAGE_DIRECTORY * zlox_clone_directory(ZLOX_PAGE_DIRECTORY * src , ZLOX_UINT
 	zlox_memset((ZLOX_UINT8 *)dir, 0, sizeof(ZLOX_PAGE_DIRECTORY));
 
 	// Get the offset of tablesPhysical from the start of the page_directory_t structure.
-	ZLOX_UINT32 offset = (ZLOX_UINT32)dir->tablesPhysical - (ZLOX_UINT32)dir;
+	//ZLOX_UINT32 offset = (ZLOX_UINT32)dir->tablesPhysical - (ZLOX_UINT32)dir;
 
 	// Then the physical address of dir->tablesPhysical is:
-	dir->physicalAddr = phys + offset;
+	//dir->physicalAddr = phys + offset;
+
+	// 因为一个8K的虚拟内存空间，可以对应两个非连续的物理内存页面，因此简单的用phys + offset得到的结果不一定正确, 
+	// 尤其是在多任务环境下，必须用下面的方法来得出实际的正确的物理内存地址，否则，错误的cr3页表地址会让整个系统直接崩溃掉!
+	ZLOX_UINT32 * phy_page = (ZLOX_UINT32 *)zlox_get_page((ZLOX_UINT32)dir->tablesPhysical, 0,
+								 current_directory);
+	dir->physicalAddr = ((*phy_page) & 0xfffff000);
 
 	// Go through each page table. If the page table is in the kernel directory, do not make a new copy.
 	ZLOX_SINT32 i;

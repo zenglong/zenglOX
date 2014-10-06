@@ -54,6 +54,16 @@ typedef enum _SYSCALL_ENUM{
 	SYSCALL_TIMER_GET_TICK,
 	SYSCALL_NETWORK_SETINFO,
 	SYSCALL_PCI_GET_DEVCONF_LST,
+	SYSCALL_MONITOR_CLEAR,
+	SYSCALL_MONITOR_SET_SINGLE,
+	SYSCALL_MONITOR_SET_CURSOR,
+	SYSCALL_WRITEDIR_FS_SAFE,
+	SYSCALL_READDIR_FS_SAFE,
+	SYSCALL_FINDDIR_FS_SAFE,
+	SYSCALL_GET_CONTROL_KEYS,
+	SYSCALL_RELEASE_CONTROL_KEYS,
+	SYSCALL_MONITOR_DEL_LINE,
+	SYSCALL_MONITOR_INSERT_LINE,
 }SYSCALL_ENUM;
 
 #define DECL_SYSCALL0(fn) SINT32 syscall_##fn();
@@ -159,6 +169,16 @@ DECL_SYSCALL4(network_get_packet, void *, SINT32 , UINT8 *, UINT16)
 DECL_SYSCALL0(timer_get_tick)
 DECL_SYSCALL1(network_setinfo, void *)
 DECL_SYSCALL1(pci_get_devconf_lst, void *)
+DECL_SYSCALL0(monitor_clear)
+DECL_SYSCALL1(monitor_set_single, BOOL)
+DECL_SYSCALL2(monitor_set_cursor, UINT8, UINT8)
+DECL_SYSCALL4(writedir_fs_safe, void * , CHAR *, UINT16 , void *)
+DECL_SYSCALL3(readdir_fs_safe, void * , UINT32 , void *)
+DECL_SYSCALL3(finddir_fs_safe, void *, CHAR *, void *)
+DECL_SYSCALL0(get_control_keys)
+DECL_SYSCALL1(release_control_keys, UINT8)
+DECL_SYSCALL0(monitor_del_line)
+DECL_SYSCALL0(monitor_insert_line)
 
 #endif // _SYSCALL_H_
 

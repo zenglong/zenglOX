@@ -6,7 +6,7 @@
 #include "zlox_keyboard.h"
 #include "zlox_elf.h"
 #include "zlox_task.h"
-#include "zlox_kheap.h"
+#include "zlox_uheap.h"
 #include "zlox_fs.h"
 #include "zlox_paging.h"
 #include "zlox_ata.h"
@@ -75,6 +75,16 @@ ZLOX_DEFN_SYSCALL4(network_get_packet, ZLOX_SYSCALL_NETWORK_GET_PACKET, void *, 
 ZLOX_DEFN_SYSCALL0(timer_get_tick, ZLOX_SYSCALL_TIMER_GET_TICK);
 ZLOX_DEFN_SYSCALL1(network_setinfo, ZLOX_SYSCALL_NETWORK_SETINFO, void *);
 ZLOX_DEFN_SYSCALL1(pci_get_devconf_lst, ZLOX_SYSCALL_PCI_GET_DEVCONF_LST, void *);
+ZLOX_DEFN_SYSCALL0(monitor_clear, ZLOX_SYSCALL_MONITOR_CLEAR);
+ZLOX_DEFN_SYSCALL1(monitor_set_single, ZLOX_SYSCALL_MONITOR_SET_SINGLE, ZLOX_BOOL);
+ZLOX_DEFN_SYSCALL2(monitor_set_cursor, ZLOX_SYSCALL_MONITOR_SET_CURSOR, ZLOX_UINT8, ZLOX_UINT8);
+ZLOX_DEFN_SYSCALL4(writedir_fs_safe, ZLOX_SYSCALL_WRITEDIR_FS_SAFE, void * , ZLOX_CHAR *, ZLOX_UINT16 , void *);
+ZLOX_DEFN_SYSCALL3(readdir_fs_safe, ZLOX_SYSCALL_READDIR_FS_SAFE, void * , ZLOX_UINT32 , void *);
+ZLOX_DEFN_SYSCALL3(finddir_fs_safe, ZLOX_SYSCALL_FINDDIR_FS_SAFE, void *, ZLOX_CHAR *, void *);
+ZLOX_DEFN_SYSCALL0(get_control_keys, ZLOX_SYSCALL_GET_CONTROL_KEYS);
+ZLOX_DEFN_SYSCALL1(release_control_keys, ZLOX_SYSCALL_RELEASE_CONTROL_KEYS, ZLOX_UINT8);
+ZLOX_DEFN_SYSCALL0(monitor_del_line, ZLOX_SYSCALL_MONITOR_DEL_LINE);
+ZLOX_DEFN_SYSCALL0(monitor_insert_line, ZLOX_SYSCALL_MONITOR_INSERT_LINE);
 
 static ZLOX_VOID * syscalls[ZLOX_SYSCALL_NUMBER] =
 {
@@ -126,6 +136,16 @@ static ZLOX_VOID * syscalls[ZLOX_SYSCALL_NUMBER] =
 	&zlox_timer_get_tick,
 	&zlox_network_setinfo,
 	&zlox_pci_get_devconf_lst,
+	&zlox_monitor_clear,
+	&zlox_monitor_set_single,
+	&zlox_monitor_set_cursor,
+	&zlox_writedir_fs_safe,
+	&zlox_readdir_fs_safe,
+	&zlox_finddir_fs_safe,
+	&zlox_get_control_keys,
+	&zlox_release_control_keys,
+	&zlox_monitor_del_line,
+	&zlox_monitor_insert_line,
 };
 
 ZLOX_UINT32 num_syscalls = ZLOX_SYSCALL_NUMBER;

@@ -5,10 +5,10 @@
 
 #include "zlox_common.h"
 
-#define ZLOX_SYSCALL_NUMBER 48
+#define ZLOX_SYSCALL_NUMBER 58
 
 #define ZLOX_MAJOR_VERSION 2 //zenglOX 主版本号
-#define ZLOX_MINOR_VERSION 0 //zenglOX 子版本号
+#define ZLOX_MINOR_VERSION 2 //zenglOX 子版本号
 #define ZLOX_REVISION 0      //zenglOX 修正版本号
 
 typedef enum _ZLOX_SYSCALL_ENUM{
@@ -60,6 +60,16 @@ typedef enum _ZLOX_SYSCALL_ENUM{
 	ZLOX_SYSCALL_TIMER_GET_TICK,
 	ZLOX_SYSCALL_NETWORK_SETINFO,
 	ZLOX_SYSCALL_PCI_GET_DEVCONF_LST,
+	ZLOX_SYSCALL_MONITOR_CLEAR,
+	ZLOX_SYSCALL_MONITOR_SET_SINGLE,
+	ZLOX_SYSCALL_MONITOR_SET_CURSOR,
+	ZLOX_SYSCALL_WRITEDIR_FS_SAFE,
+	ZLOX_SYSCALL_READDIR_FS_SAFE,
+	ZLOX_SYSCALL_FINDDIR_FS_SAFE,
+	ZLOX_SYSCALL_GET_CONTROL_KEYS,
+	ZLOX_SYSCALL_RELEASE_CONTROL_KEYS,
+	ZLOX_SYSCALL_MONITOR_DEL_LINE,
+	ZLOX_SYSCALL_MONITOR_INSERT_LINE,
 }ZLOX_SYSCALL_ENUM;
 
 ZLOX_VOID zlox_initialise_syscalls();
@@ -167,6 +177,16 @@ ZLOX_DECL_SYSCALL4(network_get_packet, void *, ZLOX_SINT32 , ZLOX_UINT8 *, ZLOX_
 ZLOX_DECL_SYSCALL0(timer_get_tick)
 ZLOX_DECL_SYSCALL1(network_setinfo, void *)
 ZLOX_DECL_SYSCALL1(pci_get_devconf_lst, void *)
+ZLOX_DECL_SYSCALL0(monitor_clear)
+ZLOX_DECL_SYSCALL1(monitor_set_single, ZLOX_BOOL)
+ZLOX_DECL_SYSCALL2(monitor_set_cursor, ZLOX_UINT8, ZLOX_UINT8)
+ZLOX_DECL_SYSCALL4(writedir_fs_safe, void * , ZLOX_CHAR *, ZLOX_UINT16 , void *)
+ZLOX_DECL_SYSCALL3(readdir_fs_safe, void * , ZLOX_UINT32 , void *)
+ZLOX_DECL_SYSCALL3(finddir_fs_safe, void *, ZLOX_CHAR *, void *)
+ZLOX_DECL_SYSCALL0(get_control_keys)
+ZLOX_DECL_SYSCALL1(release_control_keys, ZLOX_UINT8)
+ZLOX_DECL_SYSCALL0(monitor_del_line)
+ZLOX_DECL_SYSCALL0(monitor_insert_line)
 
 ZLOX_SINT32 zlox_get_version(ZLOX_SINT32 * major, ZLOX_SINT32 * minor, ZLOX_SINT32 * revision);
 

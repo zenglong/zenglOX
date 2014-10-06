@@ -45,6 +45,8 @@ ZLOX_VOID zlox_insw(ZLOX_UINT16 port, ZLOX_UINT16 * Data, ZLOX_UINT32 Count);
 
 // Copy len bytes from src to dest.
 ZLOX_VOID zlox_memcpy(ZLOX_UINT8 *dest, const ZLOX_UINT8 *src, ZLOX_UINT32 len);
+// 以反向，向低地址方向进行拷贝
+ZLOX_VOID zlox_reverse_memcpy(ZLOX_UINT8 *dest, const ZLOX_UINT8 *src, ZLOX_UINT32 len);
 // Write len copies of val into dest.
 ZLOX_VOID zlox_memset(ZLOX_UINT8 *dest, ZLOX_UINT8 val, ZLOX_UINT32 len);
 // Compare two strings. return 0 if they are equal or 1 otherwise.

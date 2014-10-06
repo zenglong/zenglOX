@@ -2,26 +2,44 @@
 	a placement malloc() for use before the heap is 
 	initialised. */
 
-#include "zlox_kheap.h"
+#include "zlox_uheap.h"
 #include "zlox_paging.h"
+#include "zlox_monitor.h"
 
-// end is defined in the linker script.
-extern ZLOX_UINT32 _end;
-extern ZLOX_PAGE_DIRECTORY * kernel_directory;
-ZLOX_UINT32 placement_address = (ZLOX_UINT32)&_end;
-ZLOX_HEAP * kheap = 0;
+// Defined in zlox_task.c
+extern ZLOX_TASK * current_task;
 
-ZLOX_UINT32 zlox_kmalloc_int(ZLOX_UINT32 sz, ZLOX_SINT32 align, ZLOX_UINT32 *phys)
+ZLOX_VOID * zlox_uheap_alloc(ZLOX_UINT32 size, ZLOX_UINT8 page_align, ZLOX_HEAP * heap);
+ZLOX_VOID zlox_uheap_free(ZLOX_VOID *p, ZLOX_HEAP *heap);
+
+ZLOX_VOID zlox_uheap_panic_assert(const ZLOX_CHAR *file, ZLOX_UINT32 line, const ZLOX_CHAR * desc)
 {
-	ZLOX_UINT32 tmp;
+	// We encountered a massive problem and have to stop.
+	asm volatile("cli"); // Disable interrupts.
+
+	zlox_monitor_write("ASSERTION-FAILED(");
+	zlox_monitor_write((const ZLOX_CHAR *)desc);
+	zlox_monitor_write(") at ");
+	zlox_monitor_write((const ZLOX_CHAR *)file);
+	zlox_monitor_write(":");
+	zlox_monitor_write_dec(line);
+	zlox_monitor_write("\n");
+	
+	zlox_exit(-1);
+}
+
+#define ZLOX_ASSERT_UHEAP(b) ((b) ? (void)0 : zlox_uheap_panic_assert(__FILE__, __LINE__, #b))
+
+ZLOX_UINT32 zlox_uheap_malloc_int(ZLOX_UINT32 sz, ZLOX_SINT32 align, ZLOX_UINT32 *phys)
+{
 	// 是否初始化了堆,如果初始化了,则使用堆来分配内存
-	if (kheap != 0)
+	if (current_task->heap != 0)
 	{
-		ZLOX_VOID *addr = zlox_alloc(sz, (ZLOX_UINT8)align, kheap);
+		ZLOX_VOID *addr = zlox_uheap_alloc(sz, (ZLOX_UINT8)align, current_task->heap);
 		if (phys != 0)
 		{
 			// 从分页表里获取addr线性地址对应的实际的物理内存地址
-			ZLOX_PAGE *page = zlox_get_page((ZLOX_UINT32)addr, 0, kernel_directory);
+			ZLOX_PAGE *page = zlox_get_page((ZLOX_UINT32)addr, 0, current_task->page_directory);
 			*phys = (page->frame * 0x1000) + ((ZLOX_UINT32)addr & 0xFFF);
 		}
 		// 返回线性地址
@@ -29,100 +47,31 @@ ZLOX_UINT32 zlox_kmalloc_int(ZLOX_UINT32 sz, ZLOX_SINT32 align, ZLOX_UINT32 *phy
 	}
 	else
 	{
-		// This will eventually call malloc() on the kernel heap.
-		// For now, though, we just assign memory at placement_address
-		// and increment it by sz. Even when we've coded our kernel
-		// heap, this will be useful for use before the heap is initialised.
-		if (align == 1 && (placement_address & 0x00000FFF) )
-		{
-			// Align the placement address;
-			placement_address &= 0xFFFFF000;
-			placement_address += 0x1000;
-		}
-		if (phys)
-		{
-			*phys = placement_address;
-		}
-		tmp = placement_address;
-		placement_address += sz;
-		return tmp;
+		return 0;
 	}
-}
-
-ZLOX_VOID zlox_kfree(ZLOX_VOID *p)
-{
-	zlox_free(p, kheap);
-}
-
-ZLOX_UINT32 zlox_kmalloc_a(ZLOX_UINT32 sz)
-{
-	return zlox_kmalloc_int(sz, 1, 0);
-}
-
-ZLOX_UINT32 zlox_kmalloc_p(ZLOX_UINT32 sz, ZLOX_UINT32 *phys)
-{
-	return zlox_kmalloc_int(sz, 0, phys);
-}
-
-ZLOX_UINT32 zlox_kmalloc_ap(ZLOX_UINT32 sz, ZLOX_UINT32 *phys)
-{
-	return zlox_kmalloc_int(sz, 1, phys);
-}
-
-ZLOX_UINT32 zlox_kmalloc(ZLOX_UINT32 sz)
-{
-	return zlox_kmalloc_int(sz, 0, 0);
 }
 
 // 给用户态程式使用的分配堆函数
-/*ZLOX_UINT32 zlox_umalloc(ZLOX_UINT32 sz)
+ZLOX_UINT32 zlox_umalloc(ZLOX_UINT32 sz)
 {
-	ZLOX_PAGE * page;
-	ZLOX_UINT32 ret = zlox_kmalloc_int(sz, 0, 0);
-	ZLOX_UINT32 i;
-
-	for(i=ret; i < ret + sz ;i+=0x1000)
-	{
-		page = zlox_get_page(i, 0, kernel_directory);
-		if(page->rw == 0)
-			page->rw = 1;
-	}
-
-	// Flush the TLB(translation lookaside buffer) by reading and writing the page directory address again.
-	ZLOX_UINT32 pd_addr;
-	asm volatile("mov %%cr3, %0" : "=r" (pd_addr));
-	asm volatile("mov %0, %%cr3" : : "r" (pd_addr));
-
+	ZLOX_UINT32 ret = zlox_uheap_malloc_int(sz, 0, 0);
 	return ret;
-}*/
+}
 
 // 给用户态程式使用的释放堆函数
-/*ZLOX_VOID zlox_ufree(ZLOX_VOID *p)
+ZLOX_VOID zlox_ufree(ZLOX_VOID *p)
 {
-	ZLOX_PAGE * page;
-	ZLOX_KHP_HEADER * header = (ZLOX_KHP_HEADER *)((ZLOX_UINT32)p - sizeof(ZLOX_KHP_HEADER));
-	ZLOX_UINT32 sz = header->size - sizeof(ZLOX_KHP_HEADER) - sizeof(ZLOX_KHP_FOOTER);
-	ZLOX_UINT32 i;
-	for(i=(ZLOX_UINT32)p; i < (ZLOX_UINT32)p + sz ;i+=0x1000)
-	{
-		page = zlox_get_page(i, 0, kernel_directory);
-		if(page->rw == 1)
-			page->rw = 0;
-	}
-
-	// Flush the TLB(translation lookaside buffer) by reading and writing the page directory address again.
-	ZLOX_UINT32 pd_addr;
-	asm volatile("mov %%cr3, %0" : "=r" (pd_addr));
-	asm volatile("mov %0, %%cr3" : : "r" (pd_addr));
-
-	zlox_free(p, kheap);
-}*/
+	if (current_task->heap != 0)
+		zlox_uheap_free(p, current_task->heap);
+	else
+		return;
+}
 
 // 当堆空间不足时,扩展堆的物理内存 
-static ZLOX_VOID zlox_expand(ZLOX_UINT32 new_size, ZLOX_HEAP * heap)
+static ZLOX_VOID zlox_uheap_expand(ZLOX_UINT32 new_size, ZLOX_HEAP * heap)
 {
 	// Sanity check.
-	ZLOX_ASSERT(new_size > heap->end_address - heap->start_address);
+	ZLOX_ASSERT_UHEAP(new_size > heap->end_address - heap->start_address);
 
 	// Get the nearest following page boundary.
 	// 扩展的尺寸必须是页对齐的
@@ -133,7 +82,7 @@ static ZLOX_VOID zlox_expand(ZLOX_UINT32 new_size, ZLOX_HEAP * heap)
 	}
 
 	// Make sure we are not overreaching ourselves.
-	ZLOX_ASSERT(heap->start_address + new_size <= heap->max_address);
+	ZLOX_ASSERT_UHEAP(heap->start_address + new_size <= heap->max_address);
 
 	// This should always be on a page boundary.
 	ZLOX_UINT32 old_size = heap->end_address-heap->start_address;
@@ -142,7 +91,7 @@ static ZLOX_VOID zlox_expand(ZLOX_UINT32 new_size, ZLOX_HEAP * heap)
 	while (i < new_size)
 	{
 		// 从frames位图里为扩展的线性地址分配物理内存
-		zlox_alloc_frame( zlox_get_page(heap->start_address+i, 1, kernel_directory),
+		zlox_alloc_frame( zlox_get_page(heap->start_address+i, 1, current_task->page_directory),
 					 (heap->supervisor)?1:0, (heap->readonly)?0:1);
 		i += 0x1000 /* page size */;
 	}
@@ -150,10 +99,10 @@ static ZLOX_VOID zlox_expand(ZLOX_UINT32 new_size, ZLOX_HEAP * heap)
 }
 
 // 根据需要回收一部分堆的物理内存,将回收的部分从页表和frames位图里去除
-static ZLOX_UINT32 zlox_contract(ZLOX_UINT32 new_size, ZLOX_HEAP * heap)
+static ZLOX_UINT32 zlox_uheap_contract(ZLOX_UINT32 new_size, ZLOX_HEAP * heap)
 {
 	// Sanity check.
-	ZLOX_ASSERT(new_size < heap->end_address-heap->start_address);
+	ZLOX_ASSERT_UHEAP(new_size < heap->end_address-heap->start_address);
 
 	// Get the nearest following page boundary.
 	if (new_size & 0x00000FFF)
@@ -163,12 +112,12 @@ static ZLOX_UINT32 zlox_contract(ZLOX_UINT32 new_size, ZLOX_HEAP * heap)
 	}
 
 	// Don't contract too far!
-	// 回收的尺寸受到ZLOX_HEAP_MIN_SIZE的限制,防止回收过多的内存资源
-	if (new_size < ZLOX_HEAP_MIN_SIZE)
+	// 回收的尺寸受到ZLOX_UHEAP_MIN_SIZE的限制,防止回收过多的内存资源
+	if (new_size < ZLOX_UHEAP_MIN_SIZE)
 	{
-		if(ZLOX_HEAP_MIN_SIZE - new_size > 
+		if(ZLOX_UHEAP_MIN_SIZE - new_size > 
 			sizeof(ZLOX_KHP_HEADER) + sizeof(ZLOX_KHP_FOOTER))
-			new_size = ZLOX_HEAP_MIN_SIZE;
+			new_size = ZLOX_UHEAP_MIN_SIZE;
 		// 如果收缩堆空间后,剩余尺寸不能形成一个有效的hole,则放弃收缩,返回原来的尺寸
 		else
 			return (heap->end_address-heap->start_address);
@@ -179,7 +128,7 @@ static ZLOX_UINT32 zlox_contract(ZLOX_UINT32 new_size, ZLOX_HEAP * heap)
 	while (new_size <= i)
 	{
 		// 通过zlox_free_frame将需要回收的页面从页表和frames位图里去除
-		zlox_free_frame(zlox_get_page(heap->start_address+i, 0, kernel_directory));
+		zlox_free_frame(zlox_get_page(heap->start_address+i, 0, current_task->page_directory));
 		i -= 0x1000;
 	}
 
@@ -188,7 +137,7 @@ static ZLOX_UINT32 zlox_contract(ZLOX_UINT32 new_size, ZLOX_HEAP * heap)
 }
 
 // 从heap的index里搜索出满足size尺寸的最小的hole
-static ZLOX_SINT32 zlox_find_smallest_hole(ZLOX_UINT32 size, ZLOX_UINT8 page_align, ZLOX_HEAP * heap)
+static ZLOX_SINT32 zlox_uheap_find_smallest_hole(ZLOX_UINT32 size, ZLOX_UINT8 page_align, ZLOX_HEAP * heap)
 {
 	// Find the smallest hole that will fit.
 	ZLOX_UINT32 iterator = 0;
@@ -227,34 +176,24 @@ static ZLOX_SINT32 zlox_find_smallest_hole(ZLOX_UINT32 size, ZLOX_UINT8 page_ali
 }
 
 // 用于对两个hole或block进行size(尺寸)比较的函数
-static ZLOX_SINT8 zlox_header_less_than(ZLOX_VOID *a, ZLOX_VOID *b)
+static ZLOX_SINT8 zlox_uheap_header_less_than(ZLOX_VOID *a, ZLOX_VOID *b)
 {
 	return (((ZLOX_KHP_HEADER *)a)->size < ((ZLOX_KHP_HEADER *)b)->size)?1:0;
 }
 
-// 创建堆的函数,start为堆的起始线性地址,end_addr为堆的当前结束地址,max为堆可以expand(扩展)的最大尺寸,
-//	supervisor表示该堆是否只运行内核代码访问(0表示用户程序可以访问,1表示用户程序不可访问),
-//	readonly表示该堆是否是只读的(0表示可读写,1表示只读),在expand扩展堆空间时,supervisor和readonly
-//	可以用来设置页表里的属性
-// 另外,start开始的第一个部分是heap堆的index部分,index部分是一个数组,该数组存储了该堆里所有可供分配的hole的指针值,
-//	并且index里的hole的指针是根据hole的尺寸由小到大排列的,尺寸小的hole的指针值排在前面,较大的排在后面
-ZLOX_HEAP * zlox_create_heap(ZLOX_UINT32 start, ZLOX_UINT32 end_addr, 
+ZLOX_HEAP * zlox_create_uheap(ZLOX_UINT32 start, ZLOX_UINT32 end_addr, 
 							ZLOX_UINT32 max, ZLOX_UINT8 supervisor, ZLOX_UINT8 readonly)
 {
 	ZLOX_HEAP *heap = (ZLOX_HEAP *)zlox_kmalloc(sizeof(ZLOX_HEAP));
 
 	// All our assumptions are made on startAddress and endAddress being page-aligned.
-	ZLOX_ASSERT(start%0x1000 == 0);
-	ZLOX_ASSERT(end_addr%0x1000 == 0);
-	
-	// Initialise the index.
-	// 创建堆的index部分,index的含义在函数开头的注释里做了说明
-	heap->index = zlox_place_ordered_array((ZLOX_VOID *)start, ZLOX_HEAP_INDEX_SIZE, &zlox_header_less_than);
-	
-	// Shift the start address forward to resemble where we can start putting data.
-	// index后面就是实际的未分配的hole和已分配的block部分
-	start += sizeof(ZLOX_VPTR) * ZLOX_HEAP_INDEX_SIZE;
+	ZLOX_ASSERT_UHEAP(start%0x1000 == 0);
+	ZLOX_ASSERT_UHEAP(end_addr%0x1000 == 0);
 
+	zlox_pages_alloc(start, (end_addr - start));
+
+	heap->index = zlox_place_ordered_array((ZLOX_VOID *)start, ZLOX_UHEAP_INDEX_SIZE, &zlox_uheap_header_less_than);
+	start += sizeof(ZLOX_VPTR) * ZLOX_UHEAP_INDEX_SIZE;
 	// Make sure the start address is page-aligned.
 	if ((start & 0x00000FFF) != 0)
 	{
@@ -267,7 +206,6 @@ ZLOX_HEAP * zlox_create_heap(ZLOX_UINT32 start, ZLOX_UINT32 end_addr,
 	heap->max_address = max;
 	heap->supervisor = supervisor;
 	heap->readonly = readonly;
-
 	// We start off with one large hole in the index.
 	// 刚开始创建的堆,除了堆头部的index指针数组外,其余部分是一个大的hole,这样zlox_kmalloc函数就可以从该hole里分配到内存
 	ZLOX_KHP_HEADER *hole = (ZLOX_KHP_HEADER *)start;
@@ -277,20 +215,19 @@ ZLOX_HEAP * zlox_create_heap(ZLOX_UINT32 start, ZLOX_UINT32 end_addr,
 	ZLOX_KHP_FOOTER *hole_footer = (ZLOX_KHP_FOOTER *)((ZLOX_UINT32)hole + hole->size - sizeof(ZLOX_KHP_FOOTER));
 	hole_footer->magic = ZLOX_HEAP_MAGIC;
 	hole_footer->header = hole;
-	zlox_insert_ordered_array((ZLOX_VPTR)hole, &heap->index);	 
-
+	zlox_insert_ordered_array((ZLOX_VPTR)hole, &heap->index);
 	return heap;
 }
 
 // 从heap堆里查找能够容纳size尺寸的hole,如果找到该hole,则将该hole变为block,如果hole分离出block后,
 //	还有多余的空间,则多余的部分形成新的hole,如果找不到满足size要求的hole,则对heap进行expand(扩展物理内存)
-ZLOX_VOID * zlox_alloc(ZLOX_UINT32 size, ZLOX_UINT8 page_align, ZLOX_HEAP * heap)
+ZLOX_VOID * zlox_uheap_alloc(ZLOX_UINT32 size, ZLOX_UINT8 page_align, ZLOX_HEAP * heap)
 {
 	//	Make sure we take the size of header/footer into account.
 	//	计算new_size时,除了要考虑size所需的内存尺寸外,还必须把头部,底部结构的尺寸也考虑进去
 	ZLOX_UINT32 new_size = size + sizeof(ZLOX_KHP_HEADER) + sizeof(ZLOX_KHP_FOOTER);
 	// Find the smallest hole that will fit.
-	ZLOX_SINT32 iterator = zlox_find_smallest_hole(new_size, page_align, heap);
+	ZLOX_SINT32 iterator = zlox_uheap_find_smallest_hole(new_size, page_align, heap);
 	
 	if (iterator == -1) // If we didn't find a suitable hole
 	{
@@ -299,11 +236,11 @@ ZLOX_VOID * zlox_alloc(ZLOX_UINT32 size, ZLOX_UINT8 page_align, ZLOX_HEAP * heap
 		ZLOX_UINT32 old_end_address = heap->end_address;
 
 		// We need to allocate some more space.
-		zlox_expand(old_length+new_size, heap);
+		zlox_uheap_expand(old_length+new_size, heap);
 		ZLOX_UINT32 new_length = heap->end_address - heap->start_address;
 		ZLOX_KHP_FOOTER * old_end_footer = (ZLOX_KHP_FOOTER *)(old_end_address - sizeof(ZLOX_KHP_FOOTER));
-		ZLOX_ASSERT(old_end_footer->magic == ZLOX_HEAP_MAGIC);
-		// 在zlox_expand扩容了heap的堆空间后,新增空间的前面如果本身是一个hole的话,就将新增的空间合并到前面的hole里
+		ZLOX_ASSERT_UHEAP(old_end_footer->magic == ZLOX_HEAP_MAGIC);
+		// 在zlox_uheap_expand扩容了heap的堆空间后,新增空间的前面如果本身是一个hole的话,就将新增的空间合并到前面的hole里
 		if(old_end_footer->header->magic == ZLOX_HEAP_MAGIC &&
 			old_end_footer->header->is_hole == 1)
 		{
@@ -328,7 +265,7 @@ ZLOX_VOID * zlox_alloc(ZLOX_UINT32 size, ZLOX_UINT8 page_align, ZLOX_HEAP * heap
 			zlox_insert_ordered_array((ZLOX_VPTR)header, &heap->index);
 		}
 		// We now have enough space. Recurse, and call the function again.
-		return zlox_alloc(size, page_align, heap);
+		return zlox_uheap_alloc(size, page_align, heap);
 	}
 
 	ZLOX_KHP_HEADER *orig_hole_header = (ZLOX_KHP_HEADER *)zlox_lookup_ordered_array(iterator, &heap->index);
@@ -413,7 +350,7 @@ ZLOX_VOID * zlox_alloc(ZLOX_UINT32 size, ZLOX_UINT8 page_align, ZLOX_HEAP * heap
 // 将p指针所在的block(已分配的堆内存)变为hole(未分配的堆内存),同时在变为hole之后,
 //	如果该hole的左右相邻位置存在hole的话,则将这些hole合并为一个大的hole,
 //	另外,如果free释放生成的hole刚好又位于堆的底部时,则将堆空间进行contract收缩操作
-ZLOX_VOID zlox_free(ZLOX_VOID *p, ZLOX_HEAP *heap)
+ZLOX_VOID zlox_uheap_free(ZLOX_VOID *p, ZLOX_HEAP *heap)
 {
 	// Exit gracefully for null pointers.
 	if (p == 0)
@@ -424,8 +361,8 @@ ZLOX_VOID zlox_free(ZLOX_VOID *p, ZLOX_HEAP *heap)
 	ZLOX_KHP_FOOTER *footer = (ZLOX_KHP_FOOTER *)((ZLOX_UINT32)header + header->size - sizeof(ZLOX_KHP_FOOTER));
 
 	// Sanity checks.
-	ZLOX_ASSERT(header->magic == ZLOX_HEAP_MAGIC);
-	ZLOX_ASSERT(footer->magic == ZLOX_HEAP_MAGIC);
+	ZLOX_ASSERT_UHEAP(header->magic == ZLOX_HEAP_MAGIC);
+	ZLOX_ASSERT_UHEAP(footer->magic == ZLOX_HEAP_MAGIC);
 
 	// 如果本身就是一个hole,则直接返回
 	if(header->is_hole == 1)
@@ -475,7 +412,7 @@ ZLOX_VOID zlox_free(ZLOX_VOID *p, ZLOX_HEAP *heap)
 				iterator++;
 
 			// Make sure we actually found the item.
-			ZLOX_ASSERT(iterator < heap->index.size);
+			ZLOX_ASSERT_UHEAP(iterator < heap->index.size);
 			// Remove it.
 			zlox_remove_ordered_array(iterator, &heap->index);
 		}
@@ -486,7 +423,7 @@ ZLOX_VOID zlox_free(ZLOX_VOID *p, ZLOX_HEAP *heap)
 	if ( (ZLOX_UINT32)footer+sizeof(ZLOX_KHP_FOOTER) == heap->end_address)
 	{
 		ZLOX_UINT32 old_length = heap->end_address-heap->start_address;
-		ZLOX_UINT32 new_length = zlox_contract( (ZLOX_UINT32)header - heap->start_address, heap);
+		ZLOX_UINT32 new_length = zlox_uheap_contract( (ZLOX_UINT32)header - heap->start_address, heap);
 		// Check how big we will be after resizing.
 		if (header->size - (old_length-new_length) > 0)
 		{
@@ -515,11 +452,5 @@ ZLOX_VOID zlox_free(ZLOX_VOID *p, ZLOX_HEAP *heap)
 	if (do_add == 1)
 		zlox_insert_ordered_array((ZLOX_VPTR)header, &heap->index);
 
-}
-
-// 获取kheap，主要用于系统调用
-ZLOX_UINT32 zlox_get_kheap()
-{
-	return (ZLOX_UINT32)kheap;
 }
 

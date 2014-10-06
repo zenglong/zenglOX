@@ -89,6 +89,30 @@ ZLOX_VOID zlox_memcpy(ZLOX_UINT8 *dest, const ZLOX_UINT8 *src, ZLOX_UINT32 len)
 	::"S"(sp),"D"(dp),"d"(len):"%ecx");
 }
 
+// 以反向，向低地址方向进行拷贝
+ZLOX_VOID zlox_reverse_memcpy(ZLOX_UINT8 *dest, const ZLOX_UINT8 *src, ZLOX_UINT32 len)
+{
+	const ZLOX_UINT8 *sp = (const ZLOX_UINT8 *)src;
+	ZLOX_UINT8 *dp = (ZLOX_UINT8 *)dest;
+	if(len == 0)
+		return;
+	
+	// 使用movsl和movsb来提高内存拷贝的效率
+	asm volatile (
+	"pushf\n\t"
+	"movl %%edx,%%ecx\n\t"
+	"andl $3, %%ecx\n\t"	// and运算得到除以4的余数,余数使用movsb每次拷贝一个字节
+	"std\n\t"
+	"rep movsb\n\t"
+	"movl %%edx, %%ecx\n\t"
+	"shrl $2, %%ecx\n\t"	// 长度除以4,得到的商使用movsl进行拷贝,因为每次movsl可以拷贝4个字节
+	"subl $3,%%edi\n\t"	// 将源和目标地址减去3，为movsl做准备，之前的movsb已经自动减了1个字节
+	"subl $3,%%esi\n\t"
+	"rep movsl\n\t"
+	"popf"			// 恢复eflags里的标志,主要是将上面std设置的DF标志恢复为原始值
+	::"S"(sp),"D"(dp),"d"(len):"%ecx");
+}
+
 // Write len copies of val into dest.
 ZLOX_VOID zlox_memset(ZLOX_UINT8 *dest, ZLOX_UINT8 val, ZLOX_UINT32 len)
 {

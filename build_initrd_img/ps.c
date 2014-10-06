@@ -80,6 +80,53 @@ int main(TASK * task, int argc, char * argv[])
 			tmp_task = tmp_task->next;
 		}while(tmp_task != 0);
 	}
+	else if(argc > 1 && strcmp(argv[1],"-u")==0)
+	{
+		TASK * first_task;
+		TASK * tmp_task;
+		tmp_task = task;
+		while(tmp_task != 0)
+		{
+			first_task = tmp_task;
+			tmp_task = first_task->prev;
+		}
+		tmp_task = first_task;
+		do{
+			syscall_monitor_write("ID:");
+			syscall_monitor_write_dec(tmp_task->id);
+			syscall_monitor_write(" args:\"");
+			if(tmp_task->args != 0)
+				syscall_monitor_write(tmp_task->args);
+			syscall_monitor_put('"');
+			if(tmp_task->parent == 0)
+				syscall_monitor_write(" system first task");
+			else
+			{
+				syscall_monitor_write(" ParentID:");
+				syscall_monitor_write_dec(tmp_task->parent->id);
+			}
+			syscall_monitor_write("\n");
+			syscall_monitor_write("<< uheap start: ");
+			syscall_monitor_write_hex(((HEAP *)(tmp_task->heap))->start_address);
+			syscall_monitor_write(" end: ");
+			syscall_monitor_write_hex(((HEAP *)(tmp_task->heap))->end_address);
+			syscall_monitor_write(" size: ");
+			syscall_monitor_write_dec(((HEAP *)(tmp_task->heap))->end_address - 
+						((HEAP *)(tmp_task->heap))->start_address);
+			syscall_monitor_write(" byte ");
+			if(((HEAP *)(tmp_task->heap))->end_address - ((HEAP *)(tmp_task->heap))->start_address > 1024)
+			{
+				syscall_monitor_write("[");
+				syscall_monitor_write_dec((((HEAP *)(tmp_task->heap))->end_address - 
+							((HEAP *)(tmp_task->heap))->start_address) / 1024);
+				syscall_monitor_write(" Kbyte]");
+			}			
+			syscall_monitor_write(" >>\n<< hole number: ");
+			syscall_monitor_write_dec(((HEAP *)(tmp_task->heap))->index.size);
+			syscall_monitor_write(" >>\n\n");
+			tmp_task = tmp_task->next;
+		}while(tmp_task != 0);
+	}
 	else if(argc > 1 && strcmp(argv[1],"-m")==0)
 	{
 		UINT32 * frames;
@@ -139,7 +186,7 @@ int main(TASK * task, int argc, char * argv[])
 	}
 	else
 	{
-		syscall_monitor_write("usage: ps [-m][-d]");
+		syscall_monitor_write("usage: ps [-m][-d][-u]");
 	}
 	return 0;
 }

@@ -37,6 +37,10 @@ int main(VOID * task, int argc, char * argv[])
 			syscall_monitor_write_hex((UINT32)pci_devconf_lst.ptr[i].cfg_hdr.vend_id);
 			syscall_monitor_write(" dev id: ");
 			syscall_monitor_write_hex((UINT32)pci_devconf_lst.ptr[i].cfg_hdr.dev_id);
+			syscall_monitor_write(" class: ");
+			syscall_monitor_write_hex((UINT32)pci_devconf_lst.ptr[i].cfg_hdr.class_code);
+			syscall_monitor_write(" sub_class: ");
+			syscall_monitor_write_hex((UINT32)pci_devconf_lst.ptr[i].cfg_hdr.sub_class);
 			syscall_monitor_write("\n");
 		}
 		syscall_monitor_write("pci device total count: ");

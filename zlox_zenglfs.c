@@ -537,6 +537,7 @@ static ZLOX_UINT32 zlox_zenglfs_get_inode_blk(ZLOX_UINT32 blkidx, ZLOX_BOOL make
 			zenglfs_cache_singly.ptr[sidx] = zlox_zenglfs_make_baseblk();
 			zenglfs_cache_inode.data.totalblk++;
 			zenglfs_cache_singly.isDirty = ZLOX_TRUE;
+			zenglfs_cache_inode.isDirty = ZLOX_TRUE;
 			return zenglfs_cache_singly.ptr[sidx];
 		}
 		else
@@ -568,6 +569,7 @@ static ZLOX_UINT32 zlox_zenglfs_get_inode_blk(ZLOX_UINT32 blkidx, ZLOX_BOOL make
 			zenglfs_cache_doubly.ptr[d_idx] = zlox_zenglfs_make_baseblk();
 			zenglfs_cache_inode.data.totalblk++;
 			isnewblk = ZLOX_TRUE;
+			zenglfs_cache_doubly.isDirty = ZLOX_TRUE;
 			zenglfs_cache_inode.isDirty = ZLOX_TRUE;
 		}
 		zlox_zenglfs_get_singly(zenglfs_cache_doubly.ptr[d_idx]);
@@ -583,6 +585,7 @@ static ZLOX_UINT32 zlox_zenglfs_get_inode_blk(ZLOX_UINT32 blkidx, ZLOX_BOOL make
 			zenglfs_cache_singly.ptr[sidx] = zlox_zenglfs_make_baseblk();
 			zenglfs_cache_inode.data.totalblk++;
 			zenglfs_cache_singly.isDirty = ZLOX_TRUE;
+			zenglfs_cache_inode.isDirty = ZLOX_TRUE;
 			return zenglfs_cache_singly.ptr[sidx];
 		}
 		else
@@ -616,6 +619,7 @@ static ZLOX_UINT32 zlox_zenglfs_get_inode_blk(ZLOX_UINT32 blkidx, ZLOX_BOOL make
 			zenglfs_cache_triply.ptr[t_idx] = zlox_zenglfs_make_baseblk();
 			zenglfs_cache_inode.data.totalblk++;
 			isnewblk = ZLOX_TRUE;
+			zenglfs_cache_triply.isDirty = ZLOX_TRUE;
 			zenglfs_cache_inode.isDirty = ZLOX_TRUE;
 		}
 		zlox_zenglfs_get_doubly(zenglfs_cache_triply.ptr[t_idx]);
@@ -631,6 +635,7 @@ static ZLOX_UINT32 zlox_zenglfs_get_inode_blk(ZLOX_UINT32 blkidx, ZLOX_BOOL make
 			zenglfs_cache_doubly.ptr[d_idx] = zlox_zenglfs_make_baseblk();
 			zenglfs_cache_inode.data.totalblk++;
 			isnewblk = ZLOX_TRUE;
+			zenglfs_cache_doubly.isDirty = ZLOX_TRUE;
 			zenglfs_cache_inode.isDirty = ZLOX_TRUE;
 		}
 		zlox_zenglfs_get_singly(zenglfs_cache_doubly.ptr[d_idx]);
@@ -646,6 +651,7 @@ static ZLOX_UINT32 zlox_zenglfs_get_inode_blk(ZLOX_UINT32 blkidx, ZLOX_BOOL make
 			zenglfs_cache_singly.ptr[sidx] = zlox_zenglfs_make_baseblk();
 			zenglfs_cache_inode.data.totalblk++;
 			zenglfs_cache_singly.isDirty = ZLOX_TRUE;
+			zenglfs_cache_inode.isDirty = ZLOX_TRUE;
 			return zenglfs_cache_singly.ptr[sidx];
 		}
 		else
@@ -917,11 +923,11 @@ static ZLOX_UINT32 zlox_zenglfs_write(ZLOX_FS_NODE * node, ZLOX_UINT32 arg_offse
 	if(zenglfs_cache_inode.ino != node->inode)
 		zlox_zenglfs_get_inode(node->inode);
 
-	ZLOX_UINT32 tmp_off = 0, before_totalblk, blk, lba, i, nwrites = 0;
+	ZLOX_UINT32 tmp_off = 0, /*before_totalblk,*/ blk, lba, i, nwrites = 0;
 	ZLOX_BOOL need_memcpy = ZLOX_FALSE;
 	if(size % ZLOX_ZLFS_BLK_SIZE != 0)
 		need_memcpy = ZLOX_TRUE;
-	before_totalblk = zenglfs_cache_inode.data.totalblk;
+	//before_totalblk = zenglfs_cache_inode.data.totalblk;
 	for(i=0;tmp_off < size;i++, tmp_off += ZLOX_ZLFS_BLK_SIZE)
 	{
 		blk = zlox_zenglfs_get_inode_blk(i, ZLOX_TRUE);
@@ -940,11 +946,12 @@ static ZLOX_UINT32 zlox_zenglfs_write(ZLOX_FS_NODE * node, ZLOX_UINT32 arg_offse
 		else
 			zlox_ide_ata_access(ZLOX_IDE_ATA_WRITE, zenglfs_ide_index, lba, 2, (buffer + tmp_off));
 	}
-	if(before_totalblk > zenglfs_cache_inode.data.totalblk)
-		for(i=nwrites;(blk =zlox_zenglfs_free_inode_blk(i));i++)
-			;
+	//if(before_totalblk > zenglfs_cache_inode.data.totalblk)
+	for(i=nwrites;(blk =zlox_zenglfs_free_inode_blk(i));i++)
+		;
 
 	zenglfs_cache_inode.data.size = size;
+	zenglfs_cache_inode.isDirty = ZLOX_TRUE;
 	zlox_zenglfs_sync_cache_to_disk();
 	return size;
 }

@@ -149,17 +149,35 @@ static ZLOX_VOID zlox_keyboard_callback(/*ZLOX_ISR_REGISTERS * regs*/)
 	{
 		switch(key)
 		{
+		case 0x47:
+			key_code = ZLOX_MKK_HOME_PRESS;
+			break;
 		case 0x48:
 			key_code = ZLOX_MKK_CURSOR_UP_PRESS;
 			break;
-		case 0x50:
-			key_code = ZLOX_MKK_CURSOR_DOWN_PRESS;
+		case 0x49:
+			key_code = ZLOX_MKK_PAGE_UP_PRESS;
 			break;
 		case 0x4B:
 			key_code = ZLOX_MKK_CURSOR_LEFT_PRESS;
 			break;
 		case 0x4D:
 			key_code = ZLOX_MKK_CURSOR_RIGHT_PRESS;
+			break;
+		case 0x4F:
+			key_code = ZLOX_MKK_END_PRESS;
+			break;
+		case 0x50:
+			key_code = ZLOX_MKK_CURSOR_DOWN_PRESS;
+			break;
+		case 0x51:
+			key_code = ZLOX_MKK_PAGE_DOWN_PRESS;
+			break;
+		case 0x52:
+			key_code = ZLOX_MKK_INSERT_PRESS;
+			break;
+		case 0x53:
+			key_code = ZLOX_MKK_DELETE_PRESS;
 			break;
 		default:
 			key_code = 0;
@@ -202,12 +220,13 @@ static ZLOX_VOID zlox_keyboard_callback(/*ZLOX_ISR_REGISTERS * regs*/)
 	if(key == 0x80 + 0x38)
 		control_keys &= (0xFF - ZLOX_CK_ALT);
 		
-	if((control_keys & ZLOX_CK_SHIFT) && (led_status & ZLOX_LED_CAPS_LOCK)) 
+	/*if((control_keys & ZLOX_CK_SHIFT) && (led_status & ZLOX_LED_CAPS_LOCK)) 
 		key_ascii = key < scanMaxNum ? scanToAscii_table[key][6] : 0; 
 	else if(control_keys & ZLOX_CK_SHIFT) 
 		key_ascii = key < scanMaxNum ? scanToAscii_table[key][1] : 0; 
 	else if(control_keys & ZLOX_CK_CTRL) 
-		key_ascii = key < scanMaxNum ? scanToAscii_table[key][2] : 0;
+		//key_ascii = key < scanMaxNum ? scanToAscii_table[key][2] : 0;
+		key_ascii = key < scanMaxNum ? scanToAscii_table[key][0] : 0;
 	else if(control_keys & ZLOX_CK_ALT) 
 		//key_ascii = scanToAscii_table[key][3];
 		key_ascii = key < scanMaxNum ? scanToAscii_table[key][0] : 0;	
@@ -218,6 +237,30 @@ static ZLOX_VOID zlox_keyboard_callback(/*ZLOX_ISR_REGISTERS * regs*/)
 	else if(led_status & ZLOX_LED_NUM_LOCK) 
 		key_ascii = key < scanMaxNum ? scanToAscii_table[key][4] : 0;
 	else if(control_keys == 0) 
+		key_ascii = key < scanMaxNum ? scanToAscii_table[key][0] : 0;*/
+
+	if(control_keys & ZLOX_CK_SHIFT)
+	{
+		if(led_status & ZLOX_LED_CAPS_LOCK)
+		{
+			key_ascii = key < scanMaxNum ? scanToAscii_table[key][6] : 0; 
+			if((key_ascii == 0 || key_ascii > 0xFF) && (led_status & ZLOX_LED_NUM_LOCK))
+				key_ascii = key < scanMaxNum ? scanToAscii_table[key][7] : 0;
+		}
+		else if(led_status & ZLOX_LED_NUM_LOCK)
+			key_ascii = key < scanMaxNum ? scanToAscii_table[key][7] : 0;
+		else
+			key_ascii = key < scanMaxNum ? scanToAscii_table[key][1] : 0;
+	}
+	else if(led_status & ZLOX_LED_CAPS_LOCK)
+	{
+		key_ascii = key < scanMaxNum ? scanToAscii_table[key][5] : 0;
+		if((key_ascii == 0 || key_ascii > 0xFF) && (led_status & ZLOX_LED_NUM_LOCK))
+			key_ascii = key < scanMaxNum ? scanToAscii_table[key][4] : 0;
+	}
+	else if(led_status & ZLOX_LED_NUM_LOCK) 
+		key_ascii = key < scanMaxNum ? scanToAscii_table[key][4] : 0;
+	else 
 		key_ascii = key < scanMaxNum ? scanToAscii_table[key][0] : 0;
 
 	if(key_code != 0)
@@ -240,9 +283,25 @@ static ZLOX_VOID zlox_keyboard_callback(/*ZLOX_ISR_REGISTERS * regs*/)
 		}
 		else
 		{
-			/*keyboard_buffer[keyboard_buffer_size] = (key_ascii & 0xFF);
-			keyboard_buffer[keyboard_buffer_size+1] = (key_ascii & 0xFF00);
-			keyboard_buffer_size += 2;*/
+			ZLOX_TASK_MSG ascii_msg = {0};
+			switch(key_ascii)
+			{
+			case ZLOX_MKK_F1_PRESS:
+			case ZLOX_MKK_F2_PRESS:
+			case ZLOX_MKK_F3_PRESS:
+			case ZLOX_MKK_F4_PRESS:
+			case ZLOX_MKK_F5_PRESS:
+			case ZLOX_MKK_F6_PRESS:
+			case ZLOX_MKK_F7_PRESS:
+			case ZLOX_MKK_F8_PRESS:
+			case ZLOX_MKK_F9_PRESS:
+			case ZLOX_MKK_F10_PRESS:
+				ascii_msg.type = ZLOX_MT_KEYBOARD;
+				ascii_msg.keyboard.type = ZLOX_MKT_KEY;
+				ascii_msg.keyboard.key = key_ascii;
+				zlox_send_tskmsg(input_focus_task,&ascii_msg);
+				break;
+			}
 		}
 	}
 }
@@ -266,5 +325,27 @@ ZLOX_BOOL zlox_initKeyboard()
 		return ZLOX_TRUE;
 	}
 	return ZLOX_FALSE;
+}
+
+ZLOX_UINT8 zlox_get_control_keys()
+{
+	return control_keys;
+}
+
+ZLOX_UINT8 zlox_release_control_keys(ZLOX_UINT8 key)
+{
+	switch(key)
+	{
+	case ZLOX_CK_SHIFT:
+		control_keys &= (0xFF - ZLOX_CK_SHIFT);
+		break;
+	case ZLOX_CK_ALT:
+		control_keys &= (0xFF - ZLOX_CK_ALT);
+		break;
+	case ZLOX_CK_CTRL:
+		control_keys &= (0xFF - ZLOX_CK_CTRL);
+		break;
+	}
+	return control_keys;
 }
 
