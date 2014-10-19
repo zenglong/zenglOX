@@ -5,14 +5,14 @@
 UINT32 _commontest_gl = 3; // debug
 
 // Copy len bytes from src to dest.
-VOID memcpy(UINT8 *dest, const UINT8 *src, UINT32 len)
+VOID * memcpy(VOID * dest, const VOID * src, UINT32 len)
 {
 	_commontest_gl = 3; // debug
 
 	const UINT8 *sp = (const UINT8 *)src;
 	UINT8 *dp = (UINT8 *)dest;
 	if(len == 0)
-		return;
+		return NULL;
 	//for(; len != 0; len--) 
 	//	*dp++ = *sp++;
 	
@@ -28,15 +28,17 @@ VOID memcpy(UINT8 *dest, const UINT8 *src, UINT32 len)
 	"rep movsb\n\t"
 	"popf"			// 恢复eflags里的标志,主要是将上面cld清零的DF标志恢复为原始值
 	::"S"(sp),"D"(dp),"d"(len):"%ecx");
+
+	return dest;
 }
 
 // 以反向，向低地址方向进行拷贝
-VOID reverse_memcpy(UINT8 *dest, const UINT8 *src, UINT32 len)
+VOID * reverse_memcpy(VOID * dest, const VOID * src, UINT32 len)
 {
 	const UINT8 *sp = (const UINT8 *)src;
 	UINT8 *dp = (UINT8 *)dest;
 	if(len == 0)
-		return;
+		return NULL;
 	
 	// 使用movsl和movsb来提高内存拷贝的效率
 	asm volatile (
@@ -52,10 +54,12 @@ VOID reverse_memcpy(UINT8 *dest, const UINT8 *src, UINT32 len)
 	"rep movsl\n\t"
 	"popf"			// 恢复eflags里的标志,主要是将上面std设置的DF标志恢复为原始值
 	::"S"(sp),"D"(dp),"d"(len):"%ecx");
+
+	return dest;
 }
 
 // Write len copies of val into dest.
-VOID memset(UINT8 *dest, UINT8 val, UINT32 len)
+VOID * memset(VOID * dest, UINT8 val, UINT32 len)
 {
 	//UINT8 *temp = (UINT8 *)dest;
 	//for ( ; len != 0; len--) 
@@ -68,6 +72,8 @@ VOID memset(UINT8 *dest, UINT8 val, UINT32 len)
 	"rep stosb\n\t"	// 使用rep stosb根据ecx里的长度信息,将al里的值填充到edi指向的一片内存里
 	"popf"
 	::"D"(dest),"m"(val),"c"(len):"%eax");
+
+	return dest;
 }
 
 // Compare two strings. return 0 if they are equal or 1 otherwise.
@@ -151,7 +157,7 @@ CHAR * strcpy(CHAR * dest, const CHAR * src)
 	return dest;
 }
 
-SINT32 strlen(CHAR *src)
+SINT32 strlen(const CHAR *src)
 {
 	SINT32 i = -1;
 	/*while (*src++)

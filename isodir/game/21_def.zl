@@ -1,0 +1,17 @@
+use builtin;
+def TRUE 1;
+def FALSE 0;
+def UnitMoney 100000000;
+
+class clsPoker
+	count;
+	pokerlist;
+	totalpoint;
+endcls
+
+class clsPlayer
+	name;
+	clsPoker poker;
+	money;
+endcls
+

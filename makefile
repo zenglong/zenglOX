@@ -7,6 +7,7 @@ CC = @$(GCC_PATH)/i586-elf-gcc
 export CROSS_AS = $(AS)
 export CROSS_CC = $(CC)
 export CROSS_LD = @$(GCC_PATH)/i586-elf-ld
+export CROSS_AR = @$(GCC_PATH)/i586-elf-ar
 export CROSS_AS_FLAGS = -gstabs
 
 #CFLAGS = -std=gnu99 -ffreestanding -O2 -Wall -Wextra

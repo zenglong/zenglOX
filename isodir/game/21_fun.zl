@@ -1,0 +1,187 @@
+inc '21_def.zl';
+
+/*
+   post poker function
+*/
+fun myAddPoker(obj,poker)
+	clsPoker obj;
+	return obj.totalpoint += obj.pokerlist[obj.count++] = poker;
+endfun
+
+/*myIsNeedPoker for android*/
+fun myIsNeedPoker(obj)
+	clsPoker obj;
+	num = 21 - obj.totalpoint;
+	if(bltRandom()%13 +1 <= num)
+		return 1;
+	else
+		return 0;
+	endif
+endfun
+
+/*
+   game main start
+*/
+fun myGameStart()
+	global user,android,turn_num,oneturnMoney;
+	
+	clsPlayer user;
+	clsPlayer android;
+	
+	printf('please input \'y\' to get poker,except to end! \r\n\t');
+	
+	do
+		input = read();
+		if(input == 'y')
+			myAddPoker(user.poker,bltRandom()%13+1);
+			print '	you get ' + user.poker.pokerlist[user.poker.count-1];
+			if(user.poker.totalpoint > 21)
+				break;
+			endif
+		endif
+		
+		if(android.poker.totalpoint < user.poker.totalpoint || 
+			myIsNeedPoker(android.poker))
+			myAddPoker(android.poker,bltRandom()%13+1);
+			print '	android get '+ android.poker.pokerlist[android.poker.count-1];
+			if(android.poker.totalpoint > 21)
+				break;
+			endif
+		endif
+		
+		printf(user.name + ' total:'+ user.poker.totalpoint + ' '+ 
+			  android.name + ' total:'+ android.poker.totalpoint + '\r\n\t');
+	dowhile(input=='y')
+	
+	printf(user.name +" have gets :");
+	for(i=0;i<user.poker.count;i++)
+		printf('Poker:'+user.poker.pokerlist[i]+' ');
+	endfor
+	print ' total: ' + user.poker.totalpoint;
+	
+	printf(android.name +" have gets :");
+	for(i=0;i<android.poker.count;i++)
+		printf('Poker:'+android.poker.pokerlist[i]+' ');
+	endfor
+	print ' total: ' + android.poker.totalpoint;
+	
+	bool_userwin = TRUE;
+	if( android.poker.totalpoint > 21)
+		print '	******* '+user.name +' win ********';
+	elif(user.poker.totalpoint > 21)
+		print '	******* '+android.name +' win ********';
+		bool_userwin = FALSE;
+	else
+		if(android.poker.totalpoint >= user.poker.totalpoint)
+			print '	******* '+android.name +' win ********';
+			bool_userwin = FALSE;
+		else
+			print '	******* '+user.name +' win ********';
+		endif
+	endif
+	
+	if(bool_userwin)
+		myBigIntAdd(user.money,oneturnMoney,user.money);
+		myBigIntMinis(android.money,oneturnMoney,android.money);
+	else
+		myBigIntMinis(user.money,oneturnMoney,user.money);
+		myBigIntAdd(android.money,oneturnMoney,android.money);
+	endif
+	print 'the '+ ++turn_num +' turn: \r\n\t'+user.name + ' money:'+ 
+		myGetBitIntStr(user.money) +' '+ android.name+' money:'+
+		myGetBitIntStr(android.money);
+	user.poker.count = user.poker.totalpoint = android.poker.count = 
+	android.poker.totalpoint = 0;
+endfun
+
+fun myBigIntMinis(a,b,c)
+	if(a[0] == 1)
+		if(b[0]==0) 
+			a[0] = 0;
+			myBigIntAdd(a,b,c); 
+			a[0] = 1; 
+			return;
+		elif(b[0]==1)
+			a[0] = b[0] = 0;
+			myBigIntMinis(a,b,c);
+			if(a[0]==0)
+				a[0] = 1;
+			else
+				a[0] = 0;
+			endif
+			return;
+		endif
+	elif(a[0] == 0 && b[0] == 1) 
+		b[0] = 0;
+		myBigIntAdd(a,b,c);
+		return;
+	endif
+	for(i=1;i<3;i++)
+		if(a[i]>b[i])
+			e = &a;
+			f = &b;
+			c[0] = 0;
+			break;
+		elif(a[i]<b[i])
+			e = &b;
+			f = &a;
+			c[0] = 1;
+			break;
+		elif(i==2)
+			return c[0] = c[1] = c[2] = 0;
+		endif
+	endfor
+	borrow = 0;
+	for(i=2;i>=1;i--) 
+		c[i] = e[i] - f[i] - borrow;
+		if(c[i] >= 0)
+			borrow = 0;
+		else
+			c[i] += UnitMoney;
+			borrow = 1;
+		endif
+	endfor
+endfun
+
+fun myBigIntAdd(a,b,c)
+	if(a[0] == 1)
+		if(b[0]==0)
+			a[0] = 0;
+			myBigIntMinis(a,b,c);
+			if(a[0]==0)
+				a[0] = 1;
+			else
+				a[0] = 0;
+			endif
+			return;
+		elif(b[0] == 1)
+			a[0] = b[0] = 0;
+			myBigIntAdd(a,b,c);
+			a[0] = 1;
+		endif
+	elif(a[0] == 0)
+		if(b[0]==1)
+			b[0] = 0;
+		endif
+	endif
+	carry = 0;
+	for(i=2;i>=1;i--)
+		c[i] = a[i] + b[i] + carry;
+		if(c[i] < UnitMoney)
+			carry = 0;
+		else
+			c[i] -= UnitMoney;
+			carry = 1;
+		endif
+	endfor
+endfun
+
+fun myGetBitIntStr(a)
+	if(a[0] == 0)
+		ret = a[1] + ',' + bltIntToStr(a[2],8,'0');
+	elif(a[0] == 1)
+		ret = '-' + a[1] + ',' + bltIntToStr(a[2],8,'0');
+	endif
+	return ret;
+endfun
+

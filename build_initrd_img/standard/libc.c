@@ -1,6 +1,7 @@
 #include <stdlib.h>
 
 #define FILE_EXT_BUF_SIZE 1024
+#define FPRINT_TMP_SIZE 1024
 
 BOOL single_line_out = FALSE;
 BOOL input_focus_flag = FALSE;
@@ -10,6 +11,16 @@ unsigned int libc_random_seed = 0;
 char tmpnam_bbuf[20] = {0};
 char tmpnam_random_char[18] = {'a', 'b', 'c', 'd', 'e', 'f', 'g', '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '_'};
 FILE * libc_tmpfile = NULL;
+char fprint_tmp_str[FPRINT_TMP_SIZE] = {0};
+
+#define GETCHAR_BUF_SIZE 1024
+struct _GETCHAR_INPUT_BUF
+{
+	int cur;
+	BOOL hasContent;
+	int length;
+	char buf[GETCHAR_BUF_SIZE];
+} getchar_input_buf = {0};
 
 SINT32 strnlen(const char *s, SINT32 count)
 {
@@ -34,6 +45,168 @@ int isdigit(int x)
 		return 1;
 	else
 		return 0;
+}
+
+// checks for an alphabetic character
+// see http://code.google.com/p/minilib-c/source/browse/trunk/ctype/isalpha.c
+int isalpha(int c)
+{
+	return((c >='a' && c <='z') || (c >='A' && c <='Z'));
+}
+
+// checks for an alphanumeric character; it is equivalent to (isalpha(c) || isdigit(c)).
+// see http://code.google.com/p/minilib-c/source/browse/trunk/ctype/isalnum.c
+int isalnum(int c)
+{
+	return(((c>='a') && (c<='z')) || ((c>='A') && (c<='Z')) || ((c>='0') && (c<='9')));
+}
+
+// checks for hexadecimal digits, that is, one of 0 1 2 3 4 5 6 7 8 9 a b c d e f A B C D E F.
+// see http://code.google.com/p/minilib-c/source/browse/trunk/ctype/isxdigit.c
+int isxdigit (int c)
+{
+	return(((c>='0') && (c<='9')) || ((c>='A') && (c<='F')) || ((c>='a') && (c<='f')) );
+}
+
+// uppercase character predicate
+// see http://code.google.com/p/minilib-c/source/browse/trunk/ctype/isupper.c
+int isupper(int c)
+{
+        return ((c>='A') && (c<='Z'));
+}
+
+/*
+ * Convert a string to a long integer.
+ *
+ * Ignores `locale' stuff.  Assumes that the upper and lower case
+ * alphabets and digits are each contiguous.
+ */
+// see http://code.google.com/p/minilib-c/source/browse/trunk/stdlib/strtol.c
+long strtol (const char *nptr, char **ptr, int base)
+{
+        register const char *s = nptr;
+        register unsigned long acc;
+        register int c;
+        register unsigned long cutoff;
+        register int neg = 0, any, cutlim;
+
+        /*
+         * Skip white space and pick up leading +/- sign if any.
+         * If base is 0, allow 0x for hex and 0 for octal, else
+         * assume decimal; if base is already 16, allow 0x.
+         */
+        do 
+        {
+                c = *s++;
+        } while (isspace(c));
+        
+        if (c == '-') 
+        {
+                neg = 1;
+                c = *s++;
+        } 
+        else if (c == '+')
+                c = *s++;
+
+        if ((base == 0 || base == 16) &&
+            c == '0' && (*s == 'x' || *s == 'X')) 
+        {
+                c = s[1];
+                s += 2;
+                base = 16;
+        }
+
+        if (base == 0)
+                base = c == '0' ? 8 : 10;
+
+        /*
+         * Compute the cutoff value between legal numbers and illegal
+         * numbers.  That is the largest legal value, divided by the
+         * base.  An input number that is greater than this value, if
+         * followed by a legal input character, is too big.  One that
+         * is equal to this value may be valid or not; the limit
+         * between valid and invalid numbers is then based on the last
+         * digit.  For instance, if the range for longs is
+         * [-2147483648..2147483647] and the input base is 10,
+         * cutoff will be set to 214748364 and cutlim to either
+         * 7 (neg==0) or 8 (neg==1), meaning that if we have accumulated
+         * a value > 214748364, or equal but the next digit is > 7 (or 8),
+         * the number is too big, and we will return a range error.
+         *
+         * Set any if any `digits' consumed; make it negative to indicate
+         * overflow.
+         */
+
+        cutoff = neg ? -(unsigned long)LONG_MIN : LONG_MAX;
+        cutlim = cutoff % (unsigned long)base;
+        cutoff /= (unsigned long)base;
+
+        for (acc = 0, any = 0;; c = *s++) 
+        {
+                if (isdigit(c))
+                        c -= '0';
+                else if (isalpha(c))
+                        c -= isupper(c) ? 'A' - 10 : 'a' - 10;
+                else
+                        break;
+                if (c >= base)
+                        break;
+               if (any < 0 || acc > cutoff || (acc == cutoff && c > cutlim))
+                        any = -1;
+                else {
+                        any = 1;
+                        acc *= base;
+                        acc += c;
+                }
+        }
+        if (any < 0) 
+        {
+                acc = neg ? LONG_MIN : LONG_MAX;
+        } 
+        else if (neg)
+                acc = -acc;
+        if (ptr != 0)
+                *ptr = (char *) (any ? s - 1 : nptr);
+        return (acc);
+}
+
+// it only compares the first (at most) n bytes of s1 and s2
+// see http://code.google.com/p/minilib-c/source/browse/trunk/string/strncmp.c
+int strncmp(const char *s1, const char *s2, size_t n)
+{
+	if (n == 0)
+		return 0;
+
+	while (n-- != 0 && *s1 == *s2)
+	{
+		if (n == 0 || *s1 == '\0')
+			break;
+		s1++;
+		s2++;
+	}
+
+	return (*(unsigned char *) s1) - (*(unsigned char *) s2);
+}
+
+// counted copy string
+// see http://code.google.com/p/minilib-c/source/browse/trunk/string/strncpy.c
+char *strncpy(char *dst0, const char *src0, size_t count)
+{
+	char *dscan;
+	const char *sscan;
+
+	dscan = dst0;
+	sscan = src0;
+	while (count > 0)
+	{
+		--count;
+		if ((*dscan++ = *sscan++) == '\0')
+			break;
+	}
+	while (count-- > 0)
+		*dscan++ = '\0';
+
+	return dst0;
 }
 
 int atoi(const char *nptr)
@@ -62,6 +235,76 @@ int atoi(const char *nptr)
 		return -total;
 	else
 		return total; /* return result, negated if necessary */
+}
+
+// convert ASCII string to long
+// see http://code.google.com/p/minilib-c/source/browse/trunk/stdlib/atol.c
+long atol(const char *s)
+{
+        return strtol (s, NULL, 10);
+}
+
+// convert ASCII string to long long
+// also see http://code.google.com/p/minilib-c/source/browse/trunk/stdlib/atol.c
+long long atoll(const char *s)
+{
+        return (long long)strtol (s, NULL, 10);
+}
+
+// So given a string like "2.23" your function should return double 2.23. This might seem easy in the first place but this is a highly 
+// ambiguous question. Also it has some interesting test cases. So overall a good discussion can revolve around this question. 
+// We are not going to support here scientific notation like 1.45e10 etc. 
+// We will also not support hex and octal strings just for the sake of simplicity. 
+// But these are good assumption to state upfront. Let's write code for this.
+// see http://crackprogramming.blogspot.com/2012/10/implement-atof.html
+double atof(const char* num)
+{
+	if (!num || !*num)
+		return 0; 
+	double integerPart = 0;
+	double fractionPart = 0;
+	int divisorForFraction = 1;
+	int sign = 1;
+	BOOL inFraction = FALSE;
+	/*Take care of +/- sign*/
+	if (*num == '-')
+	{
+		 ++num;
+		 sign = -1;
+	}
+	else if (*num == '+')
+	{
+		 ++num;
+	}
+	while (*num != '\0')
+	{
+		 if (*num >= '0' && *num <= '9')
+		 {
+		     if (inFraction)
+		     {
+			 /*See how are we converting a character to integer*/
+			 fractionPart = fractionPart*10 + (*num - '0');
+			 divisorForFraction *= 10;
+		     }
+		     else
+		     {
+			 integerPart = integerPart*10 + (*num - '0');
+		     }
+		 }
+		 else if (*num == '.')
+		 {
+		     if (inFraction)
+			 return sign * (integerPart + fractionPart/divisorForFraction);
+		     else
+			 inFraction = TRUE;
+		 }
+		 else
+		 {
+		     return sign * (integerPart + fractionPart/divisorForFraction);
+		 }
+		 ++num;
+	}
+	return sign * (integerPart + fractionPart/divisorForFraction);
 }
 
 void initscr()
@@ -147,6 +390,69 @@ int getch(void)
 		}
 	}
 	return 0;
+}
+
+int getchar(void)
+{
+	int key = '\n';
+	if(getchar_input_buf.hasContent == FALSE)
+	{
+		getchar_input_buf.cur = 0;
+		for(;;) 
+		{
+			key = getch();
+			if(key >= 128)
+				continue;
+			if(key >= ' ') {
+				if(getchar_input_buf.cur < 0)
+				{
+					getchar_input_buf.cur++;
+				}
+				if(getchar_input_buf.cur < GETCHAR_BUF_SIZE - 1)
+				{
+					getchar_input_buf.buf[getchar_input_buf.cur++] = key;
+					putch(key);
+				}
+				else
+					continue;
+			}
+			else if(key == 8) {
+				if(getchar_input_buf.cur <= 0)
+					continue;
+				getchar_input_buf.cur--;
+				syscall_monitor_write("\b \b");
+			}
+			else if(key == '\n')
+			{
+				if(getchar_input_buf.cur < 0)
+				{
+					getchar_input_buf.cur++;
+				}
+				if(getchar_input_buf.cur < GETCHAR_BUF_SIZE)
+				{
+					getchar_input_buf.buf[getchar_input_buf.cur++] = key;
+				}
+				getchar_input_buf.buf[getchar_input_buf.cur] = '\0';
+				getchar_input_buf.length = strlen(getchar_input_buf.buf);
+				getchar_input_buf.hasContent = TRUE;
+				getchar_input_buf.cur = 0;
+				putch(key);
+				break;
+			}
+			else
+				continue;
+		}
+	}
+	if(getchar_input_buf.hasContent == TRUE)
+	{
+		key = getchar_input_buf.buf[getchar_input_buf.cur] & 0xff;
+		if(getchar_input_buf.cur == (getchar_input_buf.length - 1))
+		{
+			getchar_input_buf.hasContent = FALSE;
+		}
+		getchar_input_buf.cur++;
+	}
+	return key;
 }
 
 SINT32 libc_create_empty_file(FS_NODE * fs_root, char * name, FS_NODE * output)
@@ -541,6 +847,25 @@ int rand(void)
 	return rand_r(&libc_random_seed);
 }
 
+int timer_get_tick()
+{
+	return syscall_timer_get_tick();
+}
+
+clock_t clock(void)
+{
+	return (clock_t)syscall_timer_get_tick();
+}
+
+time_t time(time_t *t)
+{
+	if(t == NULL)
+		return 0;
+	time_t ret = (time_t)clock();
+	*t = ret;
+	return ret;
+}
+
 char *tmpnam(char *s)
 {
 	if(s != NULL && (strlen(s) < 19))
@@ -632,6 +957,38 @@ int fseek(FILE * file, long offset, int whence)
 	return file->cur;
 }
 
+long ftell(FILE *stream)
+{
+	if(stream == NULL)
+		return -1;
+	if(stream->sign != FILE_SIGN)
+		return -1;
+	if(stream->fsnode == NULL)
+		return -1;
+	if(stream->buf == NULL)
+		return -1;
+
+	return stream->cur;
+}
+
+int feof(FILE *stream)
+{
+	if(stream == NULL)
+		return -1;
+	if(stream->sign != FILE_SIGN)
+		return -1;
+	if(stream->fsnode == NULL)
+		return -1;
+	if(stream->buf == NULL)
+		return -1;
+
+	if(stream->cur >= stream->fsnode->length)
+		return TRUE;
+	else
+		return FALSE;
+	return TRUE;
+}
+
 int fread(void *ptr, size_t size, size_t nmemb, FILE * file)
 {
 	if(file == NULL)
@@ -650,7 +1007,8 @@ int fread(void *ptr, size_t size, size_t nmemb, FILE * file)
 		len = file->fsnode->length - file->cur;
 	if(len == 0)
 		return 0;
-	memcpy((UINT8 *)ptr, (UINT8 *)file->buf, len);
+	memcpy((UINT8 *)ptr, (UINT8 *)(file->buf + file->cur), len);
+	file->cur += len;
 	return (((int)len) > 0) ? ((int)len) : 1;
 }
 
@@ -684,6 +1042,85 @@ int fwrite(const void *ptr, size_t size, size_t nmemb, FILE * file)
 	file->fsnode->length = file->cur;
 	file->isdirty = TRUE;
 	return (((int)len) > 0) ? ((int)len) : 1;
+}
+
+int fprintf(FILE *stream, const char *format, ...)
+{
+	if(stream == NULL)
+		return -1;
+	if(stream->sign != FILE_SIGN)
+		return -1;
+	if(stream->fsnode == NULL)
+		return -1;
+	if(stream->buf == NULL)
+		return -1;
+	if(format == NULL)
+		return -1;
+
+	va_list args;
+	int ret;
+	int length;
+
+	va_start(args, format);
+	vsnprintf(fprint_tmp_str, FPRINT_TMP_SIZE, format, args);
+	va_end(args);
+
+	length = strlen(fprint_tmp_str);
+	ret = fwrite(fprint_tmp_str, sizeof(char), length, stream);
+	return ret;
+}
+
+void * malloc(size_t size)
+{
+	if(size == 0)
+		return NULL;
+
+	return (void *)syscall_umalloc((int)size);
+}
+
+void free(void * ptr)
+{
+	if(ptr == NULL)
+		return;
+
+	syscall_ufree(ptr);
+}
+
+void * realloc(void * ptr, size_t size)
+{
+	if(ptr == NULL)
+		return malloc(size);
+	if(size == 0)
+	{
+		free(ptr);
+		return NULL;
+	}
+	
+	// Get the header and footer associated with this pointer.
+	KHP_HEADER *header = (KHP_HEADER *)((UINT32)ptr - sizeof(KHP_HEADER));
+	KHP_FOOTER *footer = (KHP_FOOTER *)((UINT32)header + header->size - sizeof(KHP_FOOTER));
+
+	// Sanity checks.
+	if(header->magic != HEAP_MAGIC)
+		return NULL;
+	if(footer->magic != HEAP_MAGIC)
+		return NULL;
+	// 如果本身就是一个hole,则直接返回
+	if(header->is_hole == 1)
+		return NULL;
+
+	size_t oldsize = header->size - sizeof(KHP_HEADER) - sizeof(KHP_FOOTER);
+	if(oldsize == size)
+		return ptr;
+	void * newptr = malloc(size);
+	if(newptr == NULL)
+		return NULL;
+	size_t cpysize = oldsize;
+	if(oldsize > size)
+		cpysize = size;
+	memcpy(newptr, ptr, cpysize);
+	free(ptr);
+	return newptr;
 }
 
 void exit(int code)

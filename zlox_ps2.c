@@ -113,7 +113,7 @@ ZLOX_BOOL zlox_ps2_init(ZLOX_BOOL need_openMouse)
 	response = zlox_inb(0x60);
 	if(response != 0x00)
 	{
-		zlox_monitor_write("first PS/2 port test failed, you can't use keyboard");
+		zlox_monitor_write("first PS/2 port test failed, you can't use keyboard \n");
 	}
 	else
 		ps2_first_port_status = ZLOX_TRUE;
@@ -125,7 +125,7 @@ ZLOX_BOOL zlox_ps2_init(ZLOX_BOOL need_openMouse)
 		response = zlox_inb(0x60);
 		if(response != 0x00)
 		{
-			zlox_monitor_write("second PS/2 port test failed, you can't use mouse");
+			zlox_monitor_write("second PS/2 port test failed, you can't use mouse \n");
 		}
 		else
 			ps2_sec_port_status = ZLOX_TRUE;
@@ -167,7 +167,7 @@ ZLOX_BOOL zlox_ps2_init(ZLOX_BOOL need_openMouse)
 		response = zlox_inb(0x60);
 		if(response != 0xAA && response != 0xFA)
 		{
-			zlox_monitor_write("first PS/2 device reset failed, you can't use keyboard");
+			zlox_monitor_write("first PS/2 device reset failed, you can't use keyboard \n");
 			ps2_first_port_status = ZLOX_FALSE;
 		}
 	}
@@ -181,11 +181,20 @@ ZLOX_BOOL zlox_ps2_init(ZLOX_BOOL need_openMouse)
 		response = zlox_inb(0x60);
 		if(response != 0xAA && response != 0xFA)
 		{
-			zlox_monitor_write("second PS/2 device reset failed, you can't use mouse");
+			zlox_monitor_write("second PS/2 device reset failed, you can't use mouse \n");
 			ps2_first_port_status = ZLOX_FALSE;
 		}
 	}
 	ps2_init_status = ZLOX_TRUE;
 	return ps2_init_status;
+}
+
+// 用于系统调用, 获取PS2的初始化状态
+ZLOX_SINT32 zlox_ps2_get_status(ZLOX_BOOL * init_status, ZLOX_BOOL * first_port_status, ZLOX_BOOL * sec_port_status)
+{
+	*init_status = ps2_init_status;
+	*first_port_status = ps2_first_port_status;
+	*sec_port_status = ps2_sec_port_status;
+	return 0;
 }
 

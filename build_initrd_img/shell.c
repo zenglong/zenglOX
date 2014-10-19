@@ -104,6 +104,28 @@ int main(VOID * task, int argc, char * argv[])
 	UNUSED(argv);
 
 	syscall_monitor_write("zenglOX> ");
+
+	BOOL ps2_init_status, ps2_first_port_status, ps2_sec_port_status;
+	syscall_ps2_get_status(&ps2_init_status, &ps2_first_port_status, &ps2_sec_port_status);
+	if(ps2_init_status == FALSE)
+	{
+		syscall_monitor_write("PS/2 Controller self test failed ! , you can't use keyboard and mouse..."
+					" you may be have to reboot manual\n");
+		while(TRUE)
+		{
+			syscall_idle_cpu();
+		}
+	}
+	else if(ps2_first_port_status == FALSE)
+	{
+		syscall_monitor_write("first PS/2 device reset failed, you can't use keyboard..."
+					" you may be have to reboot manual\n");
+		while(TRUE)
+		{
+			syscall_idle_cpu();
+		}
+	}
+
 	syscall_set_input_focus(task);
 	while(TRUE)
 	{
@@ -147,10 +169,10 @@ int main(VOID * task, int argc, char * argv[])
 
 			if(msg.keyboard.ascii == '\n')
 			{
-				strcpy(input_for_up, input);
 				syscall_monitor_put('\n');
 				if(count > 0)
 				{
+					strcpy(input_for_up, input);
 					if(strcmp(input,"exit") == 0)
 						return 0;
 					else if(detect_fix_filename(input) == FALSE)

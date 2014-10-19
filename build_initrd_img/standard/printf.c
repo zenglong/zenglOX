@@ -271,7 +271,8 @@ int sprintf(char *buf, const char *fmt, ...)
 	int i;
 
 	va_start(args, fmt);
-	i = vsprintf(buf, fmt, args);
+	//i = vsprintf(buf, fmt, args);
+	i = vsnprintf(buf, INT_MAX, fmt, args);
 	va_end(args);
 	return i;
 }
@@ -283,11 +284,22 @@ int printf(const char *fmt, ...)
 	int printed;
 
 	va_start(args, fmt);
-	printed = vsprintf(printf_buf, fmt, args);
+	//printed = vsprintf(printf_buf, fmt, args);
+	printed = vsnprintf(printf_buf, 1024, fmt, args);
 	va_end(args);
 
 	cputs(printf_buf);
 
+	return printed;
+}
+
+int vprintf(const char *format, va_list ap)
+{
+	char printf_buf[1024];
+	int printed;
+	//printed = vsprintf(printf_buf, format, ap);
+	printed = vsnprintf(printf_buf, 1024, format, ap);
+	cputs(printf_buf);
 	return printed;
 }
 
@@ -298,7 +310,8 @@ int cprintf(const char *fmt, ...)
 	int printed;
 
 	va_start(args, fmt);
-	printed = vsprintf(printf_buf, fmt, args);
+	//printed = vsprintf(printf_buf, fmt, args);
+	printed = vsnprintf(printf_buf, 1024, fmt, args);
 	va_end(args);
 
 	cputs(printf_buf);

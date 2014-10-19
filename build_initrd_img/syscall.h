@@ -64,6 +64,7 @@ typedef enum _SYSCALL_ENUM{
 	SYSCALL_RELEASE_CONTROL_KEYS,
 	SYSCALL_MONITOR_DEL_LINE,
 	SYSCALL_MONITOR_INSERT_LINE,
+	SYSCALL_PS2_GET_STATUS,
 }SYSCALL_ENUM;
 
 #define DECL_SYSCALL0(fn) SINT32 syscall_##fn();
@@ -179,6 +180,7 @@ DECL_SYSCALL0(get_control_keys)
 DECL_SYSCALL1(release_control_keys, UINT8)
 DECL_SYSCALL0(monitor_del_line)
 DECL_SYSCALL0(monitor_insert_line)
+DECL_SYSCALL3(ps2_get_status, BOOL *, BOOL *, BOOL *)
 
 #endif // _SYSCALL_H_
 

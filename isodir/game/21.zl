@@ -1,0 +1,36 @@
+inc '21_fun.zl';
+
+clsPlayer android;
+clsPlayer user;
+
+android.name = 'Android';
+user.name = 'User';
+android.money = array(0,180,00000000);
+user.money = array(0,200,00000000);
+user.poker = array();
+user.poker.pokerlist = array();
+android.poker = array();
+android.poker.pokerlist = array();
+oneturnMoney = array(0,20,55000000);
+print 'user:'+user.name;
+turn_num = 0;
+//input = 's';
+blfirst = TRUE;
+
+do
+	if(blfirst)
+		printf('if you want start ,type "s" \r\n\t');
+	else
+		printf('if you want play again ,type "r" \r\n\t');
+	endif
+	input = read();
+	if((!blfirst && input=='r') || (blfirst && input=='s'))
+		myGameStart();
+		if(blfirst)
+			blfirst = FALSE;
+		endif
+	else
+		break;
+	endif
+dowhile() //end program!
+

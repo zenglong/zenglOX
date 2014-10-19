@@ -7,6 +7,7 @@
 #include "syscall.h"
 #include "task.h"
 #include "fs.h"
+#include "kheap.h"
 
 #define FILE_SIGN 0x13141588
 #define EOF -1
@@ -41,7 +42,18 @@ typedef char *va_list;
 #define SEEK_CUR -2
 #define SEEK_END -4
 
+#define CLOCKS_PER_SEC 50
+
+#define LONG_MIN (-2147483647L - 1)
+#define LONG_MAX 2147483647L
+#define INT_MAX 2147483647L
+#define JMP_BUF_SIZE 6
+
 typedef unsigned int size_t;
+typedef unsigned int clock_t;
+typedef unsigned short wchar_t;
+typedef unsigned int time_t;
+typedef int jmp_buf[JMP_BUF_SIZE];
 
 typedef enum _FILE_OP_TYPE
 {
@@ -65,7 +77,56 @@ SINT32 strnlen(const char *s, SINT32 count);
 
 int isdigit(int x);
 
+// checks for an alphabetic character
+// see http://code.google.com/p/minilib-c/source/browse/trunk/ctype/isalpha.c
+int isalpha(int c);
+
+// checks for an alphanumeric character; it is equivalent to (isalpha(c) || isdigit(c)).
+// see http://code.google.com/p/minilib-c/source/browse/trunk/ctype/isalnum.c
+int isalnum(int c);
+
+// checks for hexadecimal digits, that is, one of 0 1 2 3 4 5 6 7 8 9 a b c d e f A B C D E F.
+// see http://code.google.com/p/minilib-c/source/browse/trunk/ctype/isxdigit.c
+int isxdigit (int c);
+
+// uppercase character predicate
+// see http://code.google.com/p/minilib-c/source/browse/trunk/ctype/isupper.c
+int isupper(int c);
+
+/*
+ * Convert a string to a long integer.
+ *
+ * Ignores `locale' stuff.  Assumes that the upper and lower case
+ * alphabets and digits are each contiguous.
+ */
+// see http://code.google.com/p/minilib-c/source/browse/trunk/stdlib/strtol.c
+long strtol (const char *nptr, char **ptr, int base);
+
+// it only compares the first (at most) n bytes of s1 and s2
+// see http://code.google.com/p/minilib-c/source/browse/trunk/string/strncmp.c
+int strncmp(const char *s1, const char *s2, size_t n);
+
+// counted copy string
+// see http://code.google.com/p/minilib-c/source/browse/trunk/string/strncpy.c
+char *strncpy(char *dst0, const char *src0, size_t count);
+
 int atoi(const char *nptr);
+
+// convert ASCII string to long
+// see http://code.google.com/p/minilib-c/source/browse/trunk/stdlib/atol.c
+long atol(const char *s);
+
+// convert ASCII string to long long
+// also see http://code.google.com/p/minilib-c/source/browse/trunk/stdlib/atol.c
+long long atoll(const char *s);
+
+// So given a string like "2.23" your function should return double 2.23. This might seem easy in the first place but this is a highly 
+// ambiguous question. Also it has some interesting test cases. So overall a good discussion can revolve around this question. 
+// We are not going to support here scientific notation like 1.45e10 etc. 
+// We will also not support hex and octal strings just for the sake of simplicity. 
+// But these are good assumption to state upfront. Let's write code for this.
+// see http://crackprogramming.blogspot.com/2012/10/implement-atof.html
+double atof(const char* num);
 
 void initscr();
 
@@ -82,6 +143,8 @@ void cputs(const char * str);
 void putch(char c);
 
 int getch(void);
+
+int getchar(void);
 
 FILE * fopen(char * filename, char * op_type_str);
 
@@ -119,6 +182,12 @@ int rand_r(unsigned int *seed);
 
 int rand(void);
 
+int timer_get_tick();
+
+clock_t clock(void);
+
+time_t time(time_t *t);
+
 char *tmpnam(char *s);
 
 FILE * tmpfile();
@@ -127,18 +196,41 @@ void unlink_tmpfile();
 
 int fseek(FILE * file, long offset, int whence);
 
+long ftell(FILE *stream);
+
+int feof(FILE *stream);
+
 int fread(void *ptr, size_t size, size_t nmemb, FILE * file);
 
 int fwrite(const void *ptr, size_t size, size_t nmemb, FILE * file);
 
+int fprintf(FILE *stream, const char *format, ...);
+
+void * malloc(size_t size);
+
+void free(void * ptr);
+
+void * realloc(void * ptr, size_t size);
+
 void exit(int code);
 
 //printf.c
+int vsprintf(char *buf, const char *fmt, va_list args);
 int sprintf(char *buf, const char *fmt, ...);
 // printf.c
 int printf(const char *fmt, ...);
+int vprintf(const char *format, va_list ap);
 // printf.c
 int cprintf(const char *fmt, ...);
+
+// vsnprintf.c
+/*
+** This vsnprintf() emulation does not implement the conversions:
+**	%e, %E, %g, %G, %wc, %ws
+** The %f implementation is limited.
+*/
+int vsnprintf(char *buf, size_t size, const char *fmt, va_list args);
+int snprintf(char *buf, size_t size, const char *fmt, ...);
 
 #endif // _STDLIB_H_
 

@@ -16,6 +16,7 @@
 #include "zlox_network.h"
 #include "zlox_time.h"
 #include "zlox_pci.h"
+#include "zlox_ps2.h"
 
 static ZLOX_VOID zlox_syscall_handler(ZLOX_ISR_REGISTERS * regs);
 // _zlox_reboot() and _zlox_shutdown() is in zlox_shutdown.s
@@ -85,6 +86,7 @@ ZLOX_DEFN_SYSCALL0(get_control_keys, ZLOX_SYSCALL_GET_CONTROL_KEYS);
 ZLOX_DEFN_SYSCALL1(release_control_keys, ZLOX_SYSCALL_RELEASE_CONTROL_KEYS, ZLOX_UINT8);
 ZLOX_DEFN_SYSCALL0(monitor_del_line, ZLOX_SYSCALL_MONITOR_DEL_LINE);
 ZLOX_DEFN_SYSCALL0(monitor_insert_line, ZLOX_SYSCALL_MONITOR_INSERT_LINE);
+ZLOX_DEFN_SYSCALL3(ps2_get_status, ZLOX_SYSCALL_PS2_GET_STATUS, ZLOX_BOOL *, ZLOX_BOOL *, ZLOX_BOOL *);
 
 static ZLOX_VOID * syscalls[ZLOX_SYSCALL_NUMBER] =
 {
@@ -146,6 +148,7 @@ static ZLOX_VOID * syscalls[ZLOX_SYSCALL_NUMBER] =
 	&zlox_release_control_keys,
 	&zlox_monitor_del_line,
 	&zlox_monitor_insert_line,
+	&zlox_ps2_get_status,
 };
 
 ZLOX_UINT32 num_syscalls = ZLOX_SYSCALL_NUMBER;

@@ -1,0 +1,170 @@
+  zengl v1.4.1 , 修复zengl_symbol.c里zengl_ScanInsertGlobalSym函数在插入变量符号信息时，当parentnum为-1时，可能出现的nodes[parentnum]数组访问异常，
+  该Bug由android SDK里的ndk-stack工具发现，该BUG有时候会导致程序直接挂掉，在android日志里就是提示terminated by signal (11)的错误。
+
+  作者：zenglong 时间：2014年2月19日 官网：www.zengl.com
+
+  zengl v1.4.0 , 添加zenglApi_Debug，zenglApi_GetDebug，zenglApi_DebugSetBreak，
+  zenglApi_DebugSetBreakEx，zenglApi_DebugGetBreak，zenglApi_DebugDelBreak，
+  zenglApi_DebugSetBreakHandle，zenglApi_DebugSetSingleBreak，zenglApi_DebugGetTrace
+  一共9个和调试有关的接口，通过这些接口实现了调试变量信息，设置断点，查看脚本函数的堆栈调用信息，设置条件断点，设置日志断点，
+  设置断点次数，单步步入，单步步过，执行到返回等交互式调试功能。
+
+  调试接口的具体使用方法可以参考main.c里的代码。另外还添加了zenglApi_ReAllocMem和zenglApi_makePathFileName两个辅助接口。
+
+  将脚本变量的整数类型由int改为long，这样在64位linux系统里，long就是和指针一样的64位的大小，方便64位移植，防止GCC编译出现指针到int类型大小转换的警告。
+
+  修复数组元素或类成员没初始化时，加加减减无效的BUG。
+
+  由该版本和SDL库，得到一个zengl_SDL项目，可以用zengl编写一些简单的类似俄罗斯方块，21点之类的小游戏，详情见zengl_SDL项目。
+
+  作者：zenglong
+  时间：2014年1月29日
+  官网：www.zengl.com
+  
+  zengl v1.3.2 , 修复字符串脚本解析时可能出现的结尾字符死循环问题。
+  
+  将用户自定义的函数指针在用户API接口部分统一设置为void *指针类型，这样一方面可以解决v1.3.1所产生的函数指针兼容问题，另一方面有利于以后扩展和调整用户自定义函数的参数。
+
+  删除zengl_exportPublicDefs.h文件，将该文件里的内容移入zengl_exportfuns.h，用户文件部分就只需包含zengl_exportfuns.h一个头文件即可，同时也不影响之前版本的用户程序部分。
+
+  linux中的makefile添加静态编译，在make clean清理完之前的中间文件后，使用make static就可以生成libzengl.a静态库，静态库就不需要root权限，普通的make生成的默认是动态库。
+
+  作者：zenglong
+  时间：2013年12月31日
+  官网：www.zengl.com
+
+  zengl v1.3.1 , 增加了android工程目录，对android平台下的ARM GCC进行了测试，使用android ndk开发了一个手机上运行zengl脚本的app，arm gcc下默认约定char类型为unsigned无符号类型，所以在该平台下编译时需要指明ZL_EXP_OS_IN_ARM_GCC宏，有了该宏，ZL_CHAR类型就会被定义为signed char类型。
+  
+  调整了编译器和解释器中用户自定义函数的参数，例如编译器调试信息的输出函数等，添加了一个虚拟机指针参数(方便通过虚拟机指针来调用其他接口)，由于增加了参数，所以在C++下可能会造成和之前版本的不兼容，需要自行调整用户函数参数。
+
+  作者：zenglong
+  时间：2013年12月24日
+  官网：www.zengl.com
+  
+  zengl v1.3.0 , 该版本添加了"&"(按位与),"&="(按位与赋值),"|"(按位或),"|="(按位或赋值),"^"(按位异或),"^="(按位异或赋值),"<<"(左移),"<<="(左移赋值),">>"(右移),">>="(右移赋值),"~"(按位取反)一共11个二进制位操作相关的运算符
+
+  添加了zenglApi_RunStr接口，可以将一段字符串直接当作脚本来解析执行。
+
+  添加了zenglApi_ReUse接口，如果某虚拟机之前编译过，那么可以通过此接口设置重利用标志，接着就可以在zenglApi_Run或zenglApi_Call或zenglApi_RunStr中跳过编译，直接执行代码，该接口可以看成一种缓存方式。
+
+  添加zenglApi_SetFunArgEx接口，并使用该接口来实现zenglApiBMF_unset内建模块函数，该模块函数可以将变量重置到未初始化状态，最主要的是可以将引用类型的变量或数组成员或类成员重置为普通变量。引用类型也做了调整，引用可以是一级，二级，三级甚至是更多级的引用，这样才能对引用进行重置。
+
+  添加zenglApi_GetModFunName接口，该接口可以在模块函数定义中获取用户定义的模块函数名
+
+  修复一些BUG，例如当字符串脚本或文件型脚本内容为空时，可能会出现的内存访问异常的BUG，以及像obj.key[i % obj.keylen]这样的表达式，类成员数组元素中再访问类成员时可能会出现的递归错误等
+
+  作者：zenglong
+  时间：2013年12月16日
+  官网：www.zengl.com
+
+  zengl v1.2.5 , 该版本在原来普通异或加密方式的基础上，添加了RC4加密方式，RC4可以看成是异或运算的升级版，安全性和实用性都很高，只需要很短的初始密钥就可以产生和明文一样长的伪随机密钥流。
+  
+  该版本还规范了API的调用位置，通过引入API状态枚举值，当某个API处于不正确的调用位置时，会忽略掉该API，同时返回API调用位置不正确的信息，可以使用zenglApi_GetErrorString接口来获取出错信息。
+  
+  所有API接口都可以返回出错信息，所以将原来一些返回值为VOID类型的API接口改为返回值为ZL_EXP_INT即int类型，这样当该API接口出错时，就可以返回-1，用户就可以根据此来判断API调用是否出错，如果是返回指针类型的API接口，则返回ZL_EXP_NULL即0的空指针来表示API接口是否出错，除了zenglApi_GetMemBlock这个API，该API由于原来返回的是一个结构体，所以只有当返回的ZENGL_EXPORT_MOD_FUN_ARG结构体中type成员为ZL_EXP_FAT_INVALID时才表示该API调用出错。
+
+  新增了一个zenglApi_GetExtraDataEx接口，该接口是zenglApi_GetExtraData接口的扩展版，扩展后的函数可以用于检测某额外数据是否存在，这种检测在使用额外数据替代模块函数里的静态变量和全局变量时就可以起到作用(详情可以查看zenglApi_BltModFuns.c里的zenglApiBMF_bltRandom函数，静态变量和全局变量在多线程中容易发生访问冲突)。
+
+  上面提到了zenglApi_BltModFuns.c文件，该文件是v1.2.5中新增的，它里面定义了虚拟机为用户提供的内建模块函数(只是一些很基本的脚本模块函数，像array之类的)，用户可以根据需要选择是否使用这些内建模块函数，还可以根据此文件里的模块函数为模板，复制到自己的程序中进行修改替换。因为有时候，像array这样的模块函数，用户一般不会对它进行扩展，所以就可以直接使用该文件里定义的array模块函数，只有当有需要修改时，再从该文件中复制对应的模块函数到自己的应用程序中进行修改替换，这些内建模块函数的设置方法和用户自己定义的模块函数的设置方法是一样的，都是用的zenglApi_SetModFunHandle接口来进行设置，详情可以参考main.c测试程序里的main_builtin_module_init模块初始化函数。
+
+  最后就是作者根据zengl.com上用户Raindy的评论，在64位Ubuntu系统下对zengl进行编译测试，发现之前的版本在64位下有些类型转换问题，还有些链接问题，所以在该版本中将某些地方出现的指针到int类型的转换改为指针到long类型的转换，另外还进行了一些其他的64位的处理。
+
+  v1.2.5版本新增了一个mac目录，该目录里有MAC OS X苹果系统下的makefile文件，下面是作者测试过的编译平台：
+
+  Ubuntu Studio 12.04.3 64位系统下 系统默认编译器：gcc(4.6.3版本)
+  Ubuntu Studio 12.04.3 32位系统下 系统默认编译器：gcc(4.6.3版本) gcc(4.5.3版本) gcc(4.4.7版本) gcc(4.1.2版本)
+  Slackware-13.37 32位系统下 gcc(4.5.2版本)
+  苹果雪豹操作系统 Snow Leopard 10.6 (i386内核) gcc(4.2.1版本)
+  winXP系统 vs2008
+  winXP系统 VC6
+  win7 64位系统 vs2010 (直接导入vs2008的解决方案，32位编译和64位编译,其中64位编译需要在32位项目的基础上，手动配置成x64的平台)
+
+  作者：zenglong
+  时间：2013年11月28日
+  官网：www.zengl.com
+
+  zengl v1.2.4 Release发布版，该版本在原来vs2008的基础上增加了vc6的工作空间，两者使用相同的代码，同时为了支持VC6，修改了zengl_global.h，在VC6下zengl工程新增了一个ZL_LANG_IN_VC6预处理宏，zengl_global.h在遇到该宏时，就知道是VC6编译器，然后就会在项目中使用_vsnprintf函数而不是vsnprintf，因为VC6下的vsnprintf必须在前面添加下划线 ，vs2008和gcc则不需要。
+
+  作者：zenglong
+  时间：2013年11月6日
+  官网：www.zengl.com
+
+  zengl v1.2.4 , 该版本使用异或算法添加了简单的脚本加密功能，这种算法开销小，但是安全性低，所以只能作为一种简单的脚本伪装。
+  
+  另外添加了单目负号运算符，以前没有负号运算符时，是使用减法运算符来表示负号，但是减法运算符毕竟是双目运算符，实现起来问题比较多(实际上之前的版本负号根本没起作用)，所以就为负号添加了专门的token和语法解析，负号具有和"!"取反运算符一样的优先级。
+  
+  该版本新增了几个API接口函数，如zenglApi_SetErrThenStop，这个API接口，用于在用户自定义的模块函数中设置出错信息，然后设置虚拟机停止执行，比zenglApi_Exit好的地方在于，不会长跳转直接结束，而是返回由用户决定退出的时机，有效防止外部C++调用出现内存泄漏或访问异常等，异或加密运算的API接口是zenglApi_SetSourceXorKey，在zenglApi_Run或zenglApi_Call执行前，可以将xor异或密钥通过此接口传递给虚拟机，虚拟机就会对脚本进行异或解密，异或密钥长度没有限制，所以尽量将异或密钥设置得长些，且密钥里的字符最好是随机的，当然你可以根据此思路进行扩展加密方式，或者使用第三方的加密函数，不过，过于复杂的加密方式可能会降低程序的执行性能，如果是重要的数据还是不要放在脚本里。
+
+  zenglApi_AllocMemForString , zenglApi_AllocMem 接口可以在虚拟机内部为用户分配一段内存，然后由用户决定用这段内存做些什么，在用完后，最好用zenglApi_FreeMem接口将分配的内存给释放掉，当然在zenglApi_Close关闭虚拟机时也会自动释放这些内存，不过手动释放可以防止内存越滚越大。
+
+  该版本还修复了访问类成员的BUG，之前的版本在访问类成员中的成员时会出现找不到类成员的BUG，这是由于zengl_symbol.c在递归查找类成员信息时所用的类ID信息不对造成的，再此版本中进行修复。
+
+  作者：zenglong
+  时间：2013年11月5日
+  官网：www.zengl.com
+
+  zengl v1.2.2 Release发布版，经过采集器的嵌入式测试后由Beta版转为Release发布版，vs2008增加了Release发布模式的配置，详情见官网
+
+  作者：zenglong
+  时间：2013年8月24日
+  官网：www.zengl.com
+
+  zengl v1.2.2 Beta20130820，修复zenglrun_func.c中模块动态数组，模块函数动态数组，用户额外数据动态数组在添加数据时不会动态扩容的BUG
+
+  作者：zenglong
+  时间：2013年8月20日
+  官网：www.zengl.com
+
+  zengl v1.2.2 Beta20130819，增加zenglApi_SetExtraData以及zenglApi_GetExtraData的API接口，通过这两个接口可以从用户端向虚拟机传递指针数据。修复AST某些解析中关于-1空节点的访问异常的BUG，修复API函数退出时出现的访问异常及长跳转错误。
+
+  作者：zenglong
+  时间：2013年8月19日
+  官网：www.zengl.com
+
+  zengl v1.2.1的版本，该版本修复v1.2.0中的函数调用的BUG，v1.2.0中当函数定义在函数调用之后时，函数调用就找不到正确的函数入口地址，该版本通过增加ZL_R_DT_LDFUNID指令操作数类型来解决此BUG，函数调用时会先在指令中存放函数ID，在链接替换时再将函数ID替换为伪地址，最后再将伪地址替换为汇编的真实位置。另外增加一个API接口函数:zenglApi_Stop,用户可以通过此接口在中途停止脚本。最后将所有代码转为unix换行符，以适应github
+
+  作者：zenglong
+  时间：2013年8月17日
+  官网：www.zengl.com
+
+  zengl v1.2.0的版本,该版本已经重写了所有的源代码，采用面向对象方式，将C文件中主要的全局变量和函数(函数以函数指针的形式)写到结构体中。对C文件名，以及源码中变量，宏，结构体等命名方式进行了统一处理，对所有内部错误信息进行统一管理。将zengl转变为类似lua的嵌入式脚本语言，zengl是以动态连接库的形式嵌入到用户的C或C++程序中,取消原来的.zlc后缀的汇编指令文件，直接编译执行.zl脚本，编译器和解释器都整合在zengl动态链接库中。
+
+  zengl中主要的源码文件如下：
+
+  zengl_locals.c 国际化语言文件，将虚拟机内部所有可能的出错信息，以及关键字的字符串信息，汇编指令的输出符号信息等都定义在该文件的不同数组中。可以定义自己的出错信息以及该出错信息对应的宏，在编译zengl生成动态链接库时，通过定义ZL_LANG_EN_WITH_CH宏，可以让zengl输出默认的中英文混合出错信息。如果需要定义其他语言的出错信息，可以在该文件中自定义一个ZL_LANG_....之类的宏，再自己写一个ZL_Error_String数组，最后在编译zengl时，指定ZL_LANG_....宏即可。
+
+  zengl_main.c zengl编译器的主体程式，里面定义了和编译器相关的函数，主要是词法扫描相关的函数，当然也包括一些编译器和虚拟机的初始化函数等。
+
+  zengl_parser.c 该文件中定义了一些和语法解析相关的函数。语法解析生成AST抽象语法树的过程主要集中在zengl_express函数中，该函数采用第三个版本的语法解析引擎，对以前版本的算法进行了调整，采用纯状态机加优先级堆栈的方式，比第二个版本的可读性强很多，语法错误的定位也更准确，方便维护和扩展。
+
+  zengl_symbol.c 该文件定义了和符号表相关的函数，全局变量，函数，类等符号信息都是通过该文件中的函数来生成。
+
+  zengl_assemble.c 该文件定义了和汇编指令输出相关的函数，汇编指令不再像以前的版本那样输出到.zlc文件中，而是直接输出到虚拟机解释器的指令动态数组中，这样汇编链接结束后，解释器就可以马上执行。
+
+  zengl_ld.c 该文件定义了和链接器相关的函数，主要是对JMP等指令中的跳转地址进行解析，将汇编中的伪跳转地址转为真实的汇编指令位置。
+
+  zenglrun_main.c 该文件定义了和虚拟机的解释器相关的函数，解释器通过这些函数来解释执行汇编指令。
+
+  zenglrun_func.c 该文件定义了和解释器相关的辅助函数，如解释器中内存池的操作函数等。
+
+  zenglApi.c 该文件定义了zengl虚拟机对外提供的接口函数(即zengl动态链接库对外的导出函数)，用户通过这些接口函数就可以在自己的C程序及C++程序中加载执行zengl脚本，并为zengl脚本自定义一些模块函数等。
+
+  zengl_exportfuns.h 该头文件中主要是对zengl动态链接库导出函数进行声明，要在自己的程序中使用zengl，就必须包含该头文件，并且在包含该头文件前，定义操作系统宏，例如windows环境下，需要#define ZL_EXP_OS_IN_WINDOWS宏，然后再包含该头文件，当然也可以在VS之类的IDE的项目配置中定义，或者makefile中定义，这些地方定义了就不需要在源码中再定义了，如果没有这个宏，那么编译就会出错，因为这个宏决定了导出函数是以windows的dll方式导出，还是以Linux的so方式导出。对于Linux系统，可以定义ZL_EXP_OS_IN_LINUX宏，也可以不定义，因为zengl默认就是使用Linux模式。
+
+  zengl_exportPublicDefs.h 该头文件会由zengl_exportfuns.h自动包含进来，里面定义了一些宏和结构体，用户在使用zengl导出的接口时，可能会用到这些宏和结构体，通过阅读该文件，可以知道为什么在windows系统下，一定要定义ZL_EXP_ON_IN_WINDOWS宏的原因。另外该文件中还包含了zengl主次版本号等信息(这些信息以宏的形式存在)。
+
+  zengl_global.h 该头文件是zengl内部的核心头文件，所有虚拟机，编译器，解释器等相关的宏和结构体，以及上面提到过的C源码中需要使用的宏，枚举值，结构体等，都定义在该头文件中。
+
+  zengl_locals.h 该头文件定义了zengl_locals.c中出错信息对应的宏等。
+
+  以上就是zengl动态链接库生成时所需的核心源码文件。
+
+  另外，需要注意的是，main.c并不是zengl的核心文件，它只是用来测试zengl嵌入式开发的测试程序，里面有zengl加载方法，API接口的使用示例等，用户可以参照这个文件来使用zengl进行嵌入式脚本开发，对于C++的用户在定义自己的模块函数时，请将这些模块函数使用extern "C"括起来。
+
+  由于zengl已经转为嵌入式编程语言，所以之前的SDL之类的模块都没包含进来，作者只想保留最核心的编译解析部分，其他的模块函数请在用户自己的程序中完成(包括array这样的函数，用户也必须自己定义，可以参照main.c中的代码，注意: print属于保留关键字，不属于模块函数)。
+
+  增加了类函数，用法可以参考test.zl脚本 
+    
+  作者：zenglong
+  时间：2013年8月14日
+  官网：www.zengl.com

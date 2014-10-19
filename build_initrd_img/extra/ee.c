@@ -2,7 +2,7 @@
 
 #define EE_MAJOR_VERSION 1
 #define EE_MINOR_VERSION 3
-#define EE_REVISION 8
+#define EE_REVISION 9
 
 #define EOL '\0' /* end of line marker */
 #define BLK ' ' /* blank */
@@ -391,6 +391,8 @@ void file_read(void)
 			do (*ae++ = BLK);
 			while( ((ae-col) % tabsize) != 0);
 		}
+		else if(c == '\r') // 自动跳过和剔除 \r 字符
+			;
 		else if(c == LF) 
 		{
 			*ae++ = EOL;

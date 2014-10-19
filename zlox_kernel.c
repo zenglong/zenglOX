@@ -100,7 +100,9 @@ ZLOX_SINT32 zlox_kernel_main(ZLOX_MULTIBOOT * mboot_ptr, ZLOX_UINT32 initial_sta
 				"you can input some command: ls , ps , cat , uname , cpuid , shell ,"
 				" reboot , shutdown , ata , mount , unmount , testoverflow , fdisk , "
 				"format , file , vga , dhcp isoget...\n\n"
-				" this version we have ee(easy editor), libc.so and so on... \n\n");
+				" this version we ported zengl language O(^_^)O~~ \n\n");
+
+	asm ("finit");
 
 	zlox_syscall_execve("shell");
 
