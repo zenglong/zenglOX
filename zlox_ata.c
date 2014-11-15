@@ -5,9 +5,11 @@
 #include "zlox_isr.h"
 #include "zlox_monitor.h"
 #include "zlox_kheap.h"
+#include "zlox_ide.h"
 
 extern ZLOX_TASK * current_task;
 volatile ZLOX_TASK * ata_wait_task = ZLOX_NULL;
+extern ZLOX_BOOL ide_can_dma;
 
 ZLOX_IDE_DEVICE ide_devices[4];
 
@@ -25,6 +27,8 @@ ZLOX_SINT32 zlox_ide_ata_access(ZLOX_UINT8 direction, ZLOX_UINT8 ide_index, ZLOX
 	if(ide_index > 3)
 		return -1;
 	if((ide_devices[ide_index].Reserved == 0) || (ide_devices[ide_index].Type == ZLOX_IDE_ATAPI))
+		return -1;
+	if(lba > ide_devices[ide_index].Size)
 		return -1;
 
 	bus = ide_devices[ide_index].Bus;
@@ -106,52 +110,101 @@ ZLOX_SINT32 zlox_ide_ata_access(ZLOX_UINT8 direction, ZLOX_UINT8 ide_index, ZLOX
 
 	// (V) Select the command and send it;
 	if (lba_mode == 0 && direction == 0)
-		cmd = 0x20; // READ SECTOR(S) command
+		cmd = ide_can_dma ? 0xC8 : 0x20; // READ DMA OR READ SECTOR(S)
 	if (lba_mode == 1 && direction == 0) 
-		cmd = 0x20; // READ SECTOR(S) command
+		cmd = ide_can_dma ? 0xC8 : 0x20; // READ DMA OR READ SECTOR(S)
 	if (lba_mode == 2 && direction == 0) 
-		cmd = 0x24; // READ SECTOR(S) EXT command (support from ATA-ATAPI-6)
-	if (lba_mode == 0 && direction == 1) 
-		cmd = 0x30; // WRITE SECTOR(S) command
+		cmd = ide_can_dma ? 0x25 : 0x24; // READ DMA EXT or READ SECTOR(S) EXT command (support from ATA-ATAPI-6)
+	if (lba_mode == 0 && direction == 1)
+		cmd = ide_can_dma ? 0xCA : 0x30; // WRITE DMA or WRITE SECTOR(S) command
 	if (lba_mode == 1 && direction == 1)
-		cmd = 0x30; // WRITE SECTOR(S) command
+		cmd = ide_can_dma ? 0xCA : 0x30; // WRITE DMA or WRITE SECTOR(S) command
 	if (lba_mode == 2 && direction == 1) 
-		cmd = 0x34; // WRITE SECTOR(S) EXT command (support from ATA-ATAPI-6)
+		cmd = ide_can_dma ? 0x35 : 0x34; // WRITE DMA EXT or WRITE SECTOR(S) EXT command (support from ATA-ATAPI-6)
+
+	if(ide_can_dma)
+	{
+		zlox_ide_before_send_command(direction, bus);
+		if(direction == 1)
+			zlox_ide_set_buffer_data(buffer, numsects * ZLOX_ATA_SECTOR_SIZE, bus);
+	}
+
 	zlox_outb (ZLOX_ATA_COMMAND (bus), cmd);
 
-	// PIO Read.
-	if (direction == 0)
+	if(ide_can_dma)
+		zlox_ide_start_dma(bus);
+
+	if(ide_can_dma)
 	{
-		for (i = 0; i < numsects; i++) 
+		// DMA Read.
+		if (direction == 0)
 		{
-			while ((status = zlox_inb (ZLOX_ATA_COMMAND (bus))) & 0x80)     /* BUSY */
-				asm volatile ("pause");
-			while (!((status = zlox_inb (ZLOX_ATA_COMMAND (bus))) & 0x8) && !(status & 0x1))
-				asm volatile ("pause");
-			/* DRQ or ERROR set */
-			if (status & 0x1) {
+			if(zlox_ide_after_send_command(bus) == -1)
+			{
+				status = zlox_inb (ZLOX_ATA_COMMAND (bus));
+				if (status & 0x1) {
+					ZLOX_UINT8 error = zlox_inb (ZLOX_ATA_FEATURES (bus));
+					zlox_monitor_write("ata error , error reg: ");
+					zlox_monitor_write_hex((ZLOX_UINT32)error);
+					zlox_monitor_write("\n");
+					return -1;
+				}
 				return -1;
 			}
-			/* Read data. */
-			zlox_insw (ZLOX_ATA_DATA (bus), (ZLOX_UINT16 *)buffer, words);
-			buffer += (words*2);
+			zlox_ide_get_buffer_data(buffer, numsects * ZLOX_ATA_SECTOR_SIZE, bus);
+		}
+		else // DMA Write.
+		{
+			if(zlox_ide_after_send_command(bus) == -1)
+			{
+				status = zlox_inb (ZLOX_ATA_COMMAND (bus));
+				if (status & 0x1) {
+					ZLOX_UINT8 error = zlox_inb (ZLOX_ATA_FEATURES (bus));
+					zlox_monitor_write("ata error , error reg: ");
+					zlox_monitor_write_hex((ZLOX_UINT32)error);
+					zlox_monitor_write("\n");
+					return -1;
+				}
+				return -1;
+			}
 		}
 	}
-	else // PIO Write.
+	else
 	{
-		for (i = 0; i < numsects; i++) 
+		// PIO Read.
+		if (direction == 0)
 		{
-			while ((status = zlox_inb (ZLOX_ATA_COMMAND (bus))) & 0x80)     /* BUSY */
-				asm volatile ("pause");
-			/* write data. */
-			zlox_outsw (ZLOX_ATA_DATA (bus), (ZLOX_UINT16 *)buffer, words);
-			buffer += (words*2);
+			for (i = 0; i < numsects; i++) 
+			{
+				while ((status = zlox_inb (ZLOX_ATA_COMMAND (bus))) & 0x80)     /* BUSY */
+					asm volatile ("pause");
+				while (!((status = zlox_inb (ZLOX_ATA_COMMAND (bus))) & 0x8) && !(status & 0x1))
+					asm volatile ("pause");
+				/* DRQ or ERROR set */
+				if (status & 0x1) {
+					return -1;
+				}
+				/* Read data. */
+				zlox_insw (ZLOX_ATA_DATA (bus), (ZLOX_UINT16 *)buffer, words);
+				buffer += (words*2);
+			}
 		}
-		zlox_outb (ZLOX_ATA_COMMAND (bus), (char []) {0xE7 /*FLUSH CACHE command*/,
-                        0xE7 /*FLUSH CACHE command*/ ,
-                        0xEA /*FLUSH CACHE EXT command*/}[lba_mode]);
-		while ((status = zlox_inb (ZLOX_ATA_COMMAND (bus))) & 0x80)
-			asm volatile ("pause");
+		else // PIO Write.
+		{
+			for (i = 0; i < numsects; i++) 
+			{
+				while ((status = zlox_inb (ZLOX_ATA_COMMAND (bus))) & 0x80)     /* BUSY */
+					asm volatile ("pause");
+				/* write data. */
+				zlox_outsw (ZLOX_ATA_DATA (bus), (ZLOX_UINT16 *)buffer, words);
+				buffer += (words*2);
+			}
+			zlox_outb (ZLOX_ATA_COMMAND (bus), (char []) {0xE7 /*FLUSH CACHE command*/,
+		                0xE7 /*FLUSH CACHE command*/ ,
+		                0xEA /*FLUSH CACHE EXT command*/}[lba_mode]);
+			while ((status = zlox_inb (ZLOX_ATA_COMMAND (bus))) & 0x80)
+				asm volatile ("pause");
+		}
 	}
 
 	zlox_outb(ZLOX_ATA_DCR(bus), control_orig);
@@ -196,6 +249,7 @@ ZLOX_SINT32 zlox_atapi_drive_read_sector (ZLOX_UINT32 ide_index, ZLOX_UINT32 lba
 	read_cmd[3] = (lba >> 0x10) & 0xFF;
 	read_cmd[4] = (lba >> 0x08) & 0xFF;
 	read_cmd[5] = (lba >> 0x00) & 0xFF;   /* least sig. byte of LBA */
+
 	/* Send ATAPI/SCSI command */
 	zlox_outsw (ZLOX_ATA_DATA (bus), (ZLOX_UINT16 *) read_cmd, 6);
 	/* Tell the scheduler that this process is using the ATA subsystem. */
@@ -220,7 +274,7 @@ ZLOX_SINT32 zlox_atapi_drive_read_sector (ZLOX_UINT32 ide_index, ZLOX_UINT32 lba
 	/* This example code only supports the case where the data transfer
 	* of one sector is done in one step. */
 	ZLOX_ASSERT (size == ZLOX_ATAPI_SECTOR_SIZE);
-	/* Read data. */
+
 	zlox_insw (ZLOX_ATA_DATA (bus), (ZLOX_UINT16 *)buffer, size / 2);
 	/* Wait for BSY and DRQ to clear, indicating Command Finished */
 	while ((status = zlox_inb (ZLOX_ATA_COMMAND (bus))) & 0x88)
@@ -455,5 +509,60 @@ inner_end:
 	
 	zlox_register_interrupt_callback(ZLOX_IRQ14,&zlox_ata_callback);
 	zlox_register_interrupt_callback(ZLOX_IRQ15,&zlox_ata_callback);
+
+	zlox_ide_probe();
+	ZLOX_UINT32 ata_first_idx = 0xff, atapi_first_idx = 0xff, ata_num = 0, atapi_num = 0;
+	for (i = 0; i < 4; i++)
+	{
+		if(ide_devices[i].Reserved == 1)
+		{
+			if(ide_devices[i].Type == ZLOX_IDE_ATA)
+			{
+				if(ata_first_idx == 0xff)
+					ata_first_idx = (ZLOX_UINT32)i;
+				ata_num++;
+			}
+			else if(ide_devices[i].Type == ZLOX_IDE_ATAPI)
+			{
+				if(atapi_first_idx == 0xff)
+					atapi_first_idx = (ZLOX_UINT32)i;
+				atapi_num++;
+			}
+		}
+	}
+	if(ide_can_dma)
+	{		
+		// 下面的注释只是开发过程中的测试代码
+		/*if(zlox_strcmpn((ZLOX_CHAR *)ide_devices[ata_first_idx].Model, "VMware Virtual IDE", 18) != 0)
+		{
+			ide_can_dma = ZLOX_FALSE;
+			if(ata_num == 1 && atapi_num == 1)
+			{
+				if(ata_first_idx == 0 || ata_first_idx == 1)
+				{
+					if(atapi_first_idx == 2 || atapi_first_idx == 3)
+						ide_can_dma = ZLOX_TRUE;
+				}
+				else if(ata_first_idx == 2 || ata_first_idx == 3)
+				{
+					if(atapi_first_idx == 0 || atapi_first_idx == 1)
+						ide_can_dma = ZLOX_TRUE;
+				}
+			}
+		}*/
+	}
+	// VMware下，当ATA与ATAPI驱动位于同一个channel通道时, 需要先将ATA数据端口里的数据预先读取一次，才能确保之后的ATAPI读操作时不会出错
+	if(atapi_first_idx != 0xff)
+	{
+		ZLOX_UINT8 * ata_tmp_buffer = (ZLOX_UINT8 *)zlox_kmalloc(ZLOX_ATAPI_SECTOR_SIZE);
+		bus = ide_devices[atapi_first_idx].Bus;
+		zlox_insw (ZLOX_ATA_DATA (bus), (ZLOX_UINT16 *)ata_tmp_buffer, ZLOX_ATAPI_SECTOR_SIZE / 2);
+		zlox_kfree(ata_tmp_buffer);
+	}
+	if(ide_can_dma)
+		zlox_monitor_write("ATA Drive will use DMA mode ");
+	else
+		zlox_monitor_write("ATA Drive will use PIO mode ");
+	zlox_monitor_write("and ATAPI Drive will use PIO mode\n");
 }
 

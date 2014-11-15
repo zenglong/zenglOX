@@ -11,7 +11,7 @@
 extern ZLOX_IDE_DEVICE ide_devices[4];
 
 ZLOX_SINT32 iso_ide_index;
-ZLOX_FS_NODE * iso_root;
+ZLOX_FS_NODE * iso_root = ZLOX_NULL;
 ZLOX_DIRENT iso_dirent;
 ZLOX_FS_NODE iso_fsnode;
 ZLOX_UINT8 * iso_path_table;
@@ -332,6 +332,11 @@ ZLOX_FS_NODE * zlox_unmount_iso()
 ZLOX_FS_NODE * zlox_mount_iso()
 {
 	ZLOX_SINT32 i,j;
+	if(iso_root != ZLOX_NULL)
+	{
+		zlox_monitor_write("kernel : iso has been mounted , you must unmount it first , then mount it again \n");
+		return ZLOX_NULL;
+	}
 	iso_root = ZLOX_NULL;
 	for(i = 0 ; i < 4 ; i++)
 	{

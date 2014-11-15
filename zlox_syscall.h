@@ -8,7 +8,7 @@
 #define ZLOX_SYSCALL_NUMBER 59
 
 #define ZLOX_MAJOR_VERSION 2 //zenglOX 主版本号
-#define ZLOX_MINOR_VERSION 3 //zenglOX 子版本号
+#define ZLOX_MINOR_VERSION 4 //zenglOX 子版本号
 #define ZLOX_REVISION 0      //zenglOX 修正版本号
 
 typedef enum _ZLOX_SYSCALL_ENUM{

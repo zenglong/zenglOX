@@ -1218,9 +1218,12 @@ static ZLOX_FS_NODE * zlox_zenglfs_finddir(ZLOX_FS_NODE *node, ZLOX_CHAR *name)
 	if(zenglfs_cache_inode.data.size == 0)
 		return ZLOX_NULL;
 
+	ZLOX_UINT32 namelength = zlox_strlen(name);
+	if(namelength == 0)
+		return ZLOX_NULL;
+
 	ZLOX_UINT8 *buffer = (ZLOX_UINT8 *)zlox_kmalloc(ZLOX_ZLFS_BLK_SIZE);
 	ZLOX_UINT32 i,j,blk,lba,idx = 0, dir_per_blk = ZLOX_ZLFS_BLK_SIZE / sizeof(ZLOX_ZLFS_DIR_ENTRY);
-	ZLOX_UINT32 namelength = zlox_strlen(name);
 	for(i=0;(blk = zlox_zenglfs_get_inode_blk(i, ZLOX_FALSE));i++)
 	{
 		lba = zenglfs_super_block.startLBA + blk * 2;

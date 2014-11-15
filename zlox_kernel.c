@@ -20,6 +20,8 @@
 
 extern ZLOX_UINT32 placement_address;
 extern ZLOX_TASK * current_task;
+extern ZLOX_BOOL ide_can_dma;
+//extern ZLOX_BOOL atapi_vmware_warning;
 ZLOX_UINT32 initial_esp;
 
 //zenglOX kernel main entry
@@ -99,8 +101,14 @@ ZLOX_SINT32 zlox_kernel_main(ZLOX_MULTIBOOT * mboot_ptr, ZLOX_UINT32 initial_sta
 	zlox_syscall_monitor_write("! I will execve a shell\n"
 				"you can input some command: ls , ps , cat , uname , cpuid , shell ,"
 				" reboot , shutdown , ata , mount , unmount , testoverflow , fdisk , "
-				"format , file , vga , dhcp isoget...\n\n"
-				" this version we ported zengl language O(^_^)O~~ \n\n");
+				"format , file , vga , dhcp isoget...\n\n");
+
+	if(ide_can_dma)
+		zlox_syscall_monitor_write("Congratulation! you can use DMA mode with ATA Drive! ");
+	else
+		zlox_syscall_monitor_write("you can only use PIO mode... ");
+
+	zlox_syscall_monitor_write("\n\n");
 
 	asm ("finit");
 
