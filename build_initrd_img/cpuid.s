@@ -11,7 +11,7 @@ _start:
 	movl %ebx, 28(%edi)
 	movl %edx, 32(%edi)
 	movl %ecx, 36(%edi)
-	movl $0, %eax
+	movl $64, %eax
 	movl $output, %ebx
 	int $0x80
 	movl $9, %eax

@@ -151,10 +151,10 @@ int wait_for_reply(TASK * task, TASK_MSG * msg)
 			UINT32 curtick = syscall_timer_get_tick();
 			if((curtick - origtick) > 3000)
 			{
-				syscall_monitor_write("wait for dhcp reply time out curtick:");
-				syscall_monitor_write_dec(curtick);
-				syscall_monitor_write(" origtick:");
-				syscall_monitor_write_dec(origtick);
+				syscall_cmd_window_write("wait for dhcp reply time out curtick:");
+				syscall_cmd_window_write_dec(curtick);
+				syscall_cmd_window_write(" origtick:");
+				syscall_cmd_window_write_dec(origtick);
 				return -1;
 			}
 			continue;
@@ -192,37 +192,37 @@ int main(TASK * task, int argc, char * argv[])
 	syscall_network_getinfo(&net_info);
 	if(net_info.isInit == FALSE)
 	{
-		syscall_monitor_write("network is not init!");
+		syscall_cmd_window_write("network is not init!");
 		return -1;
 	}
 	syscall_network_set_focus_task(task);
 	syscall_set_input_focus(task);
 	if(dhcp_send_discover() == -1)
 	{
-		syscall_monitor_write("send dhcp discover time out");
+		syscall_cmd_window_write("send dhcp discover time out");
 		return -1;
 	}
 	else
-		syscall_monitor_write("send dhcp discover and wait for reply\n");
+		syscall_cmd_window_write("send dhcp discover and wait for reply\n");
 	TASK_MSG msg;
 	int ret = wait_for_reply(task, &msg);
 	if(ret == 0 || ret == -1)
 		return ret;
 	UINT8 type = dhcp_type((ETH_DHCP_PACKET *)buf);
 	if(type == DHCP_OFFER)
-		syscall_monitor_write("received dhcp offer reply\n");
+		syscall_cmd_window_write("received dhcp offer reply\n");
 	else
 	{
-		syscall_monitor_write("received dhcp reply is not an OFFER, exit");
+		syscall_cmd_window_write("received dhcp reply is not an OFFER, exit");
 		return -1;
 	}
 	if(dhcp_send_request((ETH_DHCP_PACKET *)buf) == -1)
 	{
-		syscall_monitor_write("send dhcp request time out");
+		syscall_cmd_window_write("send dhcp request time out");
 		return -1;
 	}
 	else
-		syscall_monitor_write("send dhcp request and wait for reply\n");
+		syscall_cmd_window_write("send dhcp request and wait for reply\n");
 	ret = wait_for_reply(task, &msg);
 	if(ret == 0 || ret == -1)
 		return ret;
@@ -233,34 +233,34 @@ int main(TASK * task, int argc, char * argv[])
 		net_info.ip_addr = dhcp->yiaddr;
 		dhcp_getoption(dhcp, 1, (UINT8 *)&net_info.net_mask, 4);
 		dhcp_getoption(dhcp, 3, (UINT8 *)&net_info.route_gateway, 4);
-		syscall_monitor_write("received dhcp ack , config is follow:\n");
-		syscall_monitor_write("ip addr: ");
+		syscall_cmd_window_write("received dhcp ack , config is follow:\n");
+		syscall_cmd_window_write("ip addr: ");
 		int i;
 		for(i=0;i < 4;i++)
 		{
-			syscall_monitor_write_dec(((UINT8 *)&net_info.ip_addr)[i]);
+			syscall_cmd_window_write_dec(((UINT8 *)&net_info.ip_addr)[i]);
 			if(i < 3)
-				syscall_monitor_write(".");
+				syscall_cmd_window_write(".");
 		}
-		syscall_monitor_write("\nnet mask: ");
+		syscall_cmd_window_write("\nnet mask: ");
 		for(i=0;i < 4;i++)
 		{
-			syscall_monitor_write_dec(((UINT8 *)&net_info.net_mask)[i]);
+			syscall_cmd_window_write_dec(((UINT8 *)&net_info.net_mask)[i]);
 			if(i < 3)
-				syscall_monitor_write(".");
+				syscall_cmd_window_write(".");
 		}
-		syscall_monitor_write("\nroute gateway: ");
+		syscall_cmd_window_write("\nroute gateway: ");
 		for(i=0;i < 4;i++)
 		{
-			syscall_monitor_write_dec(((UINT8 *)&net_info.route_gateway)[i]);
+			syscall_cmd_window_write_dec(((UINT8 *)&net_info.route_gateway)[i]);
 			if(i < 3)
-				syscall_monitor_write(".");
+				syscall_cmd_window_write(".");
 		}
 		syscall_network_setinfo(&net_info);
 	}
 	else
 	{
-		syscall_monitor_write("received dhcp reply is not an ACK, exit");
+		syscall_cmd_window_write("received dhcp reply is not an ACK, exit");
 		return -1;
 	}
 	return 0;

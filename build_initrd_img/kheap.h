@@ -31,6 +31,7 @@ typedef struct _KHP_FOOTER
 typedef struct _HEAP
 {
 	ORDERED_ARRAY index;
+	ORDERED_ARRAY blk_index; // for debug
 	UINT32 start_address;	// The start of our allocated space.
 	UINT32 end_address;	// The end of our allocated space. May be expanded up to max_address.
 	UINT32 max_address;	// The maximum address the heap can be expanded to.

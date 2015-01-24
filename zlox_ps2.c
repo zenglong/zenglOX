@@ -43,18 +43,18 @@ ZLOX_VOID zlox_test_ps2_keyboard() // debug function
 	zlox_outb(0x64, 0x20);
 	while(!(zlox_inb(0x64) & 0x1));
 	ZLOX_UINT8 config_byte = zlox_inb(0x60);
-	ZLOX_UINT8 mask1 = zlox_inb(0x21);
+	/*ZLOX_UINT8 mask1 = zlox_inb(0x21);
 	ZLOX_UINT8 mask2 = zlox_inb(0xA1);
 	ZLOX_UINT16 irr = zlox_pic_get_irr();
-	ZLOX_UINT16 isr = zlox_pic_get_isr();
+	ZLOX_UINT16 isr = zlox_pic_get_isr();*/
 	ZLOX_UNUSED(config_byte);
-	ZLOX_UNUSED(mask1);
-	ZLOX_UNUSED(mask2);
-	ZLOX_UNUSED(irr);
-	ZLOX_UNUSED(isr);
+	//ZLOX_UNUSED(mask1);
+	//ZLOX_UNUSED(mask2);
+	//ZLOX_UNUSED(irr);
+	//ZLOX_UNUSED(isr);
 }
 
-ZLOX_BOOL zlox_ps2_init(ZLOX_BOOL need_openMouse)
+ZLOX_BOOL zlox_ps2_init_orig(ZLOX_BOOL need_openMouse)
 {
 	// Disable Devices 
 	while(zlox_inb(0x64) & 0x2);
@@ -170,6 +170,21 @@ ZLOX_BOOL zlox_ps2_init(ZLOX_BOOL need_openMouse)
 			zlox_monitor_write("first PS/2 device reset failed, you can't use keyboard \n");
 			ps2_first_port_status = ZLOX_FALSE;
 		}
+		else
+		{
+			// Enable Devices 
+			while(zlox_inb(0x64) & 0x2);
+			zlox_outb(0x64, 0xAE);
+			while(zlox_inb(0x64) & 0x2);
+			zlox_outb(0x64, 0x20);
+			while(!(zlox_inb(0x64) & 0x1));
+			config_byte = zlox_inb(0x60);
+			config_byte = config_byte | 0x41;
+			while(zlox_inb(0x64) & 0x2);
+			zlox_outb(0x64, 0x60);
+			while(zlox_inb(0x64) & 0x2);
+			zlox_outb(0x60, config_byte);
+		}
 	}
 	if(need_openMouse == ZLOX_TRUE && ps2_sec_port_status == ZLOX_TRUE)
 	{
@@ -182,11 +197,44 @@ ZLOX_BOOL zlox_ps2_init(ZLOX_BOOL need_openMouse)
 		if(response != 0xAA && response != 0xFA)
 		{
 			zlox_monitor_write("second PS/2 device reset failed, you can't use mouse \n");
-			ps2_first_port_status = ZLOX_FALSE;
+			ps2_sec_port_status = ZLOX_FALSE;
 		}
+	}
+	if(ps2_first_port_status == ZLOX_FALSE && 
+		ps2_sec_port_status == ZLOX_FALSE)
+	{
+		return ps2_init_status;
 	}
 	ps2_init_status = ZLOX_TRUE;
 	return ps2_init_status;
+}
+
+ZLOX_BOOL zlox_ps2_init(ZLOX_BOOL need_openMouse)
+{
+	ZLOX_UNUSED(need_openMouse);
+	// Flush The Output Buffer 
+	while(zlox_inb(0x64) & 0x1)
+		zlox_inb(0x60);
+
+	// Enable Devices 
+	ZLOX_UINT8 config_byte = 0x0;
+	config_byte = config_byte | 0x41;
+	config_byte = config_byte & (~0x10);
+
+	while(zlox_inb(0x64) & 0x2);
+	zlox_outb(0x64, 0x60);
+	while(zlox_inb(0x64) & 0x2);
+	zlox_outb(0x60, config_byte);
+
+	// Flush The Output Buffer 
+	while(zlox_inb(0x64) & 0x1)
+		zlox_inb(0x60);
+
+	ps2_has_secport = ZLOX_TRUE;
+	ps2_first_port_status = ZLOX_TRUE;
+	ps2_sec_port_status = ZLOX_TRUE;
+	ps2_init_status = ZLOX_TRUE;
+	return ZLOX_TRUE;
 }
 
 // 用于系统调用, 获取PS2的初始化状态

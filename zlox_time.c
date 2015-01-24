@@ -15,8 +15,8 @@ ZLOX_VOID zlox_test_ps2_keyboard();
 static ZLOX_VOID zlox_timer_callback(/*ZLOX_ISR_REGISTERS * regs*/)
 {
 	tick++;
-	if(!fire_key_interrupt)
-		zlox_test_ps2_keyboard();
+	//if(!fire_key_interrupt)
+		//zlox_test_ps2_keyboard();
 	//zlox_monitor_write("zenglOX Tick: ");
 	//zlox_monitor_write_dec(tick);
 	//zlox_monitor_write("\n");

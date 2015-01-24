@@ -3,14 +3,14 @@
 CC = @gcc
 
 CFLAGS = -std=gnu99 -ffreestanding -gdwarf-2 -g3 -Wall -Wextra
-DEPS = common.h syscall.h elf.h task.h kheap.h fs.h ata.h fdisk.h format.h vga.h network.h pci.h
+DEPS = common.h syscall.h elf.h task.h kheap.h fs.h ata.h fdisk.h format.h vga.h network.h pci.h my_windows.h
 AS_TARGET = cpuid uname reboot shutdown
-C_TARGET = shell ls ps cat ata mount unmount testoverflow fdisk format file vga lspci isoget
+C_TARGET = shell ls ps cat ata mount unmount testoverflow fdisk format file vga lspci isoget desktop term
 C_NET_TARGET = arp dhcp ipconf ping
 C_EXTRA_TARGET = extra/output/ee extra/output/libc.so extra/output/zengl
 C_DEP_LIB = ld.so libcommon.so
 C_DEP_NET_LIB = libnetwork.so
-INITRD_FILES = licence.txt $(AS_TARGET) $(C_TARGET) $(C_NET_TARGET) $(C_DEP_LIB) $(C_DEP_NET_LIB)
+INITRD_FILES = background.bmp licence.txt $(AS_TARGET) $(C_TARGET) $(C_NET_TARGET) $(C_DEP_LIB) $(C_DEP_NET_LIB)
 
 LIBC_SRCS = standard/libc.c standard/printf.c standard/vsnprintf.c standard/fcvt.c standard/modf.c
 

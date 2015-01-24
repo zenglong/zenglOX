@@ -53,6 +53,7 @@ TriplyBlockAddr对应的逻辑块里可以存储256个DoublyBlock的逻辑块地
 #include "zlox_zenglfs.h"
 #include "zlox_ata.h"
 #include "zlox_monitor.h"
+#include "zlox_my_windows.h"
 
 static ZLOX_FS_NODE * zlox_zenglfs_finddir(ZLOX_FS_NODE *node, ZLOX_CHAR *name);
 
@@ -1320,33 +1321,55 @@ ZLOX_FS_NODE * zlox_mount_zenglfs(ZLOX_UINT32 ide_index, ZLOX_UINT32 pt)
 {
 	ZLOX_UINT8 *buffer = (ZLOX_UINT8 *)zlox_kmalloc(ZLOX_ATA_SECTOR_SIZE * 2);
 	ZLOX_UINT32 lba = 0; // MBR
+	ZLOX_CHAR * output;
 	if(zenglfs_super_block.sign != 0 || zenglfs_root != ZLOX_NULL)
 	{
-		zlox_monitor_write("hd has been mounted , you must unmount it first , then mount it again \n");
+		output = "hd has been mounted , you must unmount it first , then mount it again \n";
+		if(zlox_cmd_window_write(output) == -1)
+			zlox_monitor_write(output);
 		zlox_kfree(buffer);
 		return ZLOX_NULL;
 	}
 
 	if(pt < 1 || pt > 4)
 	{
-		zlox_monitor_write("partition number must in 1 to 4 \n");
+		output = "partition number must in 1 to 4 \n";
+		if(zlox_cmd_window_write(output) == -1)
+			zlox_monitor_write(output);
+		//zlox_monitor_write("partition number must in 1 to 4 \n");
 		zlox_kfree(buffer);
 		return ZLOX_NULL;
 	}
 	ZLOX_IDE_DEVICE * ide_devices = (ZLOX_IDE_DEVICE *)zlox_ata_get_ide_info();
 	if((ide_index > 3) || (ide_devices[ide_index].Reserved == 0))
 	{
-		zlox_monitor_write("\nide_index [");
-		zlox_monitor_write_dec(ide_index);
-		zlox_monitor_write("] has no drive!\n");
+		output = "\nide_index [";
+		if(zlox_cmd_window_write(output) == -1)
+			zlox_monitor_write(output);
+		//zlox_monitor_write("\nide_index [");
+		if(zlox_cmd_window_write_dec(ide_index) == -1)
+			zlox_monitor_write_dec(ide_index);
+		//zlox_monitor_write_dec(ide_index);
+		output = "] has no drive!\n";
+		if(zlox_cmd_window_write(output) == -1)
+			zlox_monitor_write(output);
+		//zlox_monitor_write("] has no drive!\n");
 		zlox_kfree(buffer);
 		return ZLOX_NULL;
 	}
 	else if(ide_devices[ide_index].Type == ZLOX_IDE_ATAPI)
 	{
-		zlox_monitor_write("\natapi drive can't write data now! ide_index [");
-		zlox_monitor_write_dec(ide_index);
-		zlox_monitor_write("]\n");
+		output = "\natapi drive can't write data now! ide_index [";
+		if(zlox_cmd_window_write(output) == -1)
+			zlox_monitor_write(output);
+		//zlox_monitor_write("\natapi drive can't write data now! ide_index [");
+		if(zlox_cmd_window_write_dec(ide_index) == -1)
+			zlox_monitor_write_dec(ide_index);
+		//zlox_monitor_write_dec(ide_index);
+		output = "]\n";
+		if(zlox_cmd_window_write(output) == -1)
+			zlox_monitor_write(output);
+		//zlox_monitor_write("]\n");
 		zlox_kfree(buffer);
 		return ZLOX_NULL;
 	}
@@ -1354,9 +1377,17 @@ ZLOX_FS_NODE * zlox_mount_zenglfs(ZLOX_UINT32 ide_index, ZLOX_UINT32 pt)
 	ZLOX_SINT32 ata_ret = zlox_ide_ata_access(ZLOX_IDE_ATA_READ, ide_index, lba, 1, buffer); // read MBR
 	if(ata_ret == -1)
 	{
-		zlox_monitor_write("\nata read sector failed for ide index [");
-		zlox_monitor_write_dec(ide_index);
-		zlox_monitor_write("]\n");
+		output = "\nata read sector failed for ide index [";
+		if(zlox_cmd_window_write(output) == -1)
+			zlox_monitor_write(output);
+		//zlox_monitor_write("\nata read sector failed for ide index [");
+		if(zlox_cmd_window_write_dec(ide_index) == -1)
+			zlox_monitor_write_dec(ide_index);
+		//zlox_monitor_write_dec(ide_index);
+		output = "]\n";
+		if(zlox_cmd_window_write(output) == -1)
+			zlox_monitor_write(output);
+		//zlox_monitor_write("]\n");
 		zlox_kfree(buffer);
 		return ZLOX_NULL;
 	}
@@ -1366,7 +1397,10 @@ ZLOX_FS_NODE * zlox_mount_zenglfs(ZLOX_UINT32 ide_index, ZLOX_UINT32 pt)
 	ZLOX_MBR_PT partition = (*partition_ptr);
 	if(partition.fs_type != ZLOX_MBR_FS_TYPE_ZENGLFS)
 	{
-		zlox_monitor_write("this partition is not zenglfs \n");
+		output = "this partition is not zenglfs \n";
+		if(zlox_cmd_window_write(output) == -1)
+			zlox_monitor_write(output);
+		//zlox_monitor_write("this partition is not zenglfs \n");
 		zlox_kfree(buffer);
 		return ZLOX_NULL;
 	}
@@ -1376,7 +1410,10 @@ ZLOX_FS_NODE * zlox_mount_zenglfs(ZLOX_UINT32 ide_index, ZLOX_UINT32 pt)
 	ZLOX_ZLFS_SUPER_BLOCK * superblock_ptr = (ZLOX_ZLFS_SUPER_BLOCK *)buffer;
 	if(superblock_ptr->sign != ZLOX_ZLFS_SUPER_BLOCK_SIGN)
 	{
-		zlox_monitor_write("this partition is not formated \n");
+		output = "this partition is not formated \n";
+		if(zlox_cmd_window_write(output) == -1)
+			zlox_monitor_write(output);
+		//zlox_monitor_write("this partition is not formated \n");
 		zlox_kfree(buffer);
 		return ZLOX_NULL;
 	}

@@ -11,6 +11,8 @@ extern ZLOX_PAGE_DIRECTORY * kernel_directory;
 ZLOX_UINT32 placement_address = (ZLOX_UINT32)&_end;
 ZLOX_HEAP * kheap = 0;
 
+ZLOX_BOOL kheap_debug = ZLOX_TRUE; // for debug
+
 ZLOX_UINT32 zlox_kmalloc_int(ZLOX_UINT32 sz, ZLOX_SINT32 align, ZLOX_UINT32 *phys)
 {
 	ZLOX_UINT32 tmp;
@@ -155,6 +157,8 @@ static ZLOX_UINT32 zlox_contract(ZLOX_UINT32 new_size, ZLOX_HEAP * heap)
 	// Sanity check.
 	ZLOX_ASSERT(new_size < heap->end_address-heap->start_address);
 
+	ZLOX_UINT32 new_size_orig = new_size;
+
 	// Get the nearest following page boundary.
 	if (new_size & 0x00000FFF)
 	{
@@ -172,6 +176,24 @@ static ZLOX_UINT32 zlox_contract(ZLOX_UINT32 new_size, ZLOX_HEAP * heap)
 		// 如果收缩堆空间后,剩余尺寸不能形成一个有效的hole,则放弃收缩,返回原来的尺寸
 		else
 			return (heap->end_address-heap->start_address);
+	}
+
+	ZLOX_UINT32 diff = new_size - new_size_orig;
+
+	if(diff == 0)
+		;
+	else if(diff > 0)
+	{
+		ZLOX_KHP_HEADER * header = (ZLOX_KHP_HEADER *)(heap->start_address + new_size_orig);
+		if(diff <= (sizeof(ZLOX_KHP_HEADER) + sizeof(ZLOX_KHP_FOOTER)))
+		{
+			new_size += 0x1000;
+		}
+		diff = new_size - new_size_orig;
+		if(diff >= header->size)
+		{
+			return (heap->end_address-heap->start_address);
+		}
 	}
 
 	ZLOX_UINT32 old_size = heap->end_address-heap->start_address;
@@ -261,6 +283,27 @@ ZLOX_HEAP * zlox_create_heap(ZLOX_UINT32 start, ZLOX_UINT32 end_addr,
 		start &= 0xFFFFF000;
 		start += 0x1000;
 	}
+
+	// for debug start
+	if(kheap_debug)
+	{
+		// Initialise the index.
+		// 创建堆的index部分,index的含义在函数开头的注释里做了说明
+		heap->blk_index = zlox_place_ordered_array((ZLOX_VOID *)start, ZLOX_HEAP_INDEX_SIZE, &zlox_header_less_than);
+	
+		// Shift the start address forward to resemble where we can start putting data.
+		// index后面就是实际的未分配的hole和已分配的block部分
+		start += sizeof(ZLOX_VPTR) * ZLOX_HEAP_INDEX_SIZE;
+
+		// Make sure the start address is page-aligned.
+		if ((start & 0x00000FFF) != 0)
+		{
+			start &= 0xFFFFF000;
+			start += 0x1000;
+		}
+	}
+	// for debug end
+
 	// Write the start, end and max addresses into the heap structure.
 	heap->start_address = start;
 	heap->end_address = end_addr;
@@ -406,6 +449,16 @@ ZLOX_VOID * zlox_alloc(ZLOX_UINT32 size, ZLOX_UINT8 page_align, ZLOX_HEAP * heap
 		block_footer->header	= block_header;
 	}
 
+	// for debug begin
+	if(kheap_debug)
+	{
+		ZLOX_ASSERT(heap->blk_index.size < heap->blk_index.max_size);
+		heap->blk_index.array[heap->blk_index.size++] = (ZLOX_VOID *)((ZLOX_UINT32)block_header+sizeof(ZLOX_KHP_HEADER));
+	}
+	// for debug end
+
+	zlox_kheap_check_all_blk(); // for debug
+
 	// ...And we're done!
 	return (ZLOX_VOID *)((ZLOX_UINT32)block_header+sizeof(ZLOX_KHP_HEADER));
 }
@@ -515,6 +568,55 @@ ZLOX_VOID zlox_free(ZLOX_VOID *p, ZLOX_HEAP *heap)
 	if (do_add == 1)
 		zlox_insert_ordered_array((ZLOX_VPTR)header, &heap->index);
 
+	// for debug begin
+	if(kheap_debug)
+	{
+		ZLOX_UINT32 iterator = 0;
+		while ((iterator < heap->blk_index.size) &&
+					(zlox_lookup_ordered_array(iterator, &heap->blk_index) != (ZLOX_VPTR)p))
+				iterator++;
+		ZLOX_ASSERT(iterator < heap->blk_index.size);
+		if (iterator < heap->blk_index.size)
+			zlox_remove_ordered_array(iterator, &heap->blk_index);
+	}
+	// for debug end
+}
+
+ZLOX_SINT32 zlox_kheap_check_all_blk()
+{
+	ZLOX_HEAP * heap = kheap;
+	// for debug begin
+	if(kheap_debug)
+	{
+		ZLOX_UINT32 iterator = 0;
+		while(iterator < heap->blk_index.size)
+		{
+			ZLOX_VPTR p = zlox_lookup_ordered_array(iterator, &heap->blk_index);
+			// Get the header and footer associated with this pointer.
+			ZLOX_KHP_HEADER *header = (ZLOX_KHP_HEADER *)((ZLOX_UINT32)p - sizeof(ZLOX_KHP_HEADER));
+			ZLOX_KHP_FOOTER *footer = (ZLOX_KHP_FOOTER *)((ZLOX_UINT32)header + header->size - sizeof(ZLOX_KHP_FOOTER));
+
+			// Sanity checks.
+			ZLOX_ASSERT(header->magic == ZLOX_HEAP_MAGIC);
+			ZLOX_ASSERT(footer->magic == ZLOX_HEAP_MAGIC);
+			iterator++;
+		}
+
+		// check all holes
+		iterator = 0;
+		while(iterator < heap->index.size)
+		{
+			ZLOX_KHP_HEADER *header = (ZLOX_KHP_HEADER *)zlox_lookup_ordered_array(iterator, &heap->index);
+			ZLOX_KHP_FOOTER *footer = (ZLOX_KHP_FOOTER *)((ZLOX_UINT32)header + header->size - sizeof(ZLOX_KHP_FOOTER));
+
+			// Sanity checks.
+			ZLOX_ASSERT(header->magic == ZLOX_HEAP_MAGIC);
+			ZLOX_ASSERT(footer->magic == ZLOX_HEAP_MAGIC);
+			iterator++;
+		}
+	}
+	return 0;
+	// for debug end
 }
 
 // 获取kheap，主要用于系统调用

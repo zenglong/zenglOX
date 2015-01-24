@@ -309,12 +309,12 @@ double atof(const char* num)
 
 void initscr()
 {
-	syscall_monitor_clear();
+	syscall_cmd_window_clear();
 }
 
 void clrscr()
 {
-	syscall_monitor_clear();
+	syscall_cmd_window_clear();
 }
 
 void endwin()
@@ -322,14 +322,14 @@ void endwin()
 	if(single_line_out)
 	{
 		single_line_out = FALSE;
-		syscall_monitor_set_single(single_line_out);
+		syscall_cmd_window_set_single(single_line_out);
 	}
 	move(24, 0);
 }
 
 void move(int y, int x)
 {
-	syscall_monitor_set_cursor((UINT8)x, (UINT8)y);
+	syscall_cmd_window_set_cursor(x, y);
 }
 
 void cputs_line(const char * str)
@@ -337,9 +337,9 @@ void cputs_line(const char * str)
 	if(!single_line_out)
 	{
 		single_line_out = TRUE;
-		syscall_monitor_set_single(single_line_out);
+		syscall_cmd_window_set_single(single_line_out);
 	}
-	syscall_monitor_write(str);
+	syscall_cmd_window_write(str);
 }
 
 void cputs(const char * str)
@@ -347,9 +347,9 @@ void cputs(const char * str)
 	if(single_line_out)
 	{
 		single_line_out = FALSE;
-		syscall_monitor_set_single(single_line_out);
+		syscall_cmd_window_set_single(single_line_out);
 	}
-	syscall_monitor_write(str);
+	syscall_cmd_window_write(str);
 }
 
 void putch(char c)
@@ -357,9 +357,9 @@ void putch(char c)
 	if(single_line_out)
 	{
 		single_line_out = FALSE;
-		syscall_monitor_set_single(single_line_out);
+		syscall_cmd_window_set_single(single_line_out);
 	}
-	syscall_monitor_put(c);
+	syscall_cmd_window_put(c);
 }
 
 int getch(void)
@@ -420,7 +420,7 @@ int getchar(void)
 				if(getchar_input_buf.cur <= 0)
 					continue;
 				getchar_input_buf.cur--;
-				syscall_monitor_write("\b \b");
+				syscall_cmd_window_write("\b \b");
 			}
 			else if(key == '\n')
 			{
@@ -801,12 +801,12 @@ UINT8 release_control_keys(UINT8 key)
 
 int deleteln()
 {
-	return syscall_monitor_del_line();
+	return syscall_cmd_window_del_line();
 }
 
 int insertln()
 {
-	return syscall_monitor_insert_line();
+	return syscall_cmd_window_insert_line();
 }
 
 void srand(unsigned int seed)

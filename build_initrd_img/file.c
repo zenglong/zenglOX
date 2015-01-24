@@ -6,6 +6,8 @@
 
 char file_tmp_name[128];
 
+FS_NODE * ret_fsnode = NULL;
+
 FS_NODE * create_empty_file(FS_NODE * fs_root, char * name)
 {
 	SINT32 name_len = strlen(name),j;
@@ -25,44 +27,45 @@ FS_NODE * create_empty_file(FS_NODE * fs_root, char * name)
 	}
 	if(!flag)
 	{
-		FS_NODE * ret = (FS_NODE *)syscall_writedir_fs(fs_root, name, FS_FILE);
-		if(ret == NULL)
+		int ret = syscall_writedir_fs_safe(fs_root, name, FS_FILE, ret_fsnode);
+		if(ret == -1)
 		{
-			syscall_monitor_write(name);
-			syscall_monitor_write(" is not writable , maybe it's not in hard disk or maybe it's full");
+			syscall_cmd_window_write(name);
+			syscall_cmd_window_write(" is not writable , maybe it's not in hard disk or maybe it's full");
 		}
-		return ret;
+		return ret_fsnode;
 	}
 
 	SINT32 tmp_name_offset = 0, tmp_name_len;
 	CHAR * tmp_name = file_tmp_name + tmp_name_offset;
-	FS_NODE * ret_fsnode = NULL, * tmp_node = fs_root;
+	FS_NODE * tmp_node = fs_root;
+	int ret;
 	BOOL isLast = FALSE;
 	while(TRUE)
 	{
-		ret_fsnode = (FS_NODE *)syscall_finddir_fs(tmp_node, tmp_name);
+		ret = syscall_finddir_fs_safe(tmp_node, tmp_name, ret_fsnode);
 		tmp_name_len = strlen(tmp_name);
 		if((tmp_name_offset + tmp_name_len + 1) >= name_len + 1)
 			isLast = TRUE;
-		if(ret_fsnode == NULL)
+		if(ret == -1)
 		{
 			if(isLast)
 			{
-				ret_fsnode = (FS_NODE *)syscall_writedir_fs(tmp_node, tmp_name, FS_FILE);
-				if(ret_fsnode == NULL)
+				ret = syscall_writedir_fs_safe(tmp_node, tmp_name, FS_FILE, ret_fsnode);
+				if(ret == -1)
 				{
-					syscall_monitor_write(name);
-					syscall_monitor_write(" is not writable , maybe it's not in hard disk or maybe it's full");
+					syscall_cmd_window_write(name);
+					syscall_cmd_window_write(" is not writable , maybe it's not in hard disk or maybe it's full");
 				}
 				return ret_fsnode;
 			}
 			else
 			{
-				ret_fsnode = (FS_NODE *)syscall_writedir_fs(tmp_node, tmp_name, FS_DIRECTORY);
-				if(ret_fsnode == NULL)
+				ret = syscall_writedir_fs_safe(tmp_node, tmp_name, FS_DIRECTORY, ret_fsnode);
+				if(ret == -1)
 				{
-					syscall_monitor_write(tmp_name);
-					syscall_monitor_write(" is not writable , maybe it's not in hard disk or maybe it's full");
+					syscall_cmd_window_write(tmp_name);
+					syscall_cmd_window_write(" is not writable , maybe it's not in hard disk or maybe it's full");
 					return NULL;
 				}
 			}
@@ -73,20 +76,20 @@ FS_NODE * create_empty_file(FS_NODE * fs_root, char * name)
 			{
 				if((ret_fsnode->flags & 0x7) == FS_DIRECTORY)
 				{
-					syscall_monitor_write(name);
-					syscall_monitor_write(" is a directory");
+					syscall_cmd_window_write(name);
+					syscall_cmd_window_write(" is a directory");
 				}
 				else
 				{
-					syscall_monitor_write(name);
-					syscall_monitor_write(" is exist");
+					syscall_cmd_window_write(name);
+					syscall_cmd_window_write(" is exist");
 				}
 				return NULL;
 			}
 			else if((ret_fsnode->flags & 0x7) == FS_FILE)
 			{
-				syscall_monitor_write(tmp_name);
-				syscall_monitor_write(" is a file not a directory");
+				syscall_cmd_window_write(tmp_name);
+				syscall_cmd_window_write(" is a file not a directory");
 				return NULL;
 			}
 		}
@@ -139,119 +142,156 @@ int main(VOID * task, int argc, char * argv[])
 	UNUSED(task);
 
 	FS_NODE * fs_root = (FS_NODE *)syscall_get_fs_root();
+	ret_fsnode = (FS_NODE *)syscall_umalloc(sizeof(FS_NODE));
+	int ret_val = 0;
 	if(argc == 2 && argv[1][0] != '-')
 	{
 		char * name = argv[1];
 		if(create_empty_file(fs_root, name) != NULL)
-			syscall_monitor_write("create an empty file success, you can use \"ls\" to see it");
-		return 0;
+			syscall_cmd_window_write("create an empty file success, you can use \"ls\" to see it");
+		ret_val = 0;
+		goto end;
 	}
 	else if(argc == 3)
 	{
 		if(!strcmp(argv[1],"-rm"))
 		{
 			char * name = argv[2];
-			FS_NODE * fsnode = (FS_NODE *)syscall_finddir_fs(fs_root, name);
-			if(fsnode == NULL)
+			int ret;
+			ret = syscall_finddir_fs_safe(fs_root, name, ret_fsnode);
+			if(ret == -1)
 			{
-				syscall_monitor_write(name);
-				syscall_monitor_write(" is not exist");
-				return -1;
+				syscall_cmd_window_write(name);
+				syscall_cmd_window_write(" is not exist");
+				ret_val = -1;
+				goto end;
 			}
-			if(syscall_remove_fs(fsnode) == 0)
+			if(syscall_remove_fs(ret_fsnode) == 0)
 			{
-				syscall_monitor_write("remove failed");
-				return -1;
+				syscall_cmd_window_write("remove failed");
+				ret_val = -1;
+				goto end;
 			}
 			else
 			{
-				syscall_monitor_write("remove ");
-				syscall_monitor_write(name);
-				return 0;
+				syscall_cmd_window_write("remove ");
+				syscall_cmd_window_write(name);
+				ret_val = 0;
+				goto end;
 			}
 		}
 		else if(argv[1][0] != '-')
 		{
 			char * src_name = argv[1];
 			char * dest_name = argv[2];
-			FS_NODE * tmp_node = (FS_NODE *)syscall_finddir_fs(fs_root, src_name);
-			if(tmp_node == NULL)
-			{
-				syscall_monitor_write(src_name);
-				syscall_monitor_write(" is not exist");
-				return -1;
-			}
-			else if ((tmp_node->flags & 0x7) != FS_FILE)
-			{
-				syscall_monitor_write(src_name);
-				syscall_monitor_write(" is not a file");
-				return -1;
-			}
+			int ret;
 			FS_NODE * src_fsnode = (FS_NODE *)syscall_umalloc(sizeof(FS_NODE));
-			memcpy((UINT8 *)src_fsnode,(UINT8 *)tmp_node,sizeof(FS_NODE));
-			FS_NODE * dest_fsnode = (FS_NODE *)syscall_finddir_fs(fs_root, dest_name);
-			if(dest_fsnode == NULL)
+			ret = syscall_finddir_fs_safe(fs_root, src_name, src_fsnode);
+			if(ret == -1)
 			{
-				if((dest_fsnode = create_empty_file(fs_root, dest_name)) == NULL)
-				{
+				syscall_cmd_window_write(src_name);
+				syscall_cmd_window_write(" is not exist");
+				if(src_fsnode != NULL)
 					syscall_ufree(src_fsnode);
-					return -1;
+				ret_val = -1;
+				goto end;
+			}
+			else if ((src_fsnode->flags & 0x7) != FS_FILE)
+			{
+				syscall_cmd_window_write(src_name);
+				syscall_cmd_window_write(" is not a file");
+				if(src_fsnode != NULL)
+					syscall_ufree(src_fsnode);
+				ret_val = -1;
+				goto end;
+			}
+			FS_NODE * dest_fsnode = (FS_NODE *)syscall_umalloc(sizeof(FS_NODE));
+			ret = syscall_finddir_fs_safe(fs_root, dest_name, dest_fsnode);
+			if(ret == -1)
+			{
+				FS_NODE * tmp_node;
+				if((tmp_node = create_empty_file(fs_root, dest_name)) == NULL)
+				{
+					if(src_fsnode != NULL)
+						syscall_ufree(src_fsnode);
+					if(dest_fsnode != NULL)
+						syscall_ufree(dest_fsnode);
+					ret_val = -1;
+					goto end;
 				}
+				memcpy((UINT8 *)dest_fsnode,(UINT8 *)tmp_node,sizeof(FS_NODE));
 			}
 			else if(dest_fsnode->write == NULL)
 			{
-				syscall_monitor_write(dest_name);
-				syscall_monitor_write(" can not be write");
+				syscall_cmd_window_write(dest_name);
+				syscall_cmd_window_write(" can not be write");
 				syscall_ufree(src_fsnode);
-				return -1;
+				if(src_fsnode != NULL)
+					syscall_ufree(src_fsnode);
+				if(dest_fsnode != NULL)
+					syscall_ufree(dest_fsnode);
+				ret_val = -1;
+				goto end;
 			}
 			UINT8 * buf = (UINT8 *)syscall_umalloc(src_fsnode->length);
 			syscall_read_fs(src_fsnode,0,src_fsnode->length,buf);
 			syscall_write_fs(dest_fsnode,0,src_fsnode->length,buf);
 			syscall_ufree(buf);
-			syscall_ufree(src_fsnode);
-			syscall_monitor_write("copy content of ");
-			syscall_monitor_write(src_name);
-			syscall_monitor_write(" to ");
-			syscall_monitor_write(dest_name);
-			syscall_monitor_write(" success");
-			return 0;
+			if(src_fsnode != NULL)
+				syscall_ufree(src_fsnode);
+			if(dest_fsnode != NULL)
+				syscall_ufree(dest_fsnode);
+			syscall_cmd_window_write("copy content of ");
+			syscall_cmd_window_write(src_name);
+			syscall_cmd_window_write(" to ");
+			syscall_cmd_window_write(dest_name);
+			syscall_cmd_window_write(" success");
+			ret_val = 0;
+			goto end;
 		}
 	}
 	else if(argc == 4 && !strcmp(argv[1],"-rename"))
 	{
 		char * src_name = argv[2];
 		char * dest_name = argv[3];
-		FS_NODE * tmp_node = (FS_NODE *)syscall_finddir_fs(fs_root, src_name);
-		if(tmp_node == NULL)
+		int ret;
+		ret = syscall_finddir_fs_safe(fs_root, src_name, ret_fsnode);
+		if(ret == -1)
 		{
-			syscall_monitor_write(src_name);
-			syscall_monitor_write(" is not exist");
-			return -1;
+			syscall_cmd_window_write(src_name);
+			syscall_cmd_window_write(" is not exist");
+			ret_val = -1;
+			goto end;
 		}
-		if(syscall_rename_fs(tmp_node, dest_name) == 0)
+		if(syscall_rename_fs(ret_fsnode, dest_name) == 0)
 		{
-			syscall_monitor_write(src_name);
-			syscall_monitor_write(" rename failed");
-			return -1;
+			syscall_cmd_window_write(src_name);
+			syscall_cmd_window_write(" rename failed");
+			ret_val = -1;
+			goto end;
 		}
 		else
 		{
 			char * c = dest_name;
-			syscall_monitor_write(src_name);
-			syscall_monitor_write(" rename to ");
+			syscall_cmd_window_write(src_name);
+			syscall_cmd_window_write(" rename to ");
 			for(;(*c)!=0;c++)
 			{
 				if((*c) == '/')
 					(*c) = '_';
 			}
-			syscall_monitor_write(dest_name);
-			syscall_monitor_write(" success");
-			return 0;
+			syscall_cmd_window_write(dest_name);
+			syscall_cmd_window_write(" success");
+			ret_val = 0;
+			goto end;
 		}
 	}
 
-	syscall_monitor_write("usage: file [filename][src_file dest_file][-rm delfile][-rename src_name dest_name]");
-	return 0;
+	syscall_cmd_window_write("usage: file [filename][src_file dest_file][-rm delfile][-rename src_name dest_name]");
+
+end:
+	if(ret_fsnode != NULL)
+		syscall_ufree(ret_fsnode);
+	return ret_val;
 }
 

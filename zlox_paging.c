@@ -144,12 +144,16 @@ ZLOX_VOID zlox_free_frame(ZLOX_PAGE *page)
 	}
 }
 
-ZLOX_VOID zlox_init_paging_start()
+ZLOX_VOID zlox_init_paging_start(ZLOX_UINT32 total_phymem)
 {
 	ZLOX_UINT32 i;
 	// The size of physical memory. For the moment we 
-	// assume it is 16MB big.
-	ZLOX_UINT32 mem_end_page = 0x1000000;
+	// assume it is 32MB big.
+	//ZLOX_UINT32 mem_end_page = 0x1000000;
+	ZLOX_UINT32 mem_end_page = 0x8000000;
+
+	if(total_phymem > 0 && total_phymem < (0x8000000 / 1024))
+		mem_end_page = total_phymem * 1024;
 
 	nframes = mem_end_page / 0x1000;
 	frames = (ZLOX_UINT32 *)zlox_kmalloc(nframes/8);
@@ -644,5 +648,38 @@ ZLOX_VOID * zlox_pages_map_to_heap(ZLOX_TASK * task, ZLOX_UINT32 svaddr, ZLOX_UI
 		zlox_page_Flush_TLB();
 	(*ret_npage) = npage;
 	return (ZLOX_VOID *)heap;
+}
+
+ZLOX_UINT32 zlox_page_get_dev_map_start(ZLOX_UINT32 need_page_count)
+{
+	ZLOX_UINT32 count = 0;
+	ZLOX_UINT32 start = PAGE_DEV_MAP_START;
+	ZLOX_UINT32 i = 0;
+	while(1)
+	{
+		for(i = start;;i += 0x1000)
+		{
+			ZLOX_PAGE * page = zlox_get_page(i, 0, kernel_directory);
+			if(page == ZLOX_NULL || 
+				(page->present==0 && page->frame == 0)
+				)
+			{
+				count++;
+				if(count >= need_page_count)
+					return start;
+				else
+					continue;
+			}
+			else
+			{
+				start = i;
+				break;
+			}
+		}
+		start += 0x1000;
+		if(start >= PAGE_DEV_MAP_MAX_ADDR)
+			break;
+	}
+	return 0;
 }
 

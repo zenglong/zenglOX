@@ -19,39 +19,39 @@ int main(TASK * task, int argc, char * argv[])
 		}
 		tmp_task = first_task;
 		do{
-			syscall_monitor_write("ID:");
-			syscall_monitor_write_dec(tmp_task->id);
-			syscall_monitor_write(" status:");
+			syscall_cmd_window_write("ID:");
+			syscall_cmd_window_write_dec(tmp_task->id);
+			syscall_cmd_window_write(" status:");
 			switch(tmp_task->status)
 			{
 			case TS_WAIT:
-				syscall_monitor_write("wait");
+				syscall_cmd_window_write("wait");
 				break;
 			case TS_ATA_WAIT:
-				syscall_monitor_write("ata_wait");
+				syscall_cmd_window_write("ata_wait");
 				break;
 			case TS_RUNNING:
-				syscall_monitor_write("running");
+				syscall_cmd_window_write("running");
 				break;
 			case TS_FINISH:
-				syscall_monitor_write("finish");
+				syscall_cmd_window_write("finish");
 				break;
 			case TS_ZOMBIE:
-				syscall_monitor_write("zombie");
+				syscall_cmd_window_write("zombie");
 				break;
 			}
-			syscall_monitor_write(" args:\"");
+			syscall_cmd_window_write(" args:\"");
 			if(tmp_task->args != 0)
-				syscall_monitor_write(tmp_task->args);
-			syscall_monitor_put('"');
+				syscall_cmd_window_write(tmp_task->args);
+			syscall_cmd_window_put('"');
 			if(tmp_task->parent == 0)
-				syscall_monitor_write(" system first task");
+				syscall_cmd_window_write(" system first task");
 			else
 			{
-				syscall_monitor_write(" ParentID:");
-				syscall_monitor_write_dec(tmp_task->parent->id);
+				syscall_cmd_window_write(" ParentID:");
+				syscall_cmd_window_write_dec(tmp_task->parent->id);
 			}
-			syscall_monitor_write("\n");
+			syscall_cmd_window_write("\n");
 			if((argc > 1 && strcmp(argv[1],"-d")==0))
 			{
 				ELF_LINK_MAP * tmp_map;
@@ -60,22 +60,22 @@ int main(TASK * task, int argc, char * argv[])
 				{
 					tmp_map = maplst->ptr + i;
 					if(i == 0)
-						syscall_monitor_write("<< exec");
+						syscall_cmd_window_write("<< exec");
 					else
 					{
-						syscall_monitor_write("<< dyn \"");
-						syscall_monitor_write(tmp_map->soname);
-						syscall_monitor_write("\"");
+						syscall_cmd_window_write("<< dyn \"");
+						syscall_cmd_window_write(tmp_map->soname);
+						syscall_cmd_window_write("\"");
 					}
-					syscall_monitor_write(" entry:");
-					syscall_monitor_write_hex(tmp_map->entry);
-					syscall_monitor_write(" vaddr:");
-					syscall_monitor_write_hex(tmp_map->vaddr);
-					syscall_monitor_write(" msize:");
-					syscall_monitor_write_dec(tmp_map->msize);
-					syscall_monitor_write(" byte >>\n");
+					syscall_cmd_window_write(" entry:");
+					syscall_cmd_window_write_hex(tmp_map->entry);
+					syscall_cmd_window_write(" vaddr:");
+					syscall_cmd_window_write_hex(tmp_map->vaddr);
+					syscall_cmd_window_write(" msize:");
+					syscall_cmd_window_write_dec(tmp_map->msize);
+					syscall_cmd_window_write(" byte >>\n");
 				}
-				syscall_monitor_write("\n");
+				syscall_cmd_window_write("\n");
 			}
 			tmp_task = tmp_task->next;
 		}while(tmp_task != 0);
@@ -92,38 +92,38 @@ int main(TASK * task, int argc, char * argv[])
 		}
 		tmp_task = first_task;
 		do{
-			syscall_monitor_write("ID:");
-			syscall_monitor_write_dec(tmp_task->id);
-			syscall_monitor_write(" args:\"");
+			syscall_cmd_window_write("ID:");
+			syscall_cmd_window_write_dec(tmp_task->id);
+			syscall_cmd_window_write(" args:\"");
 			if(tmp_task->args != 0)
-				syscall_monitor_write(tmp_task->args);
-			syscall_monitor_put('"');
+				syscall_cmd_window_write(tmp_task->args);
+			syscall_cmd_window_put('"');
 			if(tmp_task->parent == 0)
-				syscall_monitor_write(" system first task");
+				syscall_cmd_window_write(" system first task");
 			else
 			{
-				syscall_monitor_write(" ParentID:");
-				syscall_monitor_write_dec(tmp_task->parent->id);
+				syscall_cmd_window_write(" ParentID:");
+				syscall_cmd_window_write_dec(tmp_task->parent->id);
 			}
-			syscall_monitor_write("\n");
-			syscall_monitor_write("<< uheap start: ");
-			syscall_monitor_write_hex(((HEAP *)(tmp_task->heap))->start_address);
-			syscall_monitor_write(" end: ");
-			syscall_monitor_write_hex(((HEAP *)(tmp_task->heap))->end_address);
-			syscall_monitor_write(" size: ");
-			syscall_monitor_write_dec(((HEAP *)(tmp_task->heap))->end_address - 
+			syscall_cmd_window_write("\n");
+			syscall_cmd_window_write("<< uheap start: ");
+			syscall_cmd_window_write_hex(((HEAP *)(tmp_task->heap))->start_address);
+			syscall_cmd_window_write(" end: ");
+			syscall_cmd_window_write_hex(((HEAP *)(tmp_task->heap))->end_address);
+			syscall_cmd_window_write(" size: ");
+			syscall_cmd_window_write_dec(((HEAP *)(tmp_task->heap))->end_address - 
 						((HEAP *)(tmp_task->heap))->start_address);
-			syscall_monitor_write(" byte ");
+			syscall_cmd_window_write(" byte ");
 			if(((HEAP *)(tmp_task->heap))->end_address - ((HEAP *)(tmp_task->heap))->start_address > 1024)
 			{
-				syscall_monitor_write("[");
-				syscall_monitor_write_dec((((HEAP *)(tmp_task->heap))->end_address - 
+				syscall_cmd_window_write("[");
+				syscall_cmd_window_write_dec((((HEAP *)(tmp_task->heap))->end_address - 
 							((HEAP *)(tmp_task->heap))->start_address) / 1024);
-				syscall_monitor_write(" Kbyte]");
+				syscall_cmd_window_write(" Kbyte]");
 			}			
-			syscall_monitor_write(" >>\n<< hole number: ");
-			syscall_monitor_write_dec(((HEAP *)(tmp_task->heap))->index.size);
-			syscall_monitor_write(" >>\n\n");
+			syscall_cmd_window_write(" >>\n<< hole number: ");
+			syscall_cmd_window_write_dec(((HEAP *)(tmp_task->heap))->index.size);
+			syscall_cmd_window_write(" >>\n\n");
 			tmp_task = tmp_task->next;
 		}while(tmp_task != 0);
 	}
@@ -155,38 +155,41 @@ int main(TASK * task, int argc, char * argv[])
 				}
 			}
 		}
-		syscall_monitor_write("total memory: ");
-		syscall_monitor_write_dec(nframes * 4);
-		syscall_monitor_write(" Kbyte\n");
-		syscall_monitor_write("usage memory: ");
-		syscall_monitor_write_dec(count * 4);
-		syscall_monitor_write(" Kbyte \n");
-		syscall_monitor_write("free memory: ");
-		syscall_monitor_write_dec((nframes - count) * 4);
-		syscall_monitor_write(" Kbyte \n");
+		syscall_cmd_window_write("total memory: ");
+		syscall_cmd_window_write_dec(nframes * 4);
+		syscall_cmd_window_write(" Kbyte\n");
+		syscall_cmd_window_write("usage memory: ");
+		syscall_cmd_window_write_dec(count * 4);
+		syscall_cmd_window_write(" Kbyte \n");
+		syscall_cmd_window_write("free memory: ");
+		syscall_cmd_window_write_dec((nframes - count) * 4);
+		syscall_cmd_window_write(" Kbyte \n");
 		
 		HEAP * kheap = (HEAP *)syscall_get_kheap();
-		syscall_monitor_write("kheap start: ");
-		syscall_monitor_write_hex(kheap->start_address);
-		syscall_monitor_write(" end: ");
-		syscall_monitor_write_hex(kheap->end_address);
-		syscall_monitor_write(" size: ");
-		syscall_monitor_write_dec(kheap->end_address - kheap->start_address);
-		syscall_monitor_write(" byte ");
+		syscall_cmd_window_write("kheap start: ");
+		syscall_cmd_window_write_hex(kheap->start_address);
+		syscall_cmd_window_write(" end: ");
+		syscall_cmd_window_write_hex(kheap->end_address);
+		syscall_cmd_window_write(" size: ");
+		syscall_cmd_window_write_dec(kheap->end_address - kheap->start_address);
+		syscall_cmd_window_write(" byte ");
 		if(kheap->end_address - kheap->start_address > 1024)
 		{
-			syscall_monitor_write("[");
-			syscall_monitor_write_dec((kheap->end_address - kheap->start_address) / 1024);
-			syscall_monitor_write(" Kbyte]");
+			syscall_cmd_window_write("[");
+			syscall_cmd_window_write_dec((kheap->end_address - kheap->start_address) / 1024);
+			syscall_cmd_window_write(" Kbyte]");
 		}
-		syscall_monitor_put('\n');
-		syscall_monitor_write("kheap hole number: ");
-		syscall_monitor_write_dec(kheap->index.size);
-		syscall_monitor_put('\n');
+		syscall_cmd_window_put('\n');
+		syscall_cmd_window_write("kheap hole number: ");
+		syscall_cmd_window_write_dec(kheap->index.size);
+		syscall_cmd_window_put('\n');
+		syscall_cmd_window_write("kheap block number: ");
+		syscall_cmd_window_write_dec(kheap->blk_index.size);
+		syscall_cmd_window_put('\n');
 	}
 	else
 	{
-		syscall_monitor_write("usage: ps [-m][-d][-u]");
+		syscall_cmd_window_write("usage: ps [-m][-d][-u]");
 	}
 	return 0;
 }

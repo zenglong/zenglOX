@@ -6,10 +6,12 @@
 #include "zlox_common.h"
 
 typedef struct _ZLOX_TASK ZLOX_TASK;
+typedef struct _ZLOX_TASK_MSG ZLOX_TASK_MSG;
 
 #include "zlox_paging.h"
 #include "zlox_elf.h"
 #include "zlox_uheap.h"
+#include "zlox_my_windows.h"
 
 #define ZLOX_KERNEL_STACK_SIZE 0x2000	// Use a 8kb kernel stack.
 #define ZLOX_USER_STACK_SIZE 0x2000	// Use a 8kb user stack.
@@ -22,6 +24,9 @@ typedef enum _ZLOX_MSG_TYPE
 	ZLOX_MT_KEYBOARD,
 	ZLOX_MT_TASK_FINISH,
 	ZLOX_MT_NET_PACKET,
+	ZLOX_MT_MOUSE,
+	ZLOX_MT_CREATE_MY_WINDOW,
+	ZLOX_MT_CLOSE_MY_WINDOW,
 }ZLOX_MSG_TYPE;
 
 typedef enum _ZLOX_MSG_KB_KEY
@@ -63,6 +68,14 @@ typedef enum _ZLOX_TSK_STATUS
 	ZLOX_TS_ZOMBIE,
 }ZLOX_TSK_STATUS;
 
+typedef enum _ZLOX_MSG_MOUSE_BTN
+{
+	ZLOX_MMB_NONE,
+	ZLOX_MMB_LEFT_DOWN,
+	ZLOX_MMB_LEFT_UP,
+	ZLOX_MMB_LEFT_DRAG,
+}ZLOX_MSG_MOUSE_BTN;
+
 typedef struct _ZLOX_TASK_MSG_KEYBOARD
 {
 	ZLOX_MSG_KB_TYPE type;
@@ -76,13 +89,22 @@ typedef struct _ZLOX_TASK_MSG_FINISH
 	ZLOX_SINT32 exit_code;
 }ZLOX_TASK_MSG_FINISH;
 
-typedef struct _ZLOX_TASK_MSG
+typedef struct _ZLOX_TASK_MSG_MOUSE
+{
+	ZLOX_UINT8 state;
+	ZLOX_SINT32 rel_x;
+	ZLOX_SINT32 rel_y;
+	ZLOX_MSG_MOUSE_BTN btn;
+}ZLOX_TASK_MSG_MOUSE;
+
+struct _ZLOX_TASK_MSG
 {
 	ZLOX_MSG_TYPE type;
 	ZLOX_TASK_MSG_KEYBOARD keyboard;
 	ZLOX_SINT32 packet_idx;
 	ZLOX_TASK_MSG_FINISH finish_task; // 消息中存储的结束任务的相关信息
-}ZLOX_TASK_MSG;
+	ZLOX_TASK_MSG_MOUSE mouse;
+};
 
 typedef struct _ZLOX_TASK_MSG_LIST
 {
@@ -112,6 +134,8 @@ struct _ZLOX_TASK
 	ZLOX_TASK * next; // The next task in a linked list.
 	ZLOX_TASK * prev; // the prev task
 	ZLOX_TASK * parent; // parent task
+	ZLOX_MY_WINDOW * mywin;
+	ZLOX_MY_WINDOW * cmd_win;
 };
 
 typedef struct _ZLOX_PID_REUSE_LIST
@@ -157,6 +181,8 @@ ZLOX_SINT32 zlox_exit(ZLOX_SINT32 exit_code);
 
 // 将需要结束的任务的相关资源给释放掉，并从任务列表里移除
 ZLOX_SINT32 zlox_finish(ZLOX_TASK * task);
+
+ZLOX_SINT32 zlox_finish_all_child(ZLOX_TASK * task);
 
 // 获取task任务的参数
 ZLOX_UINT32 zlox_get_args(ZLOX_TASK * task);

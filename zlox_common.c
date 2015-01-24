@@ -5,6 +5,8 @@
 // Outputs an integer to the monitor.
 extern ZLOX_VOID zlox_monitor_write_dec(ZLOX_UINT32 n);
 extern ZLOX_VOID zlox_monitor_write(const ZLOX_CHAR * c);
+extern ZLOX_UINT32 monitor_color;
+extern ZLOX_UINT32 monitor_backColour;
 
 // Write a byte out to the specified port.
 ZLOX_VOID zlox_outb(ZLOX_UINT16 port,ZLOX_UINT8 value)
@@ -233,6 +235,9 @@ ZLOX_VOID zlox_panic(const ZLOX_CHAR *message, const ZLOX_CHAR *file, ZLOX_UINT3
 	// We encountered a massive problem and have to stop.
 	asm volatile("cli"); // Disable interrupts.
 
+	monitor_color = 0xFFFFFFFF;
+	monitor_backColour = 0xFFFF0000;
+
 	zlox_monitor_write("PANIC(");
 	zlox_monitor_write(message);
 	zlox_monitor_write(") at ");
@@ -249,6 +254,9 @@ ZLOX_VOID zlox_panic_assert(const ZLOX_CHAR *file, ZLOX_UINT32 line, const ZLOX_
 {
 	// We encountered a massive problem and have to stop.
 	asm volatile("cli"); // Disable interrupts.
+
+	monitor_color = 0xFFFFFFFF;
+	monitor_backColour = 0xFFFF0000;
 
 	zlox_monitor_write("ASSERTION-FAILED(");
 	zlox_monitor_write((const ZLOX_CHAR *)desc);

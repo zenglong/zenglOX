@@ -2,10 +2,20 @@
 
 #include "zlox_kheap.h"
 #include "zlox_vga.h"
+#include "zlox_paging.h"
+#include "zlox_term_font.h"
+
+extern ZLOX_PAGE_DIRECTORY * kernel_directory;
+
+ZLOX_UINT8 * lfb_vid_memory = ZLOX_NULL;
 
 ZLOX_UINT32 vga_current_mode = ZLOX_VGA_MODE_80X25_TEXT;
 
 ZLOX_UINT8 * vga_text_content_backup = ZLOX_NULL;
+
+ZLOX_UINT16 lfb_resolution_x = 0;
+ZLOX_UINT16 lfb_resolution_y = 0;
+ZLOX_UINT16 lfb_resolution_b = 0;
 
 ZLOX_UINT8 vga_80x25_text[] =
 {
@@ -574,10 +584,57 @@ ZLOX_SINT32 zlox_vga_set_mode(ZLOX_UINT32 mode)
 		vga_current_mode = ZLOX_VGA_MODE_640X480X16;
 		return 0;
 		break;
+	case ZLOX_VGA_MODE_VBE_1024X768X32:
+		{
+			ZLOX_UINT32 need_page_count = (1024 * 768 * 4 + 4096) / 4096;
+			ZLOX_UINT32 dev_map_start = zlox_page_get_dev_map_start(need_page_count);
+			if(dev_map_start == 0)
+				return -1;
+			ZLOX_UINT32 u32_video_memory = dev_map_start + ((ZLOX_UINT32)lfb_vid_memory & 0x0FFF);
+			ZLOX_UINT32 i,j;
+			for(i = u32_video_memory, j=(ZLOX_UINT32)lfb_vid_memory;
+				(i < (u32_video_memory + need_page_count * 4096));
+				i += 0x1000, j += 0x1000)
+			{
+				zlox_alloc_frame_do_ext(zlox_get_page(i, 1, kernel_directory), j, 0, 1);
+			}
+			zlox_page_Flush_TLB();
+			lfb_vid_memory = (ZLOX_UINT8 *)u32_video_memory;
+			lfb_resolution_x = 1024;
+			lfb_resolution_y = 768;
+			lfb_resolution_b = 32;
+			vga_current_mode = ZLOX_VGA_MODE_VBE_1024X768X32;
+			return 0;
+		}
+		break;
 	default:
 		break;
 	}
 	return -1;
+}
+
+ZLOX_VOID zlox_vga_set_point(ZLOX_SINT32 x, ZLOX_SINT32 y, ZLOX_UINT32 value)
+{
+	ZLOX_UINT32 * disp = (ZLOX_UINT32 *)lfb_vid_memory;
+	ZLOX_UINT32 * cell = &disp[y * lfb_resolution_x + x];
+	*cell = value;
+}
+
+ZLOX_VOID zlox_vga_write_char(ZLOX_SINT32 x, ZLOX_SINT32 y, ZLOX_SINT32 val, ZLOX_UINT32 color, ZLOX_UINT32 backColour)
+{
+	if (val > 128) {
+		val = 4;
+	}
+	ZLOX_UINT8 * c = number_font[val];
+	for (ZLOX_UINT8 i = 0; i < ZLOX_VGA_CHAR_HEIGHT; ++i) {
+		for (ZLOX_UINT8 j = 0; j < ZLOX_VGA_CHAR_WIDTH; ++j) {
+			if (c[i] & (1 << (8-j))) {
+				zlox_vga_set_point(x+j,y+i,color);
+			}
+			else 
+				zlox_vga_set_point(x+j,y+i,backColour);
+		}
+	}
 }
 
 ZLOX_SINT32 zlox_vga_update_screen(ZLOX_UINT8 * buffer, ZLOX_UINT32 buffer_size)

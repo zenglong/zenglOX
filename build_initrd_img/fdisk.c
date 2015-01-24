@@ -19,14 +19,14 @@ int parse_param(FDISK_PARAM * param, int argc, char * argv[])
 				param->hd = (UINT8)strToUInt(argv[i+1]);
 				if(param->hd > 3)
 				{
-					syscall_monitor_write("invalid -hd param, hd must be a valid ide_index \n");
+					syscall_cmd_window_write("invalid -hd param, hd must be a valid ide_index \n");
 					return -1;
 				}
 				param->setHD = TRUE;
 			}
 			else
 			{
-				syscall_monitor_write("invalid -hd param\n");
+				syscall_cmd_window_write("invalid -hd param\n");
 				return -1;
 			}
 		}
@@ -37,14 +37,14 @@ int parse_param(FDISK_PARAM * param, int argc, char * argv[])
 				param->pt = (UINT8)strToUInt(argv[i+1]);
 				if(param->pt < 1 || param->pt > 4)
 				{
-					syscall_monitor_write("invalid -pt param, pt must in 1 to 4 \n");
+					syscall_cmd_window_write("invalid -pt param, pt must in 1 to 4 \n");
 					return -1;
 				}
 				param->setPT = TRUE;
 			}
 			else
 			{
-				syscall_monitor_write("invalid -pt param\n");
+				syscall_cmd_window_write("invalid -pt param\n");
 				return -1;
 			}
 		}
@@ -58,14 +58,14 @@ int parse_param(FDISK_PARAM * param, int argc, char * argv[])
 					param->type = (UINT8)strToUInt(argv[i+1]);
 				else
 				{
-					syscall_monitor_write("invalid -type param, type now only support zenglfs or you can set number\n");
+					syscall_cmd_window_write("invalid -type param, type now only support zenglfs or you can set number\n");
 					return -1;
 				}
 				param->setTYPE = TRUE;
 			}
 			else
 			{
-				syscall_monitor_write("invalid -type param\n");
+				syscall_cmd_window_write("invalid -type param\n");
 				return -1;
 			}
 		}
@@ -78,7 +78,7 @@ int parse_param(FDISK_PARAM * param, int argc, char * argv[])
 			}
 			else
 			{
-				syscall_monitor_write("invalid -start param\n");
+				syscall_cmd_window_write("invalid -start param\n");
 				return -1;
 			}
 		}
@@ -91,7 +91,7 @@ int parse_param(FDISK_PARAM * param, int argc, char * argv[])
 			}
 			else
 			{
-				syscall_monitor_write("invalid -num param\n");
+				syscall_cmd_window_write("invalid -num param\n");
 				return -1;
 			}
 		}
@@ -103,7 +103,7 @@ int parse_param(FDISK_PARAM * param, int argc, char * argv[])
 		param->setSTART == FALSE ||
 		param->setNUM == FALSE)
 	{
-		syscall_monitor_write("usage: fdisk [-l][-hd ide_index -pt ptnum -type fstype -start startLBA -num secNum]\n");
+		syscall_cmd_window_write("usage: fdisk [-l][-hd ide_index -pt ptnum -type fstype -start startLBA -num secNum]\n");
 		return -1;
 	}
 	return 0;
@@ -127,9 +127,9 @@ int check_partition(MBR_PT * cur_pt, MBR_PT * start_pt)
 		{
 			if((cur_pt->startLBA + cur_pt->secNum - 1) >= pt->startLBA)
 			{
-				syscall_monitor_write("your setting conflict with partition ");
-				syscall_monitor_write_dec(i+1);
-				syscall_monitor_write(" , please check your secNum\n");
+				syscall_cmd_window_write("your setting conflict with partition ");
+				syscall_cmd_window_write_dec(i+1);
+				syscall_cmd_window_write(" , please check your secNum\n");
 				return -1;
 			}
 		}
@@ -137,9 +137,9 @@ int check_partition(MBR_PT * cur_pt, MBR_PT * start_pt)
 		{
 			if(pt->secNum != 0 && cur_pt->startLBA <= (pt->startLBA + pt->secNum - 1))
 			{
-				syscall_monitor_write("your setting conflict with partition ");
-				syscall_monitor_write_dec(i+1);
-				syscall_monitor_write(" , please check your startLBA\n");
+				syscall_cmd_window_write("your setting conflict with partition ");
+				syscall_cmd_window_write_dec(i+1);
+				syscall_cmd_window_write(" , please check your startLBA\n");
 				return -1;
 			}
 		}
@@ -188,17 +188,17 @@ int main(VOID * task, int argc, char * argv[])
 			IDE_DEVICE * ide_devices = (IDE_DEVICE *)syscall_ata_get_ide_info();
 			if((ide_index > 3) || (ide_devices[ide_index].Reserved == 0))
 			{
-				syscall_monitor_write("\nide_index [");
-				syscall_monitor_write_dec(ide_index);
-				syscall_monitor_write("] has no drive!\n");
+				syscall_cmd_window_write("\nide_index [");
+				syscall_cmd_window_write_dec(ide_index);
+				syscall_cmd_window_write("] has no drive!\n");
 				syscall_ufree(buffer);
 				return -1;
 			}
 			else if(ide_devices[ide_index].Type == IDE_ATAPI)
 			{
-				syscall_monitor_write("\natapi drive can't write data now! ide_index [");
-				syscall_monitor_write_dec(ide_index);
-				syscall_monitor_write("]\n");
+				syscall_cmd_window_write("\natapi drive can't write data now! ide_index [");
+				syscall_cmd_window_write_dec(ide_index);
+				syscall_cmd_window_write("]\n");
 				syscall_ufree(buffer);
 				return -1;
 			}
@@ -211,9 +211,9 @@ int main(VOID * task, int argc, char * argv[])
 			SINT32 ata_ret = syscall_ide_ata_access(0, ide_index, lba, 1, buffer); // read MBR
 			if(ata_ret == -1)
 			{
-				syscall_monitor_write("\nata read sector failed for ide index [");
-				syscall_monitor_write_dec(ide_index);
-				syscall_monitor_write("]\n");
+				syscall_cmd_window_write("\nata read sector failed for ide index [");
+				syscall_cmd_window_write_dec(ide_index);
+				syscall_cmd_window_write("]\n");
 				syscall_ufree(buffer);
 				return -1;
 			}
@@ -227,15 +227,15 @@ int main(VOID * task, int argc, char * argv[])
 			*/
 			for(i=0;i < 4;i++,partition++)
 			{
-				syscall_monitor_write("[");
-				syscall_monitor_write_dec(i+1);
-				syscall_monitor_write("] start LBA: ");
-				syscall_monitor_write_dec(partition->startLBA);
-				syscall_monitor_write(" Total Sectors: ");
-				syscall_monitor_write_dec(partition->secNum);
+				syscall_cmd_window_write("[");
+				syscall_cmd_window_write_dec(i+1);
+				syscall_cmd_window_write("] start LBA: ");
+				syscall_cmd_window_write_dec(partition->startLBA);
+				syscall_cmd_window_write(" Total Sectors: ");
+				syscall_cmd_window_write_dec(partition->secNum);
 				if(partition->secNum != 0)
 				{
-					syscall_monitor_write(" [");
+					syscall_cmd_window_write(" [");
 					/*
 					通过分区的总扇区数来计算出分区的尺寸大小，
 					并根据尺寸大小来设置具体的单位，比如MB，
@@ -243,21 +243,21 @@ int main(VOID * task, int argc, char * argv[])
 					*/
 					if(partition->secNum * 512 / 1024 / 1024 != 0)
 					{
-						syscall_monitor_write_dec(partition->secNum * 512 / 1024 / 1024);
-						syscall_monitor_write("MB]");
+						syscall_cmd_window_write_dec(partition->secNum * 512 / 1024 / 1024);
+						syscall_cmd_window_write("MB]");
 					}
 					else if(partition->secNum * 512 / 1024 != 0)
 					{
-						syscall_monitor_write_dec(partition->secNum * 512 / 1024);
-						syscall_monitor_write("KB]");
+						syscall_cmd_window_write_dec(partition->secNum * 512 / 1024);
+						syscall_cmd_window_write("KB]");
 					}
 					else
 					{
-						syscall_monitor_write_dec(partition->secNum * 512);
-						syscall_monitor_write("Byte]");
+						syscall_cmd_window_write_dec(partition->secNum * 512);
+						syscall_cmd_window_write("Byte]");
 					}
 				}
-				syscall_monitor_write(" filesystem: ");
+				syscall_cmd_window_write(" filesystem: ");
 				/*
 				根据分区表的System ID字段即下面的
 				partition->fs_type成员的值来判断分区所设置
@@ -270,16 +270,16 @@ int main(VOID * task, int argc, char * argv[])
 				switch(partition->fs_type)
 				{
 				case MBR_FS_TYPE_ZENGLFS:
-					syscall_monitor_write(" zenglfs");
+					syscall_cmd_window_write(" zenglfs");
 					break;
 				case MBR_FS_TYPE_EMPTY:
-					syscall_monitor_write(" empty");
+					syscall_cmd_window_write(" empty");
 					break;
 				default:
-					syscall_monitor_write(" other");
+					syscall_cmd_window_write(" other");
 					break;
 				}
-				syscall_monitor_write("\n");
+				syscall_cmd_window_write("\n");
 			}
 
 			syscall_ufree(buffer);
@@ -302,17 +302,17 @@ int main(VOID * task, int argc, char * argv[])
 		IDE_DEVICE * ide_devices = (IDE_DEVICE *)syscall_ata_get_ide_info();
 		if((ide_index > 3) || (ide_devices[ide_index].Reserved == 0))
 		{
-			syscall_monitor_write("\nide_index [");
-			syscall_monitor_write_dec(ide_index);
-			syscall_monitor_write("] has no drive!\n");
+			syscall_cmd_window_write("\nide_index [");
+			syscall_cmd_window_write_dec(ide_index);
+			syscall_cmd_window_write("] has no drive!\n");
 			syscall_ufree(buffer);
 			return -1;
 		}
 		else if(ide_devices[ide_index].Type == IDE_ATAPI)
 		{
-			syscall_monitor_write("\natapi drive can't write data now! ide_index [");
-			syscall_monitor_write_dec(ide_index);
-			syscall_monitor_write("]\n");
+			syscall_cmd_window_write("\natapi drive can't write data now! ide_index [");
+			syscall_cmd_window_write_dec(ide_index);
+			syscall_cmd_window_write("]\n");
 			syscall_ufree(buffer);
 			return -1;
 		}
@@ -325,9 +325,9 @@ int main(VOID * task, int argc, char * argv[])
 		SINT32 ata_ret = syscall_ide_ata_access(0, ide_index, lba, 1, buffer); // read MBR
 		if(ata_ret == -1)
 		{
-			syscall_monitor_write("\nata read sector failed for ide index [");
-			syscall_monitor_write_dec(ide_index);
-			syscall_monitor_write("]\n");
+			syscall_cmd_window_write("\nata read sector failed for ide index [");
+			syscall_cmd_window_write_dec(ide_index);
+			syscall_cmd_window_write("]\n");
 			syscall_ufree(buffer);
 			return -1;
 		}
@@ -371,11 +371,11 @@ int main(VOID * task, int argc, char * argv[])
 		if(partition->secNum != 0 && 
 			(partition->startLBA + partition->secNum - 1) > ide_devices[ide_index].Size)
 		{
-			syscall_monitor_write("your startLBA + secNum out of range, ide_index [");
-			syscall_monitor_write_dec(ide_index);
-			syscall_monitor_write("] Last LBA is ");
-			syscall_monitor_write_dec(ide_devices[ide_index].Size);
-			syscall_monitor_put('\n');
+			syscall_cmd_window_write("your startLBA + secNum out of range, ide_index [");
+			syscall_cmd_window_write_dec(ide_index);
+			syscall_cmd_window_write("] Last LBA is ");
+			syscall_cmd_window_write_dec(ide_devices[ide_index].Size);
+			syscall_cmd_window_put('\n');
 			syscall_ufree(buffer);
 			return -1;
 		}
@@ -392,20 +392,20 @@ int main(VOID * task, int argc, char * argv[])
 		ata_ret = syscall_ide_ata_access(1, ide_index, lba, 1, buffer);
 		if(ata_ret == -1)
 		{
-			syscall_monitor_write("\nata write sector failed for ide index [");
-			syscall_monitor_write_dec(ide_index);
-			syscall_monitor_write("]\n");
+			syscall_cmd_window_write("\nata write sector failed for ide index [");
+			syscall_cmd_window_write_dec(ide_index);
+			syscall_cmd_window_write("]\n");
 			syscall_ufree(buffer);
 			return -1;
 		}
 		else
-			syscall_monitor_write("\nfdisk write MBR success , you can use \"fdisk -l ide_index\" to see it! \n");
+			syscall_cmd_window_write("\nfdisk write MBR success , you can use \"fdisk -l ide_index\" to see it! \n");
 
 		syscall_ufree(buffer);
 		return 0;
 	}
 
-	syscall_monitor_write("usage: fdisk [-l ide_index][-hd ide_index -pt ptnum -type fstype -start startLBA -num secNum]\n");
+	syscall_cmd_window_write("usage: fdisk [-l ide_index][-hd ide_index -pt ptnum -type fstype -start startLBA -num secNum]\n");
 	return 0;
 }
 

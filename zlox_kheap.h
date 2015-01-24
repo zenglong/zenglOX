@@ -7,11 +7,13 @@
 #include "zlox_ordered_array.h"
 
 #define ZLOX_KHEAP_START 0xC0000000
-#define ZLOX_KHEAP_INITIAL_SIZE	0x100000
+//#define ZLOX_KHEAP_INITIAL_SIZE	0x100000
+#define ZLOX_KHEAP_INITIAL_SIZE	0x200000 // for debug
 
 #define ZLOX_HEAP_INDEX_SIZE 0x20000
 #define ZLOX_HEAP_MAGIC 0x123890AB
-#define ZLOX_HEAP_MIN_SIZE 0x70000
+//#define ZLOX_HEAP_MIN_SIZE 0x70000
+#define ZLOX_HEAP_MIN_SIZE 0x170000 // for debug
 
 typedef struct _ZLOX_KHP_HEADER
 {
@@ -29,6 +31,7 @@ typedef struct _ZLOX_KHP_FOOTER
 typedef struct _ZLOX_HEAP
 {
 	ZLOX_ORDERED_ARRAY index;
+	ZLOX_ORDERED_ARRAY blk_index; // for debug
 	ZLOX_UINT32 start_address;	// The start of our allocated space.
 	ZLOX_UINT32 end_address;	// The end of our allocated space. May be expanded up to max_address.
 	ZLOX_UINT32 max_address;	// The maximum address the heap can be expanded to.
@@ -87,6 +90,8 @@ ZLOX_VOID zlox_kfree(ZLOX_VOID *p);
 
 // 给用户态程式使用的释放堆函数
 //ZLOX_VOID zlox_ufree(ZLOX_VOID *p);
+
+ZLOX_SINT32 zlox_kheap_check_all_blk();
 
 // 获取kheap，主要用于系统调用
 ZLOX_UINT32 zlox_get_kheap();

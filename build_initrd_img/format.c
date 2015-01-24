@@ -24,14 +24,14 @@ int parse_param(FORMAT_PARAM * param, int argc, char * argv[])
 				param->hd = (UINT8)strToUInt(argv[i+1]);
 				if(param->hd > 3)
 				{
-					syscall_monitor_write("invalid -hd param, hd must be a valid ide_index \n");
+					syscall_cmd_window_write("invalid -hd param, hd must be a valid ide_index \n");
 					return -1;
 				}
 				param->setHD = TRUE;
 			}
 			else
 			{
-				syscall_monitor_write("invalid -hd param\n");
+				syscall_cmd_window_write("invalid -hd param\n");
 				return -1;
 			}
 		}
@@ -42,14 +42,14 @@ int parse_param(FORMAT_PARAM * param, int argc, char * argv[])
 				param->pt = (UINT8)strToUInt(argv[i+1]);
 				if(param->pt < 1 || param->pt > 4)
 				{
-					syscall_monitor_write("invalid -pt param, pt must in 1 to 4 \n");
+					syscall_cmd_window_write("invalid -pt param, pt must in 1 to 4 \n");
 					return -1;
 				}
 				param->setPT = TRUE;
 			}
 			else
 			{
-				syscall_monitor_write("invalid -pt param\n");
+				syscall_cmd_window_write("invalid -pt param\n");
 				return -1;
 			}
 		}
@@ -61,14 +61,14 @@ int parse_param(FORMAT_PARAM * param, int argc, char * argv[])
 					param->type = MBR_FS_TYPE_ZENGLFS;
 				else
 				{
-					syscall_monitor_write("invalid -type param, type now only support zenglfs \n");
+					syscall_cmd_window_write("invalid -type param, type now only support zenglfs \n");
 					return -1;
 				}
 				param->setTYPE = TRUE;
 			}
 			else
 			{
-				syscall_monitor_write("invalid -type param\n");
+				syscall_cmd_window_write("invalid -type param\n");
 				return -1;
 			}
 		}
@@ -78,7 +78,7 @@ int parse_param(FORMAT_PARAM * param, int argc, char * argv[])
 		param->setPT == FALSE ||
 		param->setTYPE == FALSE)
 	{
-		syscall_monitor_write("usage: format [-l ide_index ptnum [show_group_info_num]][-hd ide_index -pt ptnum -type fstype] \n");
+		syscall_cmd_window_write("usage: format [-l ide_index ptnum [show_group_info_num]][-hd ide_index -pt ptnum -type fstype] \n");
 		return -1;
 	}
 	return 0;
@@ -135,23 +135,23 @@ int main(VOID * task, int argc, char * argv[])
 			UINT32 pt = strToUInt(argv[3]);
 			if(pt < 1 || pt > 4)
 			{
-				syscall_monitor_write("partition number must in 1 to 4 \n");
+				syscall_cmd_window_write("partition number must in 1 to 4 \n");
 				return -1;
 			}
 			UINT32 lba = 0; // MBR
 			IDE_DEVICE * ide_devices = (IDE_DEVICE *)syscall_ata_get_ide_info();
 			if((ide_index > 3) || (ide_devices[ide_index].Reserved == 0))
 			{
-				syscall_monitor_write("\nide_index [");
-				syscall_monitor_write_dec(ide_index);
-				syscall_monitor_write("] has no drive!\n");
+				syscall_cmd_window_write("\nide_index [");
+				syscall_cmd_window_write_dec(ide_index);
+				syscall_cmd_window_write("] has no drive!\n");
 				return -1;
 			}
 			else if(ide_devices[ide_index].Type == IDE_ATAPI)
 			{
-				syscall_monitor_write("\natapi drive can't write data now! ide_index [");
-				syscall_monitor_write_dec(ide_index);
-				syscall_monitor_write("]\n");
+				syscall_cmd_window_write("\natapi drive can't write data now! ide_index [");
+				syscall_cmd_window_write_dec(ide_index);
+				syscall_cmd_window_write("]\n");
 				return -1;
 			}
 
@@ -159,9 +159,9 @@ int main(VOID * task, int argc, char * argv[])
 			SINT32 ata_ret = syscall_ide_ata_access(IDE_ATA_READ, ide_index, lba, 1, buffer); // read MBR
 			if(ata_ret == -1)
 			{
-				syscall_monitor_write("\nata read sector failed for ide index [");
-				syscall_monitor_write_dec(ide_index);
-				syscall_monitor_write("]\n");
+				syscall_cmd_window_write("\nata read sector failed for ide index [");
+				syscall_cmd_window_write_dec(ide_index);
+				syscall_cmd_window_write("]\n");
 				syscall_ufree(buffer);
 				return -1;
 			}
@@ -174,38 +174,38 @@ int main(VOID * task, int argc, char * argv[])
 			SUPER_BLOCK * superblock = (SUPER_BLOCK *)buffer;
 			if(superblock->sign != SUPER_BLOCK_SIGN)
 			{
-				syscall_monitor_write("this partition is not formated \n");
+				syscall_cmd_window_write("this partition is not formated \n");
 				syscall_ufree(buffer);
 				return -1;
 			}
-			syscall_monitor_write("super block info: \n");
-			syscall_monitor_write("startLBA: ");
-			syscall_monitor_write_dec(superblock->startLBA);
-			syscall_monitor_write(" TotalBlock: ");
-			syscall_monitor_write_dec(superblock->TotalBlock);
-			syscall_monitor_write(" TotalInode: ");
-			syscall_monitor_write_dec(superblock->TotalInode);
-			syscall_monitor_write("\nGroupAddr: ");
-			syscall_monitor_write_dec(superblock->GroupAddr);
-			syscall_monitor_write(" GroupCount: ");
-			syscall_monitor_write_dec(superblock->GroupCount);
-			syscall_monitor_write(" GroupBlocks: ");
-			syscall_monitor_write_dec(superblock->GroupBlocks);
-			syscall_monitor_write("\nBlockBitMapBlockAddr: ");
-			syscall_monitor_write_dec(superblock->BlockBitMapBlockAddr);
-			syscall_monitor_write(" BlockMapBlocks: ");
-			syscall_monitor_write_dec(superblock->BlockMapBlocks);
-			syscall_monitor_write("\nInodeBitMapBlockAddr: ");
-			syscall_monitor_write_dec(superblock->InodeBitMapBlockAddr);
-			syscall_monitor_write(" InodeMapBlocks: ");
-			syscall_monitor_write_dec(superblock->InodeMapBlocks);
-			syscall_monitor_write("\nInodeTableBlockAddr: ");
-			syscall_monitor_write_dec(superblock->InodeTableBlockAddr);
-			syscall_monitor_write("\nallocBlocks: ");
-			syscall_monitor_write_dec(superblock->allocBlocks);
-			syscall_monitor_write(" allocInodes: ");
-			syscall_monitor_write_dec(superblock->allocInodes);
-			syscall_monitor_put('\n');
+			syscall_cmd_window_write("super block info: \n");
+			syscall_cmd_window_write("startLBA: ");
+			syscall_cmd_window_write_dec(superblock->startLBA);
+			syscall_cmd_window_write(" TotalBlock: ");
+			syscall_cmd_window_write_dec(superblock->TotalBlock);
+			syscall_cmd_window_write(" TotalInode: ");
+			syscall_cmd_window_write_dec(superblock->TotalInode);
+			syscall_cmd_window_write("\nGroupAddr: ");
+			syscall_cmd_window_write_dec(superblock->GroupAddr);
+			syscall_cmd_window_write(" GroupCount: ");
+			syscall_cmd_window_write_dec(superblock->GroupCount);
+			syscall_cmd_window_write(" GroupBlocks: ");
+			syscall_cmd_window_write_dec(superblock->GroupBlocks);
+			syscall_cmd_window_write("\nBlockBitMapBlockAddr: ");
+			syscall_cmd_window_write_dec(superblock->BlockBitMapBlockAddr);
+			syscall_cmd_window_write(" BlockMapBlocks: ");
+			syscall_cmd_window_write_dec(superblock->BlockMapBlocks);
+			syscall_cmd_window_write("\nInodeBitMapBlockAddr: ");
+			syscall_cmd_window_write_dec(superblock->InodeBitMapBlockAddr);
+			syscall_cmd_window_write(" InodeMapBlocks: ");
+			syscall_cmd_window_write_dec(superblock->InodeMapBlocks);
+			syscall_cmd_window_write("\nInodeTableBlockAddr: ");
+			syscall_cmd_window_write_dec(superblock->InodeTableBlockAddr);
+			syscall_cmd_window_write("\nallocBlocks: ");
+			syscall_cmd_window_write_dec(superblock->allocBlocks);
+			syscall_cmd_window_write(" allocInodes: ");
+			syscall_cmd_window_write_dec(superblock->allocInodes);
+			syscall_cmd_window_put('\n');
 			UINT32 i, j , startLBA =  superblock->startLBA , GroupAddr = superblock->GroupAddr , 
 					GroupCount = superblock->GroupCount, 
 					GroupBlocks = superblock->GroupBlocks;
@@ -217,7 +217,7 @@ int main(VOID * task, int argc, char * argv[])
 			else
 				totala = GroupCount;
 			if(totala != 0)
-				syscall_monitor_write("Groups Info: \n");
+				syscall_cmd_window_write("Groups Info: \n");
 			for(i = 0; i < GroupBlocks;i++)
 			{
 				lba = (GroupAddr + i) * 2 + startLBA;
@@ -229,14 +229,14 @@ int main(VOID * task, int argc, char * argv[])
 				{
 					if(groupinfo->allocBlocks != 0 || groupinfo->allocInodes != 0)
 					{
-						syscall_monitor_write("[");
-						syscall_monitor_write_dec(i * gsz + j);
-						syscall_monitor_write("] ");
-						syscall_monitor_write("allocBlocks: ");
-						syscall_monitor_write_dec(groupinfo->allocBlocks);
-						syscall_monitor_write(" allocInodes: ");
-						syscall_monitor_write_dec(groupinfo->allocInodes);
-						syscall_monitor_put('\n');
+						syscall_cmd_window_write("[");
+						syscall_cmd_window_write_dec(i * gsz + j);
+						syscall_cmd_window_write("] ");
+						syscall_cmd_window_write("allocBlocks: ");
+						syscall_cmd_window_write_dec(groupinfo->allocBlocks);
+						syscall_cmd_window_write(" allocInodes: ");
+						syscall_cmd_window_write_dec(groupinfo->allocInodes);
+						syscall_cmd_window_put('\n');
 					}
 				}
 			}
@@ -259,17 +259,17 @@ int main(VOID * task, int argc, char * argv[])
 		IDE_DEVICE * ide_devices = (IDE_DEVICE *)syscall_ata_get_ide_info();
 		if((ide_index > 3) || (ide_devices[ide_index].Reserved == 0))
 		{
-			syscall_monitor_write("\nide_index [");
-			syscall_monitor_write_dec(ide_index);
-			syscall_monitor_write("] has no drive!\n");
+			syscall_cmd_window_write("\nide_index [");
+			syscall_cmd_window_write_dec(ide_index);
+			syscall_cmd_window_write("] has no drive!\n");
 			syscall_ufree(buffer);
 			return -1;
 		}
 		else if(ide_devices[ide_index].Type == IDE_ATAPI)
 		{
-			syscall_monitor_write("\natapi drive can't write data now! ide_index [");
-			syscall_monitor_write_dec(ide_index);
-			syscall_monitor_write("]\n");
+			syscall_cmd_window_write("\natapi drive can't write data now! ide_index [");
+			syscall_cmd_window_write_dec(ide_index);
+			syscall_cmd_window_write("]\n");
 			syscall_ufree(buffer);
 			return -1;
 		}
@@ -280,9 +280,9 @@ int main(VOID * task, int argc, char * argv[])
 		SINT32 ata_ret = syscall_ide_ata_access(IDE_ATA_READ, ide_index, lba, 1, buffer); // read MBR
 		if(ata_ret == -1)
 		{
-			syscall_monitor_write("\nata read sector failed for ide index [");
-			syscall_monitor_write_dec(ide_index);
-			syscall_monitor_write("]\n");
+			syscall_cmd_window_write("\nata read sector failed for ide index [");
+			syscall_cmd_window_write_dec(ide_index);
+			syscall_cmd_window_write("]\n");
 			syscall_ufree(buffer);
 			return -1;
 		}
@@ -304,13 +304,13 @@ int main(VOID * task, int argc, char * argv[])
 		*/
 		if(partition.secNum < 450)
 		{
-			syscall_monitor_write("this partition is too small , must at least have 450 sectors \n");
+			syscall_cmd_window_write("this partition is too small , must at least have 450 sectors \n");
 			syscall_ufree(buffer);
 			return -1;
 		}
 		else if(partition.fs_type != MBR_FS_TYPE_ZENGLFS)
 		{
-			syscall_monitor_write("this partition is not zenglfs \n");
+			syscall_cmd_window_write("this partition is not zenglfs \n");
 			syscall_ufree(buffer);
 			return -1;
 		}
@@ -431,11 +431,11 @@ int main(VOID * task, int argc, char * argv[])
 		lba = superblock.InodeTableBlockAddr * 2 + superblock.startLBA;
 		syscall_ide_ata_access(IDE_ATA_WRITE, ide_index, lba, 2, buffer); // write root inode
 		syscall_ufree(buffer);
-		syscall_monitor_write("\nformat success , you can use \"format -l ide_index ptnum\" to see it! \n");
+		syscall_cmd_window_write("\nformat success , you can use \"format -l ide_index ptnum\" to see it! \n");
 		return 0;
 	}
 
-	syscall_monitor_write("usage: format [-l ide_index ptnum [show_group_info_num]][-hd ide_index -pt ptnum -type fstype] \n");
+	syscall_cmd_window_write("usage: format [-l ide_index ptnum [show_group_info_num]][-hd ide_index -pt ptnum -type fstype] \n");
 	return 0;
 }
 

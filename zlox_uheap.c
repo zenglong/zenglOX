@@ -104,6 +104,8 @@ static ZLOX_UINT32 zlox_uheap_contract(ZLOX_UINT32 new_size, ZLOX_HEAP * heap)
 	// Sanity check.
 	ZLOX_ASSERT_UHEAP(new_size < heap->end_address-heap->start_address);
 
+	ZLOX_UINT32 new_size_orig = new_size;
+
 	// Get the nearest following page boundary.
 	if (new_size & 0x00000FFF)
 	{
@@ -121,6 +123,24 @@ static ZLOX_UINT32 zlox_uheap_contract(ZLOX_UINT32 new_size, ZLOX_HEAP * heap)
 		// 如果收缩堆空间后,剩余尺寸不能形成一个有效的hole,则放弃收缩,返回原来的尺寸
 		else
 			return (heap->end_address-heap->start_address);
+	}
+
+	ZLOX_UINT32 diff = new_size - new_size_orig;
+
+	if(diff == 0)
+		;
+	else if(diff > 0)
+	{
+		ZLOX_KHP_HEADER * header = (ZLOX_KHP_HEADER *)(heap->start_address + new_size_orig);
+		if(diff <= (sizeof(ZLOX_KHP_HEADER) + sizeof(ZLOX_KHP_FOOTER)))
+		{
+			new_size += 0x1000;
+		}
+		diff = new_size - new_size_orig;
+		if(diff >= header->size)
+		{
+			return (heap->end_address-heap->start_address);
+		}
 	}
 
 	ZLOX_UINT32 old_size = heap->end_address-heap->start_address;

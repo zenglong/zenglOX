@@ -16,6 +16,7 @@ typedef char ZLOX_SINT8;
 typedef char ZLOX_CHAR;
 typedef void ZLOX_VOID;
 typedef ZLOX_UINT8 ZLOX_BOOL;
+typedef float ZLOX_FLOAT;
 
 #define ZLOX_FALSE 0
 #define ZLOX_TRUE 1

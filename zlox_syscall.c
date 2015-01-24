@@ -17,6 +17,8 @@
 #include "zlox_time.h"
 #include "zlox_pci.h"
 #include "zlox_ps2.h"
+#include "zlox_my_windows.h"
+#include "zlox_mouse.h"
 
 static ZLOX_VOID zlox_syscall_handler(ZLOX_ISR_REGISTERS * regs);
 // _zlox_reboot() and _zlox_shutdown() is in zlox_shutdown.s
@@ -87,6 +89,20 @@ ZLOX_DEFN_SYSCALL1(release_control_keys, ZLOX_SYSCALL_RELEASE_CONTROL_KEYS, ZLOX
 ZLOX_DEFN_SYSCALL0(monitor_del_line, ZLOX_SYSCALL_MONITOR_DEL_LINE);
 ZLOX_DEFN_SYSCALL0(monitor_insert_line, ZLOX_SYSCALL_MONITOR_INSERT_LINE);
 ZLOX_DEFN_SYSCALL3(ps2_get_status, ZLOX_SYSCALL_PS2_GET_STATUS, ZLOX_BOOL *, ZLOX_BOOL *, ZLOX_BOOL *);
+ZLOX_DEFN_SYSCALL1(create_my_window, ZLOX_SYSCALL_CREATE_MY_WINDOW, void *);
+ZLOX_DEFN_SYSCALL2(dispatch_win_msg, ZLOX_SYSCALL_DISPATCH_WIN_MSG, void *, void *);
+ZLOX_DEFN_SYSCALL1(mouse_set_scale, ZLOX_SYSCALL_MOUSE_SET_SCALE, ZLOX_FLOAT *);
+ZLOX_DEFN_SYSCALL3(set_cmd_window, ZLOX_SYSCALL_SET_CMD_WINDOW, void *, void *, ZLOX_BOOL);
+ZLOX_DEFN_SYSCALL1(cmd_window_put, ZLOX_SYSCALL_CMD_WINDOW_PUT, char);
+ZLOX_DEFN_SYSCALL1(cmd_window_write, ZLOX_SYSCALL_CMD_WINDOW_WRITE, const char *);
+ZLOX_DEFN_SYSCALL1(finish_all_child, ZLOX_SYSCALL_FINISH_ALL_CHILD, void *);
+ZLOX_DEFN_SYSCALL1(cmd_window_write_hex, ZLOX_SYSCALL_CMD_WINDOW_WRITE_HEX, ZLOX_UINT32);
+ZLOX_DEFN_SYSCALL1(cmd_window_write_dec, ZLOX_SYSCALL_CMD_WINDOW_WRITE_DEC, ZLOX_UINT32);
+ZLOX_DEFN_SYSCALL0(cmd_window_del_line, ZLOX_SYSCALL_CMD_WINDOW_DEL_LINE); 
+ZLOX_DEFN_SYSCALL0(cmd_window_insert_line, ZLOX_SYSCALL_CMD_WINDOW_INSERT_LINE);
+ZLOX_DEFN_SYSCALL2(cmd_window_set_cursor, ZLOX_SYSCALL_CMD_WINDOW_SET_CURSOR, ZLOX_SINT32, ZLOX_SINT32);
+ZLOX_DEFN_SYSCALL1(cmd_window_set_single, ZLOX_SYSCALL_CMD_WINDOW_SET_SINGLE, ZLOX_BOOL);
+ZLOX_DEFN_SYSCALL0(cmd_window_clear, ZLOX_SYSCALL_CMD_WINDOW_CLEAR);
 
 static ZLOX_VOID * syscalls[ZLOX_SYSCALL_NUMBER] =
 {
@@ -149,6 +165,20 @@ static ZLOX_VOID * syscalls[ZLOX_SYSCALL_NUMBER] =
 	&zlox_monitor_del_line,
 	&zlox_monitor_insert_line,
 	&zlox_ps2_get_status,
+	&zlox_create_my_window,
+	&zlox_dispatch_win_msg,
+	&zlox_mouse_set_scale,
+	&zlox_set_cmd_window,
+	&zlox_cmd_window_put,
+	&zlox_cmd_window_write,
+	&zlox_finish_all_child,
+	&zlox_cmd_window_write_hex,
+	&zlox_cmd_window_write_dec,
+	&zlox_cmd_window_del_line,
+	&zlox_cmd_window_insert_line,
+	&zlox_cmd_window_set_cursor,
+	&zlox_cmd_window_set_single,
+	&zlox_cmd_window_clear,
 };
 
 ZLOX_UINT32 num_syscalls = ZLOX_SYSCALL_NUMBER;
@@ -194,6 +224,8 @@ static ZLOX_VOID zlox_syscall_handler(ZLOX_ISR_REGISTERS * regs)
 	{
 		regs->eip = ret;
 	}
+
+	//zlox_kheap_check_all_blk(); // for debug
 
 	regs->eax = ret;
 }

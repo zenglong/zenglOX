@@ -190,6 +190,75 @@ int main(VOID * task, int argc, char * argv[])
 	UNUSED(argc);
 	UNUSED(argv);
 	
+	syscall_cmd_window_write("you can't use vga in this version! because we are in vbe mode.");
+	return 0;
+
+	if(argc == 2 && strcmp(argv[1],"mouse") == 0)
+	{
+		vga_mode = VGA_MODE_640X480X16;
+		vga_8x16_font = (UINT8 *)syscall_vga_get_text_font();
+		syscall_vga_set_mode(vga_mode);
+		UINT8 * buffer;
+		UINT32 buf_size;
+		if(vga_mode == VGA_MODE_320X200X256)
+		{
+			buf_size = 320 * 200;
+			buffer = (UINT8 *)syscall_umalloc(buf_size);
+		}
+		else
+		{
+			buf_size = ((640 * 480) / 8) * 4;
+			buffer = (UINT8 *)syscall_umalloc(buf_size);
+		}
+		if(vga_mode == VGA_MODE_320X200X256)
+			memset(buffer, 13, 320 * 200);
+		else if(vga_mode == VGA_MODE_640X480X16)
+			draw_rect(buffer, 13, 0, 0, 640, 480);
+		draw_rect(buffer, 8, 10, 10, 15, 15);
+		syscall_vga_update_screen(buffer, buf_size);
+		syscall_set_input_focus(task);
+		TASK_MSG msg;
+		int ret, x = 10,y = 10;
+		while(TRUE)
+		{
+			ret = syscall_get_tskmsg(task,&msg,TRUE);
+			if(ret != 1)
+			{
+				syscall_idle_cpu();
+				continue;
+			}
+			if(msg.type == MT_KEYBOARD && 
+				msg.keyboard.type == MKT_ASCII && 
+				msg.keyboard.ascii == 0x1B) // ESC
+				break;
+			if(msg.type != MT_MOUSE)
+				continue;
+			/*if(msg.mouse.rel_x > 10)
+				msg.mouse.rel_x = 10;
+			else if(msg.mouse.rel_x < -10)
+				msg.mouse.rel_x = -10;
+			if(msg.mouse.rel_y > 10)
+				msg.mouse.rel_y = 10;
+			else if(msg.mouse.rel_y < -10)
+				msg.mouse.rel_y = -10;*/
+			x += msg.mouse.rel_x;
+			y -= msg.mouse.rel_y;
+			y = (y < 10) ? 10 : y;
+			y = ((y+15) > 450) ? (450 - 15) : y;
+			x = (x < 10) ? 10 : x;
+			x = ((x + 10) > 600) ? (600 - 10) : x;
+			if(vga_mode == VGA_MODE_320X200X256)
+				memset(buffer, 13, 320 * 200);
+			else if(vga_mode == VGA_MODE_640X480X16)
+				draw_rect(buffer, 13, 0, 0, 640, 480);
+			draw_rect(buffer, 8, x, y, 15, 15);
+			syscall_vga_update_screen(buffer, buf_size);
+		}
+		syscall_ufree(buffer);
+		syscall_vga_set_mode(VGA_MODE_80X25_TEXT);
+		return 0;
+	}
+
 	if(argc == 2)
 	{
 		if(strcmp(argv[1],"640") == 0)

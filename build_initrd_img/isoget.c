@@ -46,12 +46,12 @@ int main(VOID * task, int argc, char * argv[])
 					break;
 				}
 			}
-			syscall_monitor_write("\n");
+			syscall_cmd_window_write("\n");
 		}
 	}
 	else
 	{
-		syscall_monitor_write("usage: isoget [-all]");
+		syscall_cmd_window_write("usage: isoget [-all]");
 	}
 	return 0;
 }

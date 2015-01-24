@@ -1,0 +1,2 @@
+#!/bin/bash
+qemu-system-i386 -hda hd_qemu.img -cdrom zenglOX.iso -boot d -m 24 -gdb tcp::1234 -S -net nic -net user

@@ -17,10 +17,10 @@ int main(VOID * task, int argc, char * argv[])
 	{
 		int ret = syscall_mount_iso();
 		if(ret != 0)
-			syscall_monitor_write("mount iso to [iso] success! you can use \"ls iso\" to see "
+			syscall_cmd_window_write("mount iso to [iso] success! you can use \"ls iso\" to see "
 						"the contents of iso directory");
 		else
-			syscall_monitor_write("mount iso failed...");
+			syscall_cmd_window_write("mount iso failed...");
 	}
 	else if(argc == 4 && strcmp(argv[1],"hd")==0)
 	{
@@ -28,11 +28,11 @@ int main(VOID * task, int argc, char * argv[])
 		UINT32 pt = strToUInt(argv[3]);
 		int ret = syscall_mount_zenglfs(ide_index, pt);
 		if(ret != 0)
-			syscall_monitor_write("mount to [hd] success! you can use \"ls hd\" to see "
+			syscall_cmd_window_write("mount to [hd] success! you can use \"ls hd\" to see "
 						"the contents of hd directory");
 	}
 	else 
-		syscall_monitor_write("usage: mount [iso][hd ide_index pt]");
+		syscall_cmd_window_write("usage: mount [iso][hd ide_index pt]");
 	return 0;
 }
 

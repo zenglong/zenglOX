@@ -5,12 +5,16 @@
 
 #include "common.h"
 #include "elf.h"
+#include "my_windows.h"
 
 typedef enum _MSG_TYPE
 {
 	MT_KEYBOARD,
 	MT_TASK_FINISH,
 	MT_NET_PACKET,
+	MT_MOUSE,
+	MT_CREATE_MY_WINDOW,
+	MT_CLOSE_MY_WINDOW,
 }MSG_TYPE;
 
 typedef enum _MSG_KB_KEY
@@ -52,6 +56,14 @@ typedef enum _TSK_STATUS
 	TS_ZOMBIE,
 }TSK_STATUS;
 
+typedef enum _MSG_MOUSE_BTN
+{
+	MMB_NONE,
+	MMB_LEFT_DOWN,
+	MMB_LEFT_UP,
+	MMB_LEFT_DRAG,
+}MSG_MOUSE_BTN;
+
 typedef struct _TASK_MSG_KEYBOARD
 {
 	MSG_KB_TYPE type;
@@ -67,12 +79,21 @@ typedef struct _TASK_MSG_FINISH
 	SINT32 exit_code;
 }TASK_MSG_FINISH;
 
+typedef struct _TASK_MSG_MOUSE
+{
+	UINT8 state;
+	SINT32 rel_x;
+	SINT32 rel_y;
+	MSG_MOUSE_BTN btn;
+}TASK_MSG_MOUSE;
+
 typedef struct _TASK_MSG
 {
 	MSG_TYPE type;
 	TASK_MSG_KEYBOARD keyboard;
 	SINT32 packet_idx;
 	TASK_MSG_FINISH finish_task; // 消息中存储的结束任务的相关信息
+	TASK_MSG_MOUSE mouse;
 }TASK_MSG;
 
 typedef struct _TASK_MSG_LIST
@@ -103,6 +124,8 @@ struct _TASK
 	TASK * next; // The next task in a linked list.
 	TASK * prev; // the prev task
 	TASK * parent; // parent task
+	MY_WINDOW * mywin;
+	MY_WINDOW * cmd_win;
 };
 
 #endif // _TASK_H_

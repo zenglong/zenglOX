@@ -1,9 +1,11 @@
 #zlox_boot.s -- zenglOX kernel start assemble
 .equ ZLOX_MBOOT_PAGE_ALIGN,1 #Load Kernel on a page boundary
 .equ ZLOX_MBOOT_GETMEM_INFO,1<<1 #Tell MBoot provide your kernel with memory info
+.equ ZLOX_MBOOT_GETVBE_INFO,1<<2
+.equ ZLOX_MBOOT_GETOTHER_INFO,1<<16
 .equ ZLOX_MBOOT_MAGIC,0x1BADB002 #Multiboot Magic value
 
-.equ ZLOX_MBOOT_FLAGS,ZLOX_MBOOT_PAGE_ALIGN | ZLOX_MBOOT_GETMEM_INFO
+.equ ZLOX_MBOOT_FLAGS,ZLOX_MBOOT_PAGE_ALIGN | ZLOX_MBOOT_GETMEM_INFO | ZLOX_MBOOT_GETVBE_INFO | ZLOX_MBOOT_GETOTHER_INFO
 .equ ZLOX_MBOOT_CHECKSUM,-(ZLOX_MBOOT_MAGIC + ZLOX_MBOOT_FLAGS)
 
 .section .zlox_multiboot
@@ -19,6 +21,10 @@ _zlox_boot_mb_header:
   .long _bss
   .long _end
   .long _zlox_boot_start
+  .long 0
+  .long 1024
+  .long 768
+  .long 32
 
 .section .text
 .global _zlox_boot_start

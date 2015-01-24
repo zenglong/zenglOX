@@ -17,11 +17,11 @@ int replace_input(char * input, char * replace, int * count)
 {
 	int len = strlen(replace);
 	for(;(*count) > 0;(*count) -= 1)
-		syscall_monitor_write("\b \b");
+		syscall_cmd_window_write("\b \b");
 	strcpy(input,replace);
 	input[len] = '\0';
 	(*count) = len;
-	syscall_monitor_write(input);
+	syscall_cmd_window_write(input);
 	return 0;
 }
 
@@ -103,13 +103,15 @@ int main(VOID * task, int argc, char * argv[])
 	UNUSED(argc);
 	UNUSED(argv);
 
-	syscall_monitor_write("zenglOX> ");
+	//syscall_set_cmd_window(task, NULL, TRUE);
+
+	syscall_cmd_window_write("zenglOX> ");
 
 	BOOL ps2_init_status, ps2_first_port_status, ps2_sec_port_status;
 	syscall_ps2_get_status(&ps2_init_status, &ps2_first_port_status, &ps2_sec_port_status);
 	if(ps2_init_status == FALSE)
 	{
-		syscall_monitor_write("PS/2 Controller self test failed ! , you can't use keyboard and mouse..."
+		syscall_cmd_window_write("PS/2 Controller self test failed ! , you can't use keyboard and mouse..."
 					" you may be have to reboot manual\n");
 		while(TRUE)
 		{
@@ -118,7 +120,7 @@ int main(VOID * task, int argc, char * argv[])
 	}
 	else if(ps2_first_port_status == FALSE)
 	{
-		syscall_monitor_write("first PS/2 device reset failed, you can't use keyboard..."
+		syscall_cmd_window_write("first PS/2 device reset failed, you can't use keyboard..."
 					" you may be have to reboot manual\n");
 		while(TRUE)
 		{
@@ -169,7 +171,7 @@ int main(VOID * task, int argc, char * argv[])
 
 			if(msg.keyboard.ascii == '\n')
 			{
-				syscall_monitor_put('\n');
+				syscall_cmd_window_put('\n');
 				if(count > 0)
 				{
 					strcpy(input_for_up, input);
@@ -179,16 +181,16 @@ int main(VOID * task, int argc, char * argv[])
 					{
 						char * input_tmp = input;
 						set_filename((CHAR **)&input_tmp);
-						syscall_monitor_write("the file \"");
-						syscall_monitor_write(input);
-						syscall_monitor_write("\" is not exists");
+						syscall_cmd_window_write("the file \"");
+						syscall_cmd_window_write(input);
+						syscall_cmd_window_write("\" is not exists");
 					}
 					else if(syscall_execve(input) == 0)
 						syscall_wait(task);
 					input[0] = '\0';
 					count = 0;
 				}
-				syscall_monitor_write("\nzenglOX> ");
+				syscall_cmd_window_write("\nzenglOX> ");
 				syscall_set_input_focus(task);
 				continue;
 			}
@@ -196,7 +198,7 @@ int main(VOID * task, int argc, char * argv[])
 			{
 				if(count > 0)
 				{
-					syscall_monitor_write("\b \b");
+					syscall_cmd_window_write("\b \b");
 					input[--count] = '\0';
 				}
 				continue;
@@ -211,7 +213,7 @@ int main(VOID * task, int argc, char * argv[])
 				{
 					input[count++] = msg.keyboard.ascii;
 					input[count]='\0';
-					syscall_monitor_put((char)msg.keyboard.ascii);
+					syscall_cmd_window_put((char)msg.keyboard.ascii);
 				}
 			}
 		}

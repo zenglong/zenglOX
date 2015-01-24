@@ -17,10 +17,17 @@
 #include "zlox_pci.h"
 #include "zlox_network.h"
 #include "zlox_ps2.h"
+#include "zlox_mouse.h"
+#include "zlox_vga.h"
+#include "zlox_my_windows.h"
+
+ZLOX_VOID zlox_test_ps2_keyboard();
 
 extern ZLOX_UINT32 placement_address;
 extern ZLOX_TASK * current_task;
 extern ZLOX_BOOL ide_can_dma;
+//zlox_vga.c
+extern ZLOX_UINT8 * lfb_vid_memory;
 //extern ZLOX_BOOL atapi_vmware_warning;
 ZLOX_UINT32 initial_esp;
 
@@ -49,17 +56,38 @@ ZLOX_SINT32 zlox_kernel_main(ZLOX_MULTIBOOT * mboot_ptr, ZLOX_UINT32 initial_sta
 	// 这样zlox_init_paging分配页表时才能将initrd考虑进来,同时堆分配空间时就不会覆盖到initrd里的内容
 	placement_address = initrd_end;
 
+	lfb_vid_memory = (ZLOX_UINT8 *)((ZLOX_MULTIBOOT_VBE_INFO *)(mboot_ptr->vbe_mode_info))->physbase;
+
 	// 开启分页,并创建堆
-	zlox_init_paging_start();
+	zlox_init_paging_start((ZLOX_UINT32)(mboot_ptr->mem_lower + mboot_ptr->mem_upper));
 
 	zlox_pci_init();
 
 	zlox_pci_list();
 
-	if(zlox_network_init() == ZLOX_TRUE)
+	ZLOX_BOOL network_stat = zlox_network_init();
+
+	if(zlox_vga_set_mode(ZLOX_VGA_MODE_VBE_1024X768X32) == -1)
+	{
+		while(1) // set vbe failed! so we died
+			;
+	}
+	else
+		zlox_monitor_write("vga [vbe] mode is init now!\n");
+
+	zlox_init_my_mouse();
+
+	if(network_stat == ZLOX_TRUE)
 		zlox_monitor_write("network is init now!\n");
 
 	zlox_init_paging_end();
+
+	/*for (ZLOX_UINT16 y = 0; y < 768; y++) {
+		for (ZLOX_UINT16 x = 0; x < 1024; x++) {
+			ZLOX_UINT8 f = y % 255;
+			((ZLOX_UINT32 *)lfb_vid_memory)[x + y * 1024] = 0xFF000000 | (f * 0x10000) | (0 * 0x100) | 0;
+		}
+	}*/
 
 	// 初始化任务系统
 	zlox_initialise_tasking();
@@ -79,6 +107,9 @@ ZLOX_SINT32 zlox_kernel_main(ZLOX_MULTIBOOT * mboot_ptr, ZLOX_UINT32 initial_sta
 			zlox_syscall_monitor_write("Keyboard is init now!\n");
 			zlox_syscall_monitor_write("=========================\n");
 		}
+		zlox_mouse_install();
+		zlox_syscall_monitor_write("mouse is install now!\n");
+		//zlox_test_ps2_keyboard();
 	}
 
 	zlox_init_ata();
@@ -98,7 +129,7 @@ ZLOX_SINT32 zlox_kernel_main(ZLOX_MULTIBOOT * mboot_ptr, ZLOX_UINT32 initial_sta
 	zlox_syscall_monitor_write_dec(minor);
 	zlox_syscall_monitor_put('.');
 	zlox_syscall_monitor_write_dec(revision);
-	zlox_syscall_monitor_write("! I will execve a shell\n"
+	zlox_syscall_monitor_write("! I will execve a desktop\n"
 				"you can input some command: ls , ps , cat , uname , cpuid , shell ,"
 				" reboot , shutdown , ata , mount , unmount , testoverflow , fdisk , "
 				"format , file , vga , dhcp isoget...\n\n");
@@ -112,7 +143,26 @@ ZLOX_SINT32 zlox_kernel_main(ZLOX_MULTIBOOT * mboot_ptr, ZLOX_UINT32 initial_sta
 
 	asm ("finit");
 
-	zlox_syscall_execve("shell");
+	ZLOX_SINT32 sec=0;
+	ZLOX_UINT32 origtick = zlox_syscall_timer_get_tick();
+	while(sec < 3)
+	{
+		while(ZLOX_TRUE)
+		{
+			zlox_syscall_idle_cpu();
+			ZLOX_UINT32 curtick = zlox_syscall_timer_get_tick();
+			if((curtick - origtick) > 50)
+				break;
+		}
+		zlox_syscall_monitor_write("..");
+		sec++;
+		origtick = zlox_syscall_timer_get_tick();
+	}
+
+	//while(1)
+	//	;
+
+	zlox_syscall_execve("desktop");
 
 	zlox_syscall_wait(current_task);
 
@@ -124,10 +174,10 @@ ZLOX_SINT32 zlox_kernel_main(ZLOX_MULTIBOOT * mboot_ptr, ZLOX_UINT32 initial_sta
 		if(ret != 1)
 		{
 			zlox_syscall_wait(current_task);
-			// 只剩下一个初始任务了，就再创建一个shell
+			// 只剩下一个初始任务了，就再创建一个desktop
 			if(current_task->next == 0)
 			{
-				zlox_syscall_execve("shell");
+				zlox_syscall_execve("desktop");
 				zlox_syscall_wait(current_task);
 			}
 		}

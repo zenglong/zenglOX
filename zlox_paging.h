@@ -6,6 +6,9 @@
 #include "zlox_common.h"
 #include "zlox_isr.h"
 
+#define PAGE_DEV_MAP_START 0xB0000000
+#define PAGE_DEV_MAP_MAX_ADDR 0xBFFFF000
+
 typedef struct _ZLOX_PAGE_DIRECTORY ZLOX_PAGE_DIRECTORY;
 
 #include "zlox_task.h"
@@ -53,7 +56,7 @@ struct _ZLOX_PAGE_DIRECTORY
 	ZLOX_UINT32 physicalAddr;
 };
 
-ZLOX_VOID zlox_init_paging_start();
+ZLOX_VOID zlox_init_paging_start(ZLOX_UINT32 total_phymem);
 
 ZLOX_VOID zlox_init_paging_end();
 
@@ -86,6 +89,8 @@ ZLOX_SINT32 zlox_pages_map(ZLOX_UINT32 dvaddr, ZLOX_PAGE * heap, ZLOX_UINT32 npa
 
 ZLOX_VOID * zlox_pages_map_to_heap(ZLOX_TASK * task, ZLOX_UINT32 svaddr, ZLOX_UINT32 size, ZLOX_BOOL clear_me_rw,
 					ZLOX_UINT32 * ret_npage);
+
+ZLOX_UINT32 zlox_page_get_dev_map_start(ZLOX_UINT32 need_page_count);
 
 #endif //_ZLOX_PAGING_H_
 

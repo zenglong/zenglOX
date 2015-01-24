@@ -4,6 +4,7 @@
 #include "zlox_isr.h"
 #include "zlox_monitor.h"
 #include "zlox_task.h"
+#include "zlox_my_windows.h"
 
 #define ZLOX_LED_NUM_LOCK		2
 #define ZLOX_LED_SCROLL_LOCK		1
@@ -142,8 +143,8 @@ static ZLOX_VOID zlox_keyboard_callback(/*ZLOX_ISR_REGISTERS * regs*/)
 	ZLOX_UINT32 key_code = 0;
 	ZLOX_UINT32 scanMaxNum = sizeof(scanToAscii_table) / (8 * 4);
 	
-	if(!fire_key_interrupt)
-		fire_key_interrupt = ZLOX_TRUE;
+	//if(!fire_key_interrupt)
+		//fire_key_interrupt = ZLOX_TRUE;
 
 	if(press_key == 0xE0)
 	{
@@ -219,25 +220,6 @@ static ZLOX_VOID zlox_keyboard_callback(/*ZLOX_ISR_REGISTERS * regs*/)
 		control_keys |= ZLOX_CK_ALT;
 	if(key == 0x80 + 0x38)
 		control_keys &= (0xFF - ZLOX_CK_ALT);
-		
-	/*if((control_keys & ZLOX_CK_SHIFT) && (led_status & ZLOX_LED_CAPS_LOCK)) 
-		key_ascii = key < scanMaxNum ? scanToAscii_table[key][6] : 0; 
-	else if(control_keys & ZLOX_CK_SHIFT) 
-		key_ascii = key < scanMaxNum ? scanToAscii_table[key][1] : 0; 
-	else if(control_keys & ZLOX_CK_CTRL) 
-		//key_ascii = key < scanMaxNum ? scanToAscii_table[key][2] : 0;
-		key_ascii = key < scanMaxNum ? scanToAscii_table[key][0] : 0;
-	else if(control_keys & ZLOX_CK_ALT) 
-		//key_ascii = scanToAscii_table[key][3];
-		key_ascii = key < scanMaxNum ? scanToAscii_table[key][0] : 0;	
-	else if((control_keys & ZLOX_CK_SHIFT) && (led_status & ZLOX_LED_NUM_LOCK)) 
-		key_ascii = key < scanMaxNum ? scanToAscii_table[key][7] : 0;
-	else if(led_status & ZLOX_LED_CAPS_LOCK) 
-		key_ascii = key < scanMaxNum ? scanToAscii_table[key][5] : 0;
-	else if(led_status & ZLOX_LED_NUM_LOCK) 
-		key_ascii = key < scanMaxNum ? scanToAscii_table[key][4] : 0;
-	else if(control_keys == 0) 
-		key_ascii = key < scanMaxNum ? scanToAscii_table[key][0] : 0;*/
 
 	if(control_keys & ZLOX_CK_SHIFT)
 	{
@@ -269,7 +251,8 @@ static ZLOX_VOID zlox_keyboard_callback(/*ZLOX_ISR_REGISTERS * regs*/)
 		ascii_msg.type = ZLOX_MT_KEYBOARD;
 		ascii_msg.keyboard.type = ZLOX_MKT_KEY;
 		ascii_msg.keyboard.key = key_code;
-		zlox_send_tskmsg(input_focus_task,&ascii_msg);
+		//zlox_send_tskmsg(input_focus_task,&ascii_msg);
+		zlox_update_for_mykbd(&ascii_msg);
 	}
 	else if(key_ascii != 0)
 	{
@@ -279,7 +262,8 @@ static ZLOX_VOID zlox_keyboard_callback(/*ZLOX_ISR_REGISTERS * regs*/)
 			ascii_msg.type = ZLOX_MT_KEYBOARD;
 			ascii_msg.keyboard.type = ZLOX_MKT_ASCII;
 			ascii_msg.keyboard.ascii = key_ascii;
-			zlox_send_tskmsg(input_focus_task,&ascii_msg);
+			//zlox_send_tskmsg(input_focus_task,&ascii_msg);
+			zlox_update_for_mykbd(&ascii_msg);
 		}
 		else
 		{
@@ -299,7 +283,8 @@ static ZLOX_VOID zlox_keyboard_callback(/*ZLOX_ISR_REGISTERS * regs*/)
 				ascii_msg.type = ZLOX_MT_KEYBOARD;
 				ascii_msg.keyboard.type = ZLOX_MKT_KEY;
 				ascii_msg.keyboard.key = key_ascii;
-				zlox_send_tskmsg(input_focus_task,&ascii_msg);
+				//zlox_send_tskmsg(input_focus_task,&ascii_msg);
+				zlox_update_for_mykbd(&ascii_msg);
 				break;
 			}
 		}

@@ -7,8 +7,11 @@
 #include "zlox_iso.h"
 #include "zlox_ata.h"
 #include "zlox_monitor.h"
+#include "zlox_my_windows.h"
 
 extern ZLOX_IDE_DEVICE ide_devices[4];
+// Defined in zlox_task.c
+extern ZLOX_TASK * current_task;
 
 ZLOX_SINT32 iso_ide_index;
 ZLOX_FS_NODE * iso_root = ZLOX_NULL;
@@ -332,9 +335,12 @@ ZLOX_FS_NODE * zlox_unmount_iso()
 ZLOX_FS_NODE * zlox_mount_iso()
 {
 	ZLOX_SINT32 i,j;
+	ZLOX_CHAR * output;
 	if(iso_root != ZLOX_NULL)
 	{
-		zlox_monitor_write("kernel : iso has been mounted , you must unmount it first , then mount it again \n");
+		output = "kernel : iso has been mounted , you must unmount it first , then mount it again \n";
+		if(zlox_cmd_window_write(output) == -1)
+			zlox_monitor_write(output);
 		return ZLOX_NULL;
 	}
 	iso_root = ZLOX_NULL;
@@ -393,7 +399,9 @@ ZLOX_FS_NODE * zlox_mount_iso()
 		break;
 
 err:
-		zlox_monitor_write("kernel: iso mount err...\n");
+		output = "kernel: iso mount err...\n";
+		if(zlox_cmd_window_write(output) == -1)
+			zlox_monitor_write(output);
 		zlox_kfree(iso_root);
 		zlox_kfree(pvd);
 		iso_root = ZLOX_NULL;

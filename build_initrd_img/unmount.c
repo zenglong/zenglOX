@@ -15,20 +15,20 @@ int main(VOID * task, int argc, char * argv[])
 	{
 		int ret = syscall_unmount_iso();
 		if(ret == 0)
-			syscall_monitor_write("unmount iso success!");
+			syscall_cmd_window_write("unmount iso success!");
 		else
-			syscall_monitor_write("unmount iso failed...");
+			syscall_cmd_window_write("unmount iso failed...");
 	}
 	else if(argc == 2 && strcmp(argv[1],"hd")==0)
 	{
 		int ret = syscall_unmount_zenglfs();
 		if(ret == 0)
-			syscall_monitor_write("unmount hd success!");
+			syscall_cmd_window_write("unmount hd success!");
 		else
-			syscall_monitor_write("unmount hd failed...");
+			syscall_cmd_window_write("unmount hd failed...");
 	}
 	else 
-		syscall_monitor_write("usage: unmount [iso][hd]");
+		syscall_cmd_window_write("usage: unmount [iso][hd]");
 	return 0;
 }
 

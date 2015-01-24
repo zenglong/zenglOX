@@ -14,6 +14,7 @@ typedef char SINT8;
 typedef char CHAR;
 typedef void VOID;
 typedef UINT8 BOOL;
+typedef float FLOAT;
 
 #define FALSE 0
 #define TRUE 1

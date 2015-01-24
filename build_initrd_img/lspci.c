@@ -20,38 +20,38 @@ int main(VOID * task, int argc, char * argv[])
 			count = pci_devconf_lst.count;
 		if(pci_devconf_lst.ptr == NULL)
 		{
-			syscall_monitor_write("no pci device detected");
+			syscall_cmd_window_write("no pci device detected");
 			return -1;
 		}
 
-		syscall_monitor_write("PCI dev list:\n");
+		syscall_cmd_window_write("PCI dev list:\n");
 		for(UINT32 i = 0; i < count ;i++)
 		{
-			syscall_monitor_write("bus [");
-			syscall_monitor_write_dec((UINT32)pci_devconf_lst.ptr[i].cfg_addr.bus);
-			syscall_monitor_write("] dev [");
-			syscall_monitor_write_dec((UINT32)pci_devconf_lst.ptr[i].cfg_addr.device);
-			syscall_monitor_write("] func [");
-			syscall_monitor_write_dec((UINT32)pci_devconf_lst.ptr[i].cfg_addr.function);
-			syscall_monitor_write("] vend id: ");
-			syscall_monitor_write_hex((UINT32)pci_devconf_lst.ptr[i].cfg_hdr.vend_id);
-			syscall_monitor_write(" dev id: ");
-			syscall_monitor_write_hex((UINT32)pci_devconf_lst.ptr[i].cfg_hdr.dev_id);
-			syscall_monitor_write(" class: ");
-			syscall_monitor_write_hex((UINT32)pci_devconf_lst.ptr[i].cfg_hdr.class_code);
-			syscall_monitor_write(" sub_class: ");
-			syscall_monitor_write_hex((UINT32)pci_devconf_lst.ptr[i].cfg_hdr.sub_class);
-			syscall_monitor_write("\n");
+			syscall_cmd_window_write("bus [");
+			syscall_cmd_window_write_dec((UINT32)pci_devconf_lst.ptr[i].cfg_addr.bus);
+			syscall_cmd_window_write("] dev [");
+			syscall_cmd_window_write_dec((UINT32)pci_devconf_lst.ptr[i].cfg_addr.device);
+			syscall_cmd_window_write("] func [");
+			syscall_cmd_window_write_dec((UINT32)pci_devconf_lst.ptr[i].cfg_addr.function);
+			syscall_cmd_window_write("] vend id: ");
+			syscall_cmd_window_write_hex((UINT32)pci_devconf_lst.ptr[i].cfg_hdr.vend_id);
+			syscall_cmd_window_write(" dev id: ");
+			syscall_cmd_window_write_hex((UINT32)pci_devconf_lst.ptr[i].cfg_hdr.dev_id);
+			syscall_cmd_window_write(" class: ");
+			syscall_cmd_window_write_hex((UINT32)pci_devconf_lst.ptr[i].cfg_hdr.class_code);
+			syscall_cmd_window_write(" sub_class: ");
+			syscall_cmd_window_write_hex((UINT32)pci_devconf_lst.ptr[i].cfg_hdr.sub_class);
+			syscall_cmd_window_write("\n");
 		}
-		syscall_monitor_write("pci device total count: ");
-		syscall_monitor_write_dec(pci_devconf_lst.count);
-		//syscall_monitor_write(" total size: "); //debug
-		//syscall_monitor_write_dec(pci_devconf_lst.size); //debug
-		syscall_monitor_write("\n");
+		syscall_cmd_window_write("pci device total count: ");
+		syscall_cmd_window_write_dec(pci_devconf_lst.count);
+		//syscall_cmd_window_write(" total size: "); //debug
+		//syscall_cmd_window_write_dec(pci_devconf_lst.size); //debug
+		syscall_cmd_window_write("\n");
 	}
 	else
 	{
-		syscall_monitor_write("usage: lspci [shownum]");
+		syscall_cmd_window_write("usage: lspci [shownum]");
 	}
 	return 0;
 }

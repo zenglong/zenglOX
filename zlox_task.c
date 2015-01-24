@@ -33,6 +33,7 @@ extern ZLOX_VOID _zlox_switch_task_do(ZLOX_UINT32,ZLOX_UINT32,ZLOX_UINT32,ZLOX_U
 ZLOX_PID_REUSE_LIST pid_reuse_list = {0};
 
 ZLOX_UINT32 task_count = 0;
+ZLOX_UINT32 alltask_msg_total_count = 0;
 
 ZLOX_VOID zlox_move_stack(ZLOX_VOID * new_stack_start, ZLOX_UINT32 size);
 ZLOX_SINT32 zlox_push_pid(ZLOX_SINT32 pid);
@@ -64,6 +65,8 @@ ZLOX_VOID zlox_initialise_tasking()
 	current_task->next = 0;
 	current_task->prev = 0;
 	current_task->parent = 0;
+	current_task->mywin = ZLOX_NULL;
+	current_task->cmd_win = ZLOX_NULL;
 	current_task->kernel_stack = 0xF0000000;
 	for(ZLOX_UINT32 tmp_esp = current_task->kernel_stack - ZLOX_KERNEL_STACK_SIZE; 
 		tmp_esp < current_task->kernel_stack ;tmp_esp += 0x1000)
@@ -181,7 +184,23 @@ ZLOX_VOID zlox_switch_task()
 
 		// 如果找到的下一个任务的状态是运行状态，则切换到该任务
 		if(current_task->status == ZLOX_TS_RUNNING)
-			break;
+		{
+			if(current_task->msglist.count > 0)
+				break;
+			else if(alltask_msg_total_count > 0)
+			{
+				if(current_task == orig_task)
+				{
+					current_task = ready_queue;
+					current_task->status = ZLOX_TS_RUNNING;
+					break;
+				}
+				else
+					continue;
+			}
+			else
+				break;
+		}
 		// 如果当前任务有需要进行结束的子任务的话，就唤醒该任务
 		else if(current_task->status == ZLOX_TS_WAIT && current_task->msglist.finish_task_num > 0)
 		{
@@ -242,6 +261,8 @@ ZLOX_SINT32 zlox_fork()
 	new_task->args = 0;
 	new_task->next = 0;
 	new_task->parent = (ZLOX_TASK *)current_task;
+	new_task->mywin = ZLOX_NULL;
+	new_task->cmd_win = ZLOX_NULL;
 
 	// Add it to the end of the ready queue.
 	ZLOX_TASK *tmp_task = (ZLOX_TASK *)ready_queue;
@@ -326,6 +347,8 @@ ZLOX_VOID zlox_switch_to_user_mode()
 // 将消息压入消息列表，消息列表里的消息是采用的先进入的消息先处理的方式
 ZLOX_SINT32 zlox_push_tskmsg(ZLOX_TASK_MSG_LIST * msglist , ZLOX_TASK_MSG * msg)
 {
+	//zlox_kheap_check_all_blk(); // for debug
+
 	if(!msglist->isInit) // 如果没进行过初始化，则初始化消息列表
 	{
 		msglist->size = ZLOX_TSK_MSGLIST_SIZE;
@@ -340,21 +363,25 @@ ZLOX_SINT32 zlox_push_tskmsg(ZLOX_TASK_MSG_LIST * msglist , ZLOX_TASK_MSG * msg)
 		ZLOX_TASK_MSG * tmp_ptr;
 		msglist->size += ZLOX_TSK_MSGLIST_SIZE;
 		tmp_ptr = (ZLOX_TASK_MSG *)zlox_kmalloc(msglist->size * sizeof(ZLOX_TASK_MSG));
-		zlox_memcpy((ZLOX_UINT8 *)(tmp_ptr + msglist->cur),(ZLOX_UINT8 *)(msglist->ptr + msglist->cur),
+		zlox_memcpy((ZLOX_UINT8 *)tmp_ptr,(ZLOX_UINT8 *)(msglist->ptr + msglist->cur),
 				(msglist->count - msglist->cur) * sizeof(ZLOX_TASK_MSG));
 		if(msglist->cur > 0)
 		{
-			zlox_memcpy((ZLOX_UINT8 *)(tmp_ptr + msglist->count),(ZLOX_UINT8 *)msglist->ptr,
+			zlox_memcpy((ZLOX_UINT8 *)(tmp_ptr + msglist->count - msglist->cur),(ZLOX_UINT8 *)msglist->ptr,
 				msglist->cur * sizeof(ZLOX_TASK_MSG));
+			msglist->cur = 0;
 		}
 		zlox_kfree(msglist->ptr);
 		msglist->ptr = tmp_ptr;
 	}
-	
+
+	//zlox_kheap_check_all_blk(); // for debug
+
 	ZLOX_UINT32 index = ((msglist->cur + msglist->count) < msglist->size) ? (msglist->cur + msglist->count) : 
 				(msglist->cur + msglist->count - msglist->size);
 	msglist->ptr[index] = *msg;
 	msglist->count++;
+	alltask_msg_total_count++;
 	return 0;
 }
 
@@ -370,6 +397,7 @@ ZLOX_TASK_MSG * zlox_pop_tskmsg(ZLOX_TASK_MSG_LIST * msglist,ZLOX_BOOL needPop)
 	{
 		msglist->cur = ((msglist->cur + 1) < msglist->size) ? (msglist->cur + 1) : 0;
 		msglist->count = (msglist->count - 1) > 0 ? (msglist->count - 1) : 0;
+		alltask_msg_total_count = (alltask_msg_total_count - 1) > 0 ? (alltask_msg_total_count - 1) : 0;
 	}
 	return ret;
 }
@@ -434,7 +462,21 @@ ZLOX_SINT32 zlox_set_input_focus(ZLOX_TASK * task)
 {
 	if(task->sign != ZLOX_TSK_SIGN)
 		return -1;
-	input_focus_task = task;
+	//input_focus_task = task;
+	if(task->mywin != ZLOX_NULL)
+	{
+		task->mywin->kbd_task = task;
+	}
+	else if(task->cmd_win != ZLOX_NULL)
+	{
+		task->cmd_win->kbd_task = task;
+	}
+	else if(task->cmd_win == ZLOX_NULL)
+	{
+		zlox_set_cmd_window(task, ZLOX_NULL, ZLOX_TRUE);
+		if(task->cmd_win != ZLOX_NULL)
+			task->cmd_win->kbd_task = task;
+	}
 	return 0;
 }
 
@@ -503,6 +545,10 @@ ZLOX_SINT32 zlox_finish(ZLOX_TASK * task)
 	zlox_elf_free_lnk_maplst(&task->link_maps);
 	zlox_kfree(task->link_maps.ptr);
 	zlox_kfree(task->args);
+	if(task->mywin != ZLOX_NULL)
+	{
+		zlox_destroy_my_window(task->mywin);
+	}
 	prev_task = task->prev;
 	next_task = task->next;
 	if(prev_task != 0 && prev_task->sign == ZLOX_TSK_SIGN)
@@ -513,6 +559,28 @@ ZLOX_SINT32 zlox_finish(ZLOX_TASK * task)
 	zlox_memset((ZLOX_UINT8 *)task,0,sizeof(ZLOX_TASK));
 	zlox_kfree(task);
 	task_count--;
+	return 0;
+}
+
+ZLOX_SINT32 zlox_finish_all_child(ZLOX_TASK * task)
+{
+	ZLOX_TASK * prev = task;
+	ZLOX_TASK * tmp = prev->next;
+	while(tmp != ZLOX_NULL)
+	{
+		if(tmp->parent == task)
+		{
+			zlox_finish_all_child(tmp);
+			tmp->status = ZLOX_TS_FINISH;
+			zlox_finish(tmp);
+			tmp = prev->next;
+		}
+		else
+		{
+			prev = tmp;
+			tmp = prev->next;
+		}
+	}
 	return 0;
 }
 

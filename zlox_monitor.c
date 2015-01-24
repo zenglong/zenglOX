@@ -1,6 +1,9 @@
 /*zlox_monitor.c Define some functions for writing to the monitor*/
 
 #include "zlox_monitor.h"
+#include "zlox_vga.h"
+
+extern ZLOX_UINT32 vga_current_mode;
 
 // The VGA framebuffer starts at 0xB8000.
 ZLOX_UINT16 * video_memory = (ZLOX_UINT16 *)0xB8000;
@@ -8,6 +11,8 @@ ZLOX_UINT16 * video_memory = (ZLOX_UINT16 *)0xB8000;
 ZLOX_UINT8 cursor_x = 0;
 ZLOX_UINT8 cursor_y = 0;
 ZLOX_BOOL single_line_out = ZLOX_FALSE;
+ZLOX_UINT32 monitor_color = 0xFFFFFFFF;
+ZLOX_UINT32 monitor_backColour = 0x0;
 
 // Updates the hardware cursor.
 static ZLOX_VOID zlox_move_cursor()
@@ -104,7 +109,7 @@ ZLOX_SINT32 zlox_monitor_insert_line()
 }
 
 // Writes a single character out to the screen.
-ZLOX_VOID zlox_monitor_put(ZLOX_CHAR c)
+ZLOX_VOID zlox_monitor_put_orig(ZLOX_CHAR c)
 {
 	// The background colour is black (0), the foreground is white (15).
 	ZLOX_UINT8 backColour = 0;
@@ -174,6 +179,78 @@ ZLOX_VOID zlox_monitor_put(ZLOX_CHAR c)
 		zlox_scroll();
 		// Move the hardware cursor.
 		zlox_move_cursor();
+	}
+}
+
+// Writes a single character out to the screen.
+ZLOX_VOID zlox_monitor_put(ZLOX_CHAR c)
+{
+	if(vga_current_mode != ZLOX_VGA_MODE_VBE_1024X768X32)
+		return;
+
+	ZLOX_SINT32 start_x = 10;
+	ZLOX_SINT32 start_y = 10;
+	ZLOX_SINT32 w_space = 2;
+	ZLOX_SINT32 h_space = 4;
+	ZLOX_UINT32 color = monitor_color;
+	ZLOX_UINT32 backColour = monitor_backColour;
+	ZLOX_SINT32 val = (ZLOX_SINT32)c;
+	if(val < 0)
+		val = 0;
+
+	// Handle a backspace, by moving the cursor back one space
+	if (c == 0x08)
+	{
+		if(cursor_x)
+			cursor_x--;
+		else if(cursor_x == 0)
+		{
+			if(cursor_y != 0)
+			{
+				cursor_y = (cursor_y - 1);
+				cursor_x = 79;
+			}
+		}
+	}
+	// Handle a tab by increasing the cursor's X, but only to a point
+	// where it is divisible by 8.
+	else if (c == 0x09)
+	{
+		cursor_x = (cursor_x+8) & ~(8-1);
+	}
+
+	// Handle carriage return
+	else if (c == '\r')
+	{
+		cursor_x = 0;
+	}
+
+	// Handle newline by moving cursor back to left and increasing the row
+	else if (c == '\n')
+	{
+		cursor_x = 0;
+		cursor_y++;
+	}
+	// Handle any other printable character.
+	else if(c >= ' ')
+	{
+		ZLOX_SINT32 x = start_x + cursor_x * (ZLOX_VGA_CHAR_WIDTH + w_space);
+		ZLOX_SINT32 y = start_y + cursor_y * (ZLOX_VGA_CHAR_HEIGHT + h_space);
+		zlox_vga_write_char(x, y, val, color, backColour);
+		cursor_x++;
+	}
+
+	// Check if we need to insert a new line because we have reached the end
+	// of the screen.
+	if (cursor_x >= 80)
+	{
+		cursor_x = 0;
+		cursor_y ++;
+	}
+
+	if(cursor_y >= 36)
+	{
+		cursor_y = 12;
 	}
 }
 

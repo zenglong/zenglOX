@@ -65,6 +65,20 @@ typedef enum _SYSCALL_ENUM{
 	SYSCALL_MONITOR_DEL_LINE,
 	SYSCALL_MONITOR_INSERT_LINE,
 	SYSCALL_PS2_GET_STATUS,
+	SYSCALL_CREATE_MY_WINDOW,
+	SYSCALL_DISPATCH_WIN_MSG,
+	SYSCALL_MOUSE_SET_SCALE,
+	SYSCALL_SET_CMD_WINDOW,
+	SYSCALL_CMD_WINDOW_PUT,
+	SYSCALL_CMD_WINDOW_WRITE,
+	SYSCALL_FINISH_ALL_CHILD,
+	SYSCALL_CMD_WINDOW_WRITE_HEX,
+	SYSCALL_CMD_WINDOW_WRITE_DEC,
+	SYSCALL_CMD_WINDOW_DEL_LINE,
+	SYSCALL_CMD_WINDOW_INSERT_LINE,
+	SYSCALL_CMD_WINDOW_SET_CURSOR,
+	SYSCALL_CMD_WINDOW_SET_SINGLE,
+	SYSCALL_CMD_WINDOW_CLEAR,
 }SYSCALL_ENUM;
 
 #define DECL_SYSCALL0(fn) SINT32 syscall_##fn();
@@ -181,6 +195,20 @@ DECL_SYSCALL1(release_control_keys, UINT8)
 DECL_SYSCALL0(monitor_del_line)
 DECL_SYSCALL0(monitor_insert_line)
 DECL_SYSCALL3(ps2_get_status, BOOL *, BOOL *, BOOL *)
+DECL_SYSCALL1(create_my_window, void *)
+DECL_SYSCALL2(dispatch_win_msg, void *, void *)
+DECL_SYSCALL1(mouse_set_scale, FLOAT *)
+DECL_SYSCALL3(set_cmd_window, void *, void *, BOOL)
+DECL_SYSCALL1(cmd_window_put, char)
+DECL_SYSCALL1(cmd_window_write, const char *)
+DECL_SYSCALL1(finish_all_child, void *)
+DECL_SYSCALL1(cmd_window_write_hex, UINT32)
+DECL_SYSCALL1(cmd_window_write_dec, UINT32)
+DECL_SYSCALL0(cmd_window_del_line)
+DECL_SYSCALL0(cmd_window_insert_line)
+DECL_SYSCALL2(cmd_window_set_cursor, SINT32, SINT32)
+DECL_SYSCALL1(cmd_window_set_single, BOOL)
+DECL_SYSCALL0(cmd_window_clear)
 
 #endif // _SYSCALL_H_
 

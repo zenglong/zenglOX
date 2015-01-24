@@ -5,9 +5,13 @@
 
 #include "zlox_common.h"
 
+#define ZLOX_VGA_CHAR_HEIGHT 12
+#define ZLOX_VGA_CHAR_WIDTH 8
+
 #define ZLOX_VGA_MODE_80X25_TEXT 0
 #define ZLOX_VGA_MODE_320X200X256 1
 #define ZLOX_VGA_MODE_640X480X16 2
+#define ZLOX_VGA_MODE_VBE_1024X768X32 3
 
 #define ZLOX_VGA_AC_INDEX 0x3C0
 #define ZLOX_VGA_AC_WRITE 0x3C0
@@ -34,6 +38,10 @@
 				ZLOX_VGA_NUM_GC_REGS + ZLOX_VGA_NUM_AC_REGS)
 
 ZLOX_SINT32 zlox_vga_set_mode(ZLOX_UINT32 mode);
+
+ZLOX_VOID zlox_vga_set_point(ZLOX_SINT32 x, ZLOX_SINT32 y, ZLOX_UINT32 value);
+
+ZLOX_VOID zlox_vga_write_char(ZLOX_SINT32 x, ZLOX_SINT32 y, ZLOX_SINT32 val, ZLOX_UINT32 color, ZLOX_UINT32 backColour);
 
 ZLOX_SINT32 zlox_vga_update_screen(ZLOX_UINT8 * buffer, ZLOX_UINT32 buffer_size);
 

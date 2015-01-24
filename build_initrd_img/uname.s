@@ -17,27 +17,27 @@ _start:
 	movl $revision,%edx
 	int $0x80
 
-	movl $0, %eax		# syscall_monitor_write
+	movl $64, %eax	# syscall_cmd_window_write
 	movl $output, %ebx
 	int $0x80
 
-	movl $2, %eax		# syscall_monitor_write_dec
+	movl $67, %eax	# syscall_cmd_window_write_dec
 	movl major,%ebx
 	int $0x80
 
-	movl $3, %eax		# syscall_monitor_put
+	movl $63, %eax	# syscall_cmd_window_put
 	movl $46,%ebx		# '.'
 	int $0x80
 
-	movl $2, %eax		# syscall_monitor_write_dec
+	movl $67, %eax	# syscall_cmd_window_write_dec
 	movl minor,%ebx
 	int $0x80
 
-	movl $3, %eax		# syscall_monitor_put
+	movl $63, %eax	# syscall_cmd_window_put
 	movl $46,%ebx		# '.'
 	int $0x80
 
-	movl $2, %eax		# syscall_monitor_write_dec
+	movl $67, %eax	# syscall_cmd_window_write_dec
 	movl revision,%ebx
 	int $0x80
 
