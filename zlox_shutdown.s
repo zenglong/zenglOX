@@ -19,6 +19,7 @@ wait1:
 .global _zlox_shutdown
 _zlox_shutdown:
 	cli
+	call zlox_panic_shutdown
 	movw $0x2000,%ax	# ACPI shutdown (http://forum.osdev.org/viewtopic.php?t=16990) and used in chaOS
 	movw $0xB004,%dx
 	outw %ax,%dx

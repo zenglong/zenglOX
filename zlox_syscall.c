@@ -103,6 +103,7 @@ ZLOX_DEFN_SYSCALL0(cmd_window_insert_line, ZLOX_SYSCALL_CMD_WINDOW_INSERT_LINE);
 ZLOX_DEFN_SYSCALL2(cmd_window_set_cursor, ZLOX_SYSCALL_CMD_WINDOW_SET_CURSOR, ZLOX_SINT32, ZLOX_SINT32);
 ZLOX_DEFN_SYSCALL1(cmd_window_set_single, ZLOX_SYSCALL_CMD_WINDOW_SET_SINGLE, ZLOX_BOOL);
 ZLOX_DEFN_SYSCALL0(cmd_window_clear, ZLOX_SYSCALL_CMD_WINDOW_CLEAR);
+ZLOX_DEFN_SYSCALL3(exit_do, ZLOX_SYSCALL_EXIT_DO, void *, ZLOX_SINT32, ZLOX_BOOL);
 
 static ZLOX_VOID * syscalls[ZLOX_SYSCALL_NUMBER] =
 {
@@ -179,6 +180,7 @@ static ZLOX_VOID * syscalls[ZLOX_SYSCALL_NUMBER] =
 	&zlox_cmd_window_set_cursor,
 	&zlox_cmd_window_set_single,
 	&zlox_cmd_window_clear,
+	&zlox_exit_do,
 };
 
 ZLOX_UINT32 num_syscalls = ZLOX_SYSCALL_NUMBER;

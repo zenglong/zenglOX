@@ -3,6 +3,11 @@
 #include "zlox_monitor.h"
 #include "zlox_vga.h"
 
+#define ZLOX_MONITOR_COLOR 0xFFFFFFFF
+#define ZLOX_MONITOR_BACK_COLOR 0x0
+#define ZLOX_MONITOR_W_SPACE 0
+#define ZLOX_MONITOR_H_SPACE 2
+
 extern ZLOX_UINT32 vga_current_mode;
 
 // The VGA framebuffer starts at 0xB8000.
@@ -11,8 +16,10 @@ ZLOX_UINT16 * video_memory = (ZLOX_UINT16 *)0xB8000;
 ZLOX_UINT8 cursor_x = 0;
 ZLOX_UINT8 cursor_y = 0;
 ZLOX_BOOL single_line_out = ZLOX_FALSE;
-ZLOX_UINT32 monitor_color = 0xFFFFFFFF;
-ZLOX_UINT32 monitor_backColour = 0x0;
+ZLOX_UINT32 monitor_color = ZLOX_MONITOR_COLOR;
+ZLOX_UINT32 monitor_backColour = ZLOX_MONITOR_BACK_COLOR;
+ZLOX_SINT32 monitor_w_space = ZLOX_MONITOR_W_SPACE;
+ZLOX_SINT32 monitor_h_space = ZLOX_MONITOR_H_SPACE;
 
 // Updates the hardware cursor.
 static ZLOX_VOID zlox_move_cursor()
@@ -190,8 +197,8 @@ ZLOX_VOID zlox_monitor_put(ZLOX_CHAR c)
 
 	ZLOX_SINT32 start_x = 10;
 	ZLOX_SINT32 start_y = 10;
-	ZLOX_SINT32 w_space = 2;
-	ZLOX_SINT32 h_space = 4;
+	ZLOX_SINT32 w_space = monitor_w_space;
+	ZLOX_SINT32 h_space = monitor_h_space;
 	ZLOX_UINT32 color = monitor_color;
 	ZLOX_UINT32 backColour = monitor_backColour;
 	ZLOX_SINT32 val = (ZLOX_SINT32)c;
@@ -395,5 +402,25 @@ ZLOX_VOID zlox_monitor_write_dec(ZLOX_UINT32 n)
 		c2[i--] = c[j++];
 	}
 	zlox_monitor_write(c2);
+}
+
+ZLOX_VOID zlox_monitor_set_color_space(ZLOX_BOOL flag, ZLOX_UINT32 color, ZLOX_UINT32 backColour,
+			ZLOX_SINT32 w_space, ZLOX_SINT32 h_space)
+{
+	if(flag)
+	{
+		monitor_color = color;
+		monitor_backColour = backColour;
+		monitor_w_space = w_space;
+		monitor_h_space = h_space;
+	}
+	else
+	{
+		monitor_color = ZLOX_MONITOR_COLOR;
+		monitor_backColour = ZLOX_MONITOR_BACK_COLOR;
+		monitor_w_space = ZLOX_MONITOR_W_SPACE;
+		monitor_h_space = ZLOX_MONITOR_H_SPACE;
+	}
+	return;
 }
 

@@ -33,7 +33,6 @@ extern ZLOX_VOID _zlox_switch_task_do(ZLOX_UINT32,ZLOX_UINT32,ZLOX_UINT32,ZLOX_U
 ZLOX_PID_REUSE_LIST pid_reuse_list = {0};
 
 ZLOX_UINT32 task_count = 0;
-ZLOX_UINT32 alltask_msg_total_count = 0;
 
 ZLOX_VOID zlox_move_stack(ZLOX_VOID * new_stack_start, ZLOX_UINT32 size);
 ZLOX_SINT32 zlox_push_pid(ZLOX_SINT32 pid);
@@ -174,47 +173,77 @@ ZLOX_VOID zlox_switch_task()
 	current_task->ebp = ebp;
 	
 	volatile ZLOX_TASK * orig_task = current_task;
+	volatile ZLOX_TASK * tmp_task = ready_queue;
+	volatile ZLOX_TASK * new_task = ZLOX_NULL;
+	ZLOX_UINT32 msg_total_count = 0;
+
+	// 统计所有任务的需要处理的消息总数, 同时检测是否有新建的任务
 	do
 	{
-		// Get the next task to run.
-		current_task = current_task->next;
-		// If we fell off the end of the linked list start again at the beginning.
-		if (!current_task) 
-			current_task = ready_queue;
-
-		// 如果找到的下一个任务的状态是运行状态，则切换到该任务
-		if(current_task->status == ZLOX_TS_RUNNING)
+		msg_total_count += tmp_task->msglist.count;
+		if(tmp_task != ready_queue && tmp_task->args == 0 &&
+			tmp_task->status == ZLOX_TS_RUNNING)
 		{
-			if(current_task->msglist.count > 0)
-				break;
-			else if(alltask_msg_total_count > 0)
+			new_task = tmp_task;
+			break;
+		}
+		tmp_task = tmp_task->next;
+	}while(tmp_task != ZLOX_NULL);
+
+	tmp_task = ZLOX_NULL;
+
+	//如果有新建的任务, 则优先运行新任务
+	if(new_task != ZLOX_NULL)
+	{
+		current_task = new_task;
+	}
+	else
+	{
+		do
+		{
+			// Get the next task to run.
+			current_task = current_task->next;
+			// If we fell off the end of the linked list start again at the beginning.
+			if (!current_task) 
+				current_task = ready_queue;
+
+			// 当任务处于运行状态下, 具有需要处理的消息的任务会被优先执行
+			if(current_task->status == ZLOX_TS_RUNNING)
 			{
-				if(current_task == orig_task)
-				{
-					current_task = ready_queue;
-					current_task->status = ZLOX_TS_RUNNING;
+				if(current_task->msglist.count > 0)
 					break;
+				else if(msg_total_count > 0)
+				{
+					if(current_task == orig_task)
+					{
+						current_task = tmp_task;
+						break;
+					}
+					else
+					{
+						if(tmp_task == ZLOX_NULL)
+							tmp_task = current_task;
+						continue;
+					}
 				}
 				else
-					continue;
+					break;
 			}
-			else
+			// 如果当前任务有需要进行结束的子任务的话，就唤醒该任务
+			else if(current_task->status == ZLOX_TS_WAIT && current_task->msglist.finish_task_num > 0)
+			{
+				current_task->status = ZLOX_TS_RUNNING;
 				break;
-		}
-		// 如果当前任务有需要进行结束的子任务的话，就唤醒该任务
-		else if(current_task->status == ZLOX_TS_WAIT && current_task->msglist.finish_task_num > 0)
-		{
-			current_task->status = ZLOX_TS_RUNNING;
-			break;
-		}
-		// 如果任务列表里所有的任务都不是运行状态，则将第一个任务唤醒，并切换到第一个任务
-		else if(current_task == orig_task)
-		{
-			current_task = ready_queue;
-			current_task->status = ZLOX_TS_RUNNING;
-			break;
-		}
-	}while(ZLOX_TRUE);
+			}
+			// 如果任务列表里所有的任务都不是运行状态，则将第一个任务唤醒，并切换到第一个任务
+			else if(current_task == orig_task)
+			{
+				current_task = ready_queue;
+				current_task->status = ZLOX_TS_RUNNING;
+				break;
+			}
+		}while(ZLOX_TRUE);
+	}
 
 	eip = current_task->eip;
 	esp = current_task->esp;
@@ -381,7 +410,6 @@ ZLOX_SINT32 zlox_push_tskmsg(ZLOX_TASK_MSG_LIST * msglist , ZLOX_TASK_MSG * msg)
 				(msglist->cur + msglist->count - msglist->size);
 	msglist->ptr[index] = *msg;
 	msglist->count++;
-	alltask_msg_total_count++;
 	return 0;
 }
 
@@ -397,7 +425,6 @@ ZLOX_TASK_MSG * zlox_pop_tskmsg(ZLOX_TASK_MSG_LIST * msglist,ZLOX_BOOL needPop)
 	{
 		msglist->cur = ((msglist->cur + 1) < msglist->size) ? (msglist->cur + 1) : 0;
 		msglist->count = (msglist->count - 1) > 0 ? (msglist->count - 1) : 0;
-		alltask_msg_total_count = (alltask_msg_total_count - 1) > 0 ? (alltask_msg_total_count - 1) : 0;
 	}
 	return ret;
 }
@@ -486,10 +513,10 @@ ZLOX_TASK * zlox_get_currentTask()
 	return (ZLOX_TASK *)current_task;
 }
 
-// 结束当前任务，并向父任务或首任务发送结束消息
-ZLOX_SINT32 zlox_exit(ZLOX_SINT32 exit_code)
+// 结束指定的任务，并向其父任务或首任务发送结束消息
+ZLOX_SINT32 zlox_exit_do(ZLOX_TASK * task, ZLOX_SINT32 exit_code, ZLOX_BOOL need_switch)
 {
-	ZLOX_TASK * parent_task = current_task->parent;
+	ZLOX_TASK * parent_task = task->parent;
 	ZLOX_TASK * notify_task = parent_task;
 	ZLOX_TASK_MSG ascii_msg = {0};
 	if(parent_task == 0)
@@ -505,15 +532,15 @@ ZLOX_SINT32 zlox_exit(ZLOX_SINT32 exit_code)
 			ready_queue->status = ZLOX_TS_RUNNING;
 		else if(ready_queue->status == ZLOX_TS_FINISH)
 		{
-			current_task->status = ZLOX_TS_ZOMBIE; // 如果没有任务可以进行通知的话，则当前任务就变为僵死任务
+			task->status = ZLOX_TS_ZOMBIE; // 如果没有任务可以进行通知的话，则task任务就变为僵死任务
 			return -1;
 		}
 		notify_task = (ZLOX_TASK *)ready_queue;
 	}
 
-	if(input_focus_task == current_task)
+	if(input_focus_task == task)
 		input_focus_task = 0;
-	if(network_focus_task == current_task)
+	if(network_focus_task == task)
 	{
 		zlox_network_free_packets(network_focus_task);
 		network_focus_task = 0;
@@ -522,13 +549,20 @@ ZLOX_SINT32 zlox_exit(ZLOX_SINT32 exit_code)
 	if(single_line_out) //退出单行输出模式
 		zlox_monitor_set_single(ZLOX_FALSE);
 
-	current_task->status = ZLOX_TS_FINISH;
+	task->status = ZLOX_TS_FINISH;
 	ascii_msg.type = ZLOX_MT_TASK_FINISH;
-	ascii_msg.finish_task.exit_task = (ZLOX_TASK *)current_task;
+	ascii_msg.finish_task.exit_task = (ZLOX_TASK *)task;
 	ascii_msg.finish_task.exit_code = exit_code;
 	zlox_send_tskmsg(notify_task,&ascii_msg);
-	zlox_switch_task();
+	if(need_switch)
+		zlox_switch_task();
 	return 0;
+}
+
+// 结束当前任务，并向父任务或首任务发送结束消息
+ZLOX_SINT32 zlox_exit(ZLOX_SINT32 exit_code)
+{
+	return zlox_exit_do((ZLOX_TASK *)current_task, exit_code, ZLOX_TRUE);
 }
 
 // 将需要结束的任务的相关资源给释放掉，并从任务列表里移除

@@ -79,6 +79,7 @@ typedef enum _SYSCALL_ENUM{
 	SYSCALL_CMD_WINDOW_SET_CURSOR,
 	SYSCALL_CMD_WINDOW_SET_SINGLE,
 	SYSCALL_CMD_WINDOW_CLEAR,
+	SYSCALL_EXIT_DO,
 }SYSCALL_ENUM;
 
 #define DECL_SYSCALL0(fn) SINT32 syscall_##fn();
@@ -209,6 +210,7 @@ DECL_SYSCALL0(cmd_window_insert_line)
 DECL_SYSCALL2(cmd_window_set_cursor, SINT32, SINT32)
 DECL_SYSCALL1(cmd_window_set_single, BOOL)
 DECL_SYSCALL0(cmd_window_clear)
+DECL_SYSCALL3(exit_do, void *, SINT32, BOOL)
 
 #endif // _SYSCALL_H_
 

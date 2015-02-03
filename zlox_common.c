@@ -5,8 +5,8 @@
 // Outputs an integer to the monitor.
 extern ZLOX_VOID zlox_monitor_write_dec(ZLOX_UINT32 n);
 extern ZLOX_VOID zlox_monitor_write(const ZLOX_CHAR * c);
-extern ZLOX_UINT32 monitor_color;
-extern ZLOX_UINT32 monitor_backColour;
+extern ZLOX_VOID zlox_monitor_set_color_space(ZLOX_BOOL flag, ZLOX_UINT32 color, ZLOX_UINT32 backColour,
+			ZLOX_SINT32 w_space, ZLOX_SINT32 h_space);
 
 // Write a byte out to the specified port.
 ZLOX_VOID zlox_outb(ZLOX_UINT16 port,ZLOX_UINT8 value)
@@ -230,13 +230,19 @@ ZLOX_SINT32 zlox_strlen(ZLOX_CHAR *src)
 	return i;
 }
 
+ZLOX_VOID zlox_panic_shutdown()
+{
+	zlox_monitor_set_color_space(ZLOX_TRUE, 0xFFFFFFFF, 0xFFFF0000, 0, 0);
+	zlox_monitor_write("zenglOX is shutdown now , you can power off!\n");
+	return;
+}
+
 ZLOX_VOID zlox_panic(const ZLOX_CHAR *message, const ZLOX_CHAR *file, ZLOX_UINT32 line)
 {
 	// We encountered a massive problem and have to stop.
 	asm volatile("cli"); // Disable interrupts.
 
-	monitor_color = 0xFFFFFFFF;
-	monitor_backColour = 0xFFFF0000;
+	zlox_monitor_set_color_space(ZLOX_TRUE, 0xFFFFFFFF, 0xFFFF0000, 0, 0);
 
 	zlox_monitor_write("PANIC(");
 	zlox_monitor_write(message);
@@ -255,8 +261,7 @@ ZLOX_VOID zlox_panic_assert(const ZLOX_CHAR *file, ZLOX_UINT32 line, const ZLOX_
 	// We encountered a massive problem and have to stop.
 	asm volatile("cli"); // Disable interrupts.
 
-	monitor_color = 0xFFFFFFFF;
-	monitor_backColour = 0xFFFF0000;
+	zlox_monitor_set_color_space(ZLOX_TRUE, 0xFFFFFFFF, 0xFFFF0000, 0, 0);
 
 	zlox_monitor_write("ASSERTION-FAILED(");
 	zlox_monitor_write((const ZLOX_CHAR *)desc);

@@ -7,7 +7,8 @@
 
 int main(TASK * task, int argc, char * argv[])
 {
-	if(argc == 1 || (argc > 1 && strcmp(argv[1],"-d")==0))
+	if(argc == 1 || (argc > 1 && strcmp(argv[1],"-d")==0) ||
+		(argc > 1 && strcmp(argv[1],"-x")==0))
 	{
 		TASK * first_task;
 		TASK * tmp_task;
@@ -51,9 +52,16 @@ int main(TASK * task, int argc, char * argv[])
 				syscall_cmd_window_write(" ParentID:");
 				syscall_cmd_window_write_dec(tmp_task->parent->id);
 			}
-			syscall_cmd_window_write("\n");
-			if((argc > 1 && strcmp(argv[1],"-d")==0))
+			
+			if((argc > 1 && strcmp(argv[1],"-x")==0))
 			{
+				syscall_cmd_window_write(" msgnum:");
+				syscall_cmd_window_write_dec(tmp_task->msglist.count);
+				syscall_cmd_window_write("\n");
+			}
+			else if((argc > 1 && strcmp(argv[1],"-d")==0))
+			{
+				syscall_cmd_window_write("\n");
 				ELF_LINK_MAP * tmp_map;
 				ELF_LINK_MAP_LIST * maplst = &tmp_task->link_maps;
 				for(SINT32 i = 0; i < maplst->count; i++)
@@ -77,6 +85,8 @@ int main(TASK * task, int argc, char * argv[])
 				}
 				syscall_cmd_window_write("\n");
 			}
+			else
+				syscall_cmd_window_write("\n");
 			tmp_task = tmp_task->next;
 		}while(tmp_task != 0);
 	}
@@ -189,7 +199,7 @@ int main(TASK * task, int argc, char * argv[])
 	}
 	else
 	{
-		syscall_cmd_window_write("usage: ps [-m][-d][-u]");
+		syscall_cmd_window_write("usage: ps [-m][-d][-u][-x]");
 	}
 	return 0;
 }

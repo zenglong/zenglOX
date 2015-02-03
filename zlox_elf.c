@@ -13,24 +13,31 @@ extern ZLOX_TASK * current_task;
 
 ZLOX_ELF_KERNEL_MAP_LIST elf_kmaplst = {0};
 
+static ZLOX_SINT32 zlox_elf_print_msg(const ZLOX_CHAR * output)
+{
+	if(zlox_cmd_window_write(output) == -1)
+		zlox_monitor_write(output);
+	return 0;
+}
+
 ZLOX_BOOL zlox_elf_check_file(ZLOX_ELF32_EHDR * hdr)
 {
 	if(!hdr) 
 		return ZLOX_FALSE;
 	if(hdr->e_ident[ZLOX_EI_MAG0] != ZLOX_ELFMAG0) {
-		zlox_monitor_write("ELF Error:ELF Header EI_MAG0 incorrect.\n");
+		zlox_elf_print_msg("ELF Error:ELF Header EI_MAG0 incorrect.\n");
 		return ZLOX_FALSE;
 	}
 	if(hdr->e_ident[ZLOX_EI_MAG1] != ZLOX_ELFMAG1) {
-		zlox_monitor_write("ELF Error:ELF Header EI_MAG1 incorrect.\n");
+		zlox_elf_print_msg("ELF Error:ELF Header EI_MAG1 incorrect.\n");
 		return ZLOX_FALSE;
 	}
 	if(hdr->e_ident[ZLOX_EI_MAG2] != ZLOX_ELFMAG2) {
-		zlox_monitor_write("ELF Error:ELF Header EI_MAG2 incorrect.\n");
+		zlox_elf_print_msg("ELF Error:ELF Header EI_MAG2 incorrect.\n");
 		return ZLOX_FALSE;
 	}
 	if(hdr->e_ident[ZLOX_EI_MAG3] != ZLOX_ELFMAG3) {
-		zlox_monitor_write("ELF Error:ELF Header EI_MAG3 incorrect.\n");
+		zlox_elf_print_msg("ELF Error:ELF Header EI_MAG3 incorrect.\n");
 		return ZLOX_FALSE;
 	}
 	return ZLOX_TRUE;
@@ -38,37 +45,37 @@ ZLOX_BOOL zlox_elf_check_file(ZLOX_ELF32_EHDR * hdr)
 
 ZLOX_BOOL zlox_elf_check_supported(ZLOX_ELF32_EHDR *hdr, ZLOX_ELF_TYPE type) {
 	if(!zlox_elf_check_file(hdr)) {
-		zlox_monitor_write("ELF Error:Invalid ELF File.\n");
+		zlox_elf_print_msg("ELF Error:Invalid ELF File.\n");
 		return ZLOX_FALSE;
 	}
 	if(hdr->e_ident[ZLOX_EI_CLASS] != ZLOX_ELFCLASS32) {
-		zlox_monitor_write("ELF Error:Unsupported ELF File Class.\n");
+		zlox_elf_print_msg("ELF Error:Unsupported ELF File Class.\n");
 		return ZLOX_FALSE;
 	}
 	if(hdr->e_ident[ZLOX_EI_DATA] != ZLOX_ELFDATA2LSB) {
-		zlox_monitor_write("ELF Error:Unsupported ELF File byte order.\n");
+		zlox_elf_print_msg("ELF Error:Unsupported ELF File byte order.\n");
 		return ZLOX_FALSE;
 	}
 	if(hdr->e_machine != ZLOX_EM_386) {
-		zlox_monitor_write("ELF Error:Unsupported ELF File target.\n");
+		zlox_elf_print_msg("ELF Error:Unsupported ELF File target.\n");
 		return ZLOX_FALSE;
 	}
 	if(hdr->e_ident[ZLOX_EI_VERSION] != ZLOX_EV_CURRENT) {
-		zlox_monitor_write("ELF Error:Unsupported ELF File version.\n");
+		zlox_elf_print_msg("ELF Error:Unsupported ELF File version.\n");
 		return ZLOX_FALSE;
 	}
 	if(hdr->e_shnum == ZLOX_SHN_UNDEF)
 	{
-		zlox_monitor_write("ELF Error:No section header.\n");
+		zlox_elf_print_msg("ELF Error:No section header.\n");
 		return ZLOX_FALSE;
 	}
 	if(hdr->e_shstrndx == ZLOX_SHN_UNDEF)
 	{
-		zlox_monitor_write("ELF Error:No section header string table.\n");
+		zlox_elf_print_msg("ELF Error:No section header string table.\n");
 		return ZLOX_FALSE;
 	}
 	if(hdr->e_type != type) {
-		zlox_monitor_write("ELF Error:Unsupported ELF File type.\n");
+		zlox_elf_print_msg("ELF Error:Unsupported ELF File type.\n");
 		return ZLOX_FALSE;
 	}
 	return ZLOX_TRUE;
@@ -147,9 +154,9 @@ ZLOX_ELF_KERNEL_MAP * zlox_add_elf_kernel_map(ZLOX_CHAR * soname, ZLOX_VOID * ta
 		}
 	}
 	
-	zlox_monitor_write("shared library Error: when load \"");
-	zlox_monitor_write(soname);
-	zlox_monitor_write("\" can't find empty kernel map!\n");
+	zlox_elf_print_msg("shared library Error: when load \"");
+	zlox_elf_print_msg(soname);
+	zlox_elf_print_msg("\" can't find empty kernel map!\n");
 	return ZLOX_NULL;
 }
 
@@ -205,9 +212,9 @@ ZLOX_UINT8 * zlox_shlib_readfile(ZLOX_CHAR * soname)
 	{
 		zlox_kfree(buf);
 not_valid_shlib:
-		zlox_monitor_write("shared library Error:\"");
-		zlox_monitor_write(soname);
-		zlox_monitor_write("\" is not a valid shared library!\n");
+		zlox_elf_print_msg("shared library Error:\"");
+		zlox_elf_print_msg(soname);
+		zlox_elf_print_msg("\" is not a valid shared library!\n");
 		return ZLOX_NULL;
 	}
 }
@@ -352,9 +359,9 @@ ZLOX_ELF_LINK_MAP * zlox_elf_make_link_map(ZLOX_UINT32 kmap_index, ZLOX_CHAR * s
 								(ZLOX_ELF32_SYM *)tmp_map->dyn.symtab, (ZLOX_CHAR *)tmp_map->dyn.strtab);
 		if(retsym == ZLOX_NULL)
 		{
-			zlox_monitor_write("shared library Error:no _dl_runtime_resolve function in \"");
-			zlox_monitor_write(soname);
-			zlox_monitor_write("\" \n");
+			zlox_elf_print_msg("shared library Error:no _dl_runtime_resolve function in \"");
+			zlox_elf_print_msg(soname);
+			zlox_elf_print_msg("\" \n");
 			return ZLOX_NULL;
 		}
 		tmp_map->dyn.dl_runtime_resolve = (ZLOX_VOID *)(retsym->st_value + vaddr);
@@ -424,9 +431,9 @@ ZLOX_BOOL zlox_elf_reloc(ZLOX_ELF32_REL * rel, ZLOX_UINT32 relsz, ZLOX_ELF32_SYM
 					ZLOX_ELF_LINK_MAP * retmap;
 					if(zlox_elf_findsym_fromlst(name, map, &retsym, &retmap) == ZLOX_FALSE)
 					{
-						zlox_monitor_write("shared library Error:can't find symbol \"");
-						zlox_monitor_write(name);
-						zlox_monitor_write("\" \n");
+						zlox_elf_print_msg("shared library Error:can't find symbol \"");
+						zlox_elf_print_msg(name);
+						zlox_elf_print_msg("\" \n");
 						return ZLOX_FALSE;
 					}
 					if(retsym->st_value > ZLOX_EXECVE_ADDR && 
@@ -449,9 +456,9 @@ ZLOX_BOOL zlox_elf_reloc(ZLOX_ELF32_REL * rel, ZLOX_UINT32 relsz, ZLOX_ELF32_SYM
 				ZLOX_ELF_LINK_MAP * retmap;
 				if(zlox_elf_findsym_fromlst(name, map, &retsym, &retmap) == ZLOX_FALSE)
 				{
-					zlox_monitor_write("shared library Error:can't find symbol \"");
-					zlox_monitor_write(name);
-					zlox_monitor_write("\" \n");
+					zlox_elf_print_msg("shared library Error:can't find symbol \"");
+					zlox_elf_print_msg(name);
+					zlox_elf_print_msg("\" \n");
 					return ZLOX_FALSE;
 				}
 				ZLOX_ELF32_ADDR * destaddr =  &retsym->st_value;
@@ -577,9 +584,9 @@ ZLOX_UINT32 zlox_load_shared_library(ZLOX_CHAR * soname, ZLOX_UINT32 vaddr)
 			// 依赖的动态链接库给加载到虚拟内存中
 			if(zlox_load_shared_library(tmp_soname, tmp_vaddr) == 0)
 			{
-				zlox_monitor_write("shared library Error:load \"");
-				zlox_monitor_write(tmp_soname);
-				zlox_monitor_write("\" failed \n");
+				zlox_elf_print_msg("shared library Error:load \"");
+				zlox_elf_print_msg(tmp_soname);
+				zlox_elf_print_msg("\" failed \n");
 				return 0;
 			}
 		}
@@ -650,9 +657,9 @@ ZLOX_UINT32 zlox_load_elf(ZLOX_ELF32_EHDR *hdr,ZLOX_UINT8 * buf)
 					tmp_vaddr = ZLOX_NEXT_PAGE_START(tmp_vaddr);
 					if(zlox_load_shared_library(tmp_soname, tmp_vaddr) == 0)
 					{
-						zlox_monitor_write("shared library Error:load \"");
-						zlox_monitor_write(tmp_soname);
-						zlox_monitor_write("\" failed \n");
+						zlox_elf_print_msg("shared library Error:load \"");
+						zlox_elf_print_msg(tmp_soname);
+						zlox_elf_print_msg("\" failed \n");
 						return 0;
 					}
 				}
@@ -758,9 +765,9 @@ ZLOX_SINT32 zlox_execve(const ZLOX_CHAR * filename)
 				else
 				{
 					zlox_kfree(buf);
-					zlox_monitor_write("execve:\"");
-					zlox_monitor_write(filename);
-					zlox_monitor_write("\" load failed !\n");
+					zlox_elf_print_msg("execve:\"");
+					zlox_elf_print_msg(filename);
+					zlox_elf_print_msg("\" load failed !\n");
 					zlox_exit(-1);
 					return -1;
 				}				
@@ -768,9 +775,9 @@ ZLOX_SINT32 zlox_execve(const ZLOX_CHAR * filename)
 			else
 			{
 				zlox_kfree(buf);
-				zlox_monitor_write("execve Error:\"");
-				zlox_monitor_write(filename);
-				zlox_monitor_write("\" is not a valid ELF file!\n");
+				zlox_elf_print_msg("execve Error:\"");
+				zlox_elf_print_msg(filename);
+				zlox_elf_print_msg("\" is not a valid ELF file!\n");
 				zlox_exit(-1);
 				return -1;
 			}
@@ -780,17 +787,17 @@ ZLOX_SINT32 zlox_execve(const ZLOX_CHAR * filename)
 	}
 	else if((fsnode->flags & 0x7) == ZLOX_FS_DIRECTORY)
 	{
-		zlox_monitor_write("execve Error:\"");
-		zlox_monitor_write(filename);
-		zlox_monitor_write("\" is a directory , it's must be an ELF file \n");
+		zlox_elf_print_msg("execve Error:\"");
+		zlox_elf_print_msg(filename);
+		zlox_elf_print_msg("\" is a directory , it's must be an ELF file \n");
 		zlox_restore_filename((ZLOX_CHAR *)filename,ret_pos);
 		return -1;
 	}
 	else
 	{
-		zlox_monitor_write("execve Error:\"");
-		zlox_monitor_write(filename);
-		zlox_monitor_write("\" is not exist in your file system! \n");
+		zlox_elf_print_msg("execve Error:\"");
+		zlox_elf_print_msg(filename);
+		zlox_elf_print_msg("\" is not exist in your file system! \n");
 		zlox_restore_filename((ZLOX_CHAR *)filename,ret_pos);
 		return -1;
 	}

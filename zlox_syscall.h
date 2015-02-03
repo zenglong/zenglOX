@@ -5,11 +5,11 @@
 
 #include "zlox_common.h"
 
-#define ZLOX_SYSCALL_NUMBER 73
+#define ZLOX_SYSCALL_NUMBER 74
 
 #define ZLOX_MAJOR_VERSION 3 //zenglOX 主版本号
 #define ZLOX_MINOR_VERSION 0 //zenglOX 子版本号
-#define ZLOX_REVISION 0      //zenglOX 修正版本号
+#define ZLOX_REVISION 1      //zenglOX 修正版本号
 
 typedef enum _ZLOX_SYSCALL_ENUM{
 	ZLOX_SYSCALL_MONITOR_WRITE,
@@ -85,6 +85,7 @@ typedef enum _ZLOX_SYSCALL_ENUM{
 	ZLOX_SYSCALL_CMD_WINDOW_SET_CURSOR,
 	ZLOX_SYSCALL_CMD_WINDOW_SET_SINGLE,
 	ZLOX_SYSCALL_CMD_WINDOW_CLEAR,
+	ZLOX_SYSCALL_EXIT_DO,
 }ZLOX_SYSCALL_ENUM;
 
 ZLOX_VOID zlox_initialise_syscalls();
@@ -217,6 +218,7 @@ ZLOX_DECL_SYSCALL0(cmd_window_insert_line)
 ZLOX_DECL_SYSCALL2(cmd_window_set_cursor, ZLOX_SINT32, ZLOX_SINT32)
 ZLOX_DECL_SYSCALL1(cmd_window_set_single, ZLOX_BOOL)
 ZLOX_DECL_SYSCALL0(cmd_window_clear)
+ZLOX_DECL_SYSCALL3(exit_do, void *, ZLOX_SINT32, ZLOX_BOOL)
 
 ZLOX_SINT32 zlox_get_version(ZLOX_SINT32 * major, ZLOX_SINT32 * minor, ZLOX_SINT32 * revision);
 

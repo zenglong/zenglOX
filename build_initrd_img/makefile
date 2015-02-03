@@ -5,7 +5,7 @@ CC = @gcc
 CFLAGS = -std=gnu99 -ffreestanding -gdwarf-2 -g3 -Wall -Wextra
 DEPS = common.h syscall.h elf.h task.h kheap.h fs.h ata.h fdisk.h format.h vga.h network.h pci.h my_windows.h
 AS_TARGET = cpuid uname reboot shutdown
-C_TARGET = shell ls ps cat ata mount unmount testoverflow fdisk format file vga lspci isoget desktop term
+C_TARGET = shell ls ps cat ata mount unmount testoverflow fdisk format file vga lspci isoget desktop term kill
 C_NET_TARGET = arp dhcp ipconf ping
 C_EXTRA_TARGET = extra/output/ee extra/output/libc.so extra/output/zengl
 C_DEP_LIB = ld.so libcommon.so

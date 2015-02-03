@@ -301,6 +301,8 @@ ZLOX_VOID zlox_double_fault(ZLOX_ISR_REGISTERS * regs)
 {
 	ZLOX_UNUSED(regs);
 
+	zlox_monitor_set_color_space(ZLOX_TRUE, 0xFFFFFFFF, 0xFFFF0000, 0, 0);
+
 	zlox_monitor_write("double fault! following is some info dumps: \n");
 	if(tss_entry.esp > 0xE0000000 && tss_entry.esp < tss_entry.esp0)
 	{
@@ -375,7 +377,9 @@ ZLOX_VOID zlox_page_fault(ZLOX_ISR_REGISTERS * regs)
 		return ;
 	}
 
-print_page_error_message:
+//print_page_error_message:
+
+	zlox_monitor_set_color_space(ZLOX_TRUE, 0xFFFFFFFF, 0xFFFF0000, 0, 0);
 
 	// Output an error message.
 	zlox_monitor_write("Page fault! ( ");
@@ -407,11 +411,12 @@ print_page_error_message:
 	// 如果只是用户态程式出错，则只需结束掉当前任务，而无需 ZLOX_PANIC 挂掉整个系统
 	if(regs->eip >= 0x8048000 && regs->eip < 0xc0000000)
 	{
-		if(vga_current_mode != ZLOX_VGA_MODE_80X25_TEXT)
-		{
-			zlox_vga_exit_graphic_mode();
-			goto print_page_error_message;
-		}
+		//if(vga_current_mode != ZLOX_VGA_MODE_80X25_TEXT)
+		//{
+		//	zlox_vga_exit_graphic_mode();
+		//	goto print_page_error_message;
+		//}
+		zlox_monitor_set_color_space(ZLOX_FALSE, 0, 0, 0, 0);
 		zlox_exit(-1);
 	}
 

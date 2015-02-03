@@ -30,5 +30,8 @@ ZLOX_VOID zlox_monitor_write_hex(ZLOX_UINT32 n);
 // Outputs an integer to the monitor.
 ZLOX_VOID zlox_monitor_write_dec(ZLOX_UINT32 n);
 
+ZLOX_VOID zlox_monitor_set_color_space(ZLOX_BOOL flag, ZLOX_UINT32 color, ZLOX_UINT32 backColour,
+			ZLOX_SINT32 w_space, ZLOX_SINT32 h_space);
+
 #endif //_ZLOX_MONITOR_H_
 

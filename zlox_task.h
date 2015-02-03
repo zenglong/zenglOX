@@ -176,6 +176,9 @@ ZLOX_SINT32 zlox_set_input_focus(ZLOX_TASK * task);
 // 获取当前任务的指针值
 ZLOX_TASK * zlox_get_currentTask();
 
+// 结束指定的任务，并向其父任务或首任务发送结束消息
+ZLOX_SINT32 zlox_exit_do(ZLOX_TASK * task, ZLOX_SINT32 exit_code, ZLOX_BOOL need_switch);
+
 // 结束当前任务，并向父任务或首任务发送结束消息
 ZLOX_SINT32 zlox_exit(ZLOX_SINT32 exit_code);
 
