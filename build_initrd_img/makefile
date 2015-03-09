@@ -7,12 +7,12 @@ DEPS = common.h syscall.h elf.h task.h kheap.h fs.h ata.h fdisk.h format.h vga.h
 AS_TARGET = cpuid uname reboot shutdown
 C_TARGET = shell ls ps cat ata mount unmount testoverflow fdisk format file vga lspci isoget desktop term kill
 C_NET_TARGET = arp dhcp ipconf ping
-C_EXTRA_TARGET = extra/output/ee extra/output/libc.so extra/output/zengl
+C_EXTRA_TARGET = extra/output/ee extra/output/showpng extra/output/libc.so extra/output/zengl
 C_DEP_LIB = ld.so libcommon.so
 C_DEP_NET_LIB = libnetwork.so
 INITRD_FILES = background.bmp licence.txt $(AS_TARGET) $(C_TARGET) $(C_NET_TARGET) $(C_DEP_LIB) $(C_DEP_NET_LIB)
 
-LIBC_SRCS = standard/libc.c standard/printf.c standard/vsnprintf.c standard/fcvt.c standard/modf.c
+LIBC_SRCS = standard/libc.c standard/printf.c standard/vsnprintf.c standard/fcvt.c standard/modf.c standard/qsort.c
 
 ZENGL_SRCS = extra/zengl/linux/zengl_main.c extra/zengl/linux/zengl_parser.c extra/zengl/linux/zengl_symbol.c extra/zengl/linux/zengl_locals.c extra/zengl/linux/zengl_assemble.c extra/zengl/linux/zengl_ld.c extra/zengl/linux/zenglrun_main.c extra/zengl/linux/zenglrun_func.c extra/zengl/linux/zenglApi.c extra/zengl/linux/zenglApi_BltModFuns.c extra/zengl/linux/zenglDebug.c
 
@@ -58,6 +58,11 @@ extra/output/ee: extra/ee.c standard/include/stdlib.h common.h syscall.h task.h 
 	@echo "building $@"
 	@mkdir -p extra/output
 	$(CROSS_CC) -Wl,-emain -Wl,-dynamic-linker,ld.so -o extra/output/ee extra/ee.c $(CROSS_CLINK_FLAGS) -I standard/include -I. -L. -lcommon -L extra/output -lc
+
+extra/output/showpng: extra/showpng.c extra/lodepng.c extra/lodepng.h standard/include/stdlib.h common.h syscall.h task.h fs.h kheap.h extra/output/libc.so
+	@echo "building $@"
+	@mkdir -p extra/output
+	$(CROSS_CC) -Wl,-emain -Wl,-dynamic-linker,ld.so -o extra/output/showpng extra/showpng.c extra/lodepng.c $(CROSS_CLINK_FLAGS) -I standard/include -I. -L. -lcommon -L extra/output -lc -std=c99
 
 extra/output/libc.so: $(LIBC_SRCS) standard/include/stdlib.h common.h syscall.h task.h fs.h kheap.h
 	@echo "building $@"

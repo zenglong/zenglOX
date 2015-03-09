@@ -88,13 +88,17 @@ static ZLOX_VOID zlox_uheap_expand(ZLOX_UINT32 new_size, ZLOX_HEAP * heap)
 	ZLOX_UINT32 old_size = heap->end_address-heap->start_address;
 
 	ZLOX_UINT32 i = old_size;
+	ZLOX_BOOL need_flushTLB = ZLOX_FALSE;
 	while (i < new_size)
 	{
 		// 从frames位图里为扩展的线性地址分配物理内存
 		zlox_alloc_frame( zlox_get_page(heap->start_address+i, 1, current_task->page_directory),
 					 (heap->supervisor)?1:0, (heap->readonly)?0:1);
 		i += 0x1000 /* page size */;
+		need_flushTLB = ZLOX_TRUE;
 	}
+	if(need_flushTLB)
+		zlox_page_Flush_TLB();
 	heap->end_address = heap->start_address+new_size;
 }
 
@@ -145,13 +149,16 @@ static ZLOX_UINT32 zlox_uheap_contract(ZLOX_UINT32 new_size, ZLOX_HEAP * heap)
 
 	ZLOX_UINT32 old_size = heap->end_address-heap->start_address;
 	ZLOX_UINT32 i = old_size - 0x1000;
+	ZLOX_BOOL need_flushTLB = ZLOX_FALSE;
 	while (new_size <= i)
 	{
 		// 通过zlox_free_frame将需要回收的页面从页表和frames位图里去除
 		zlox_free_frame(zlox_get_page(heap->start_address+i, 0, current_task->page_directory));
 		i -= 0x1000;
+		need_flushTLB = ZLOX_TRUE;
 	}
-
+	if(need_flushTLB)
+		zlox_page_Flush_TLB();
 	heap->end_address = heap->start_address + new_size;
 	return new_size;
 }

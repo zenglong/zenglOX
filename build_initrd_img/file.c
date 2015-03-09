@@ -8,6 +8,19 @@ char file_tmp_name[128];
 
 FS_NODE * ret_fsnode = NULL;
 
+/*SINT32 memcmp(UINT8 * s1, UINT8 * s2, UINT32 n)
+{
+	UINT8 u1, u2;
+	for ( ; n-- ; s1++, s2++) {
+		u1 = * s1;
+		u2 = * s2;
+		if (u1 != u2) {
+			return (u1-u2);
+		}
+	}
+	return 0;
+}*/
+
 FS_NODE * create_empty_file(FS_NODE * fs_root, char * name)
 {
 	SINT32 name_len = strlen(name),j;
@@ -236,6 +249,15 @@ int main(VOID * task, int argc, char * argv[])
 			UINT8 * buf = (UINT8 *)syscall_umalloc(src_fsnode->length);
 			syscall_read_fs(src_fsnode,0,src_fsnode->length,buf);
 			syscall_write_fs(dest_fsnode,0,src_fsnode->length,buf);
+
+			/*UINT8 * buf_dest = (UINT8 *)syscall_umalloc(src_fsnode->length); // debug
+			syscall_read_fs(dest_fsnode,0,src_fsnode->length,buf_dest); // debug
+			if(memcmp(buf_dest, buf, src_fsnode->length) != 0) // debug
+			{
+				syscall_cmd_window_write("src not equal to dest detect!"); // debug
+			}
+			syscall_ufree(buf_dest);*/
+
 			syscall_ufree(buf);
 			if(src_fsnode != NULL)
 				syscall_ufree(src_fsnode);

@@ -77,5 +77,7 @@ ZLOX_SINT32 zlox_cmd_window_set_single(ZLOX_BOOL flag);
 
 ZLOX_SINT32 zlox_cmd_window_clear();
 
+ZLOX_SINT32 zlox_shift_tab_window();
+
 #endif // _ZLOX_MY_WINDOWS_H_
 

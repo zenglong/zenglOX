@@ -76,50 +76,6 @@ ZLOX_UINT32 zlox_kmalloc(ZLOX_UINT32 sz)
 	return zlox_kmalloc_int(sz, 0, 0);
 }
 
-// 给用户态程式使用的分配堆函数
-/*ZLOX_UINT32 zlox_umalloc(ZLOX_UINT32 sz)
-{
-	ZLOX_PAGE * page;
-	ZLOX_UINT32 ret = zlox_kmalloc_int(sz, 0, 0);
-	ZLOX_UINT32 i;
-
-	for(i=ret; i < ret + sz ;i+=0x1000)
-	{
-		page = zlox_get_page(i, 0, kernel_directory);
-		if(page->rw == 0)
-			page->rw = 1;
-	}
-
-	// Flush the TLB(translation lookaside buffer) by reading and writing the page directory address again.
-	ZLOX_UINT32 pd_addr;
-	asm volatile("mov %%cr3, %0" : "=r" (pd_addr));
-	asm volatile("mov %0, %%cr3" : : "r" (pd_addr));
-
-	return ret;
-}*/
-
-// 给用户态程式使用的释放堆函数
-/*ZLOX_VOID zlox_ufree(ZLOX_VOID *p)
-{
-	ZLOX_PAGE * page;
-	ZLOX_KHP_HEADER * header = (ZLOX_KHP_HEADER *)((ZLOX_UINT32)p - sizeof(ZLOX_KHP_HEADER));
-	ZLOX_UINT32 sz = header->size - sizeof(ZLOX_KHP_HEADER) - sizeof(ZLOX_KHP_FOOTER);
-	ZLOX_UINT32 i;
-	for(i=(ZLOX_UINT32)p; i < (ZLOX_UINT32)p + sz ;i+=0x1000)
-	{
-		page = zlox_get_page(i, 0, kernel_directory);
-		if(page->rw == 1)
-			page->rw = 0;
-	}
-
-	// Flush the TLB(translation lookaside buffer) by reading and writing the page directory address again.
-	ZLOX_UINT32 pd_addr;
-	asm volatile("mov %%cr3, %0" : "=r" (pd_addr));
-	asm volatile("mov %0, %%cr3" : : "r" (pd_addr));
-
-	zlox_free(p, kheap);
-}*/
-
 // 当堆空间不足时,扩展堆的物理内存 
 static ZLOX_VOID zlox_expand(ZLOX_UINT32 new_size, ZLOX_HEAP * heap)
 {
@@ -141,13 +97,17 @@ static ZLOX_VOID zlox_expand(ZLOX_UINT32 new_size, ZLOX_HEAP * heap)
 	ZLOX_UINT32 old_size = heap->end_address-heap->start_address;
 
 	ZLOX_UINT32 i = old_size;
+	ZLOX_BOOL need_flushTLB = ZLOX_FALSE;
 	while (i < new_size)
 	{
 		// 从frames位图里为扩展的线性地址分配物理内存
 		zlox_alloc_frame( zlox_get_page(heap->start_address+i, 1, kernel_directory),
 					 (heap->supervisor)?1:0, (heap->readonly)?0:1);
 		i += 0x1000 /* page size */;
+		need_flushTLB = ZLOX_TRUE;
 	}
+	if(need_flushTLB)
+		zlox_page_Flush_TLB();
 	heap->end_address = heap->start_address+new_size;
 }
 
@@ -198,13 +158,16 @@ static ZLOX_UINT32 zlox_contract(ZLOX_UINT32 new_size, ZLOX_HEAP * heap)
 
 	ZLOX_UINT32 old_size = heap->end_address-heap->start_address;
 	ZLOX_UINT32 i = old_size - 0x1000;
+	ZLOX_BOOL need_flushTLB = ZLOX_FALSE;
 	while (new_size <= i)
 	{
 		// 通过zlox_free_frame将需要回收的页面从页表和frames位图里去除
 		zlox_free_frame(zlox_get_page(heap->start_address+i, 0, kernel_directory));
 		i -= 0x1000;
+		need_flushTLB = ZLOX_TRUE;
 	}
-
+	if(need_flushTLB)
+		zlox_page_Flush_TLB();
 	heap->end_address = heap->start_address + new_size;
 	return new_size;
 }

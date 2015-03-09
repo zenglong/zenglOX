@@ -17,8 +17,6 @@
 extern ZLOX_TASK * input_focus_task;
 extern ZLOX_BOOL ps2_first_port_status;
 
-ZLOX_BOOL fire_key_interrupt = ZLOX_FALSE;
-
 ZLOX_VOID zlox_setleds();
 
 ZLOX_UINT8 led_status = 0;
@@ -142,9 +140,6 @@ static ZLOX_VOID zlox_keyboard_callback(/*ZLOX_ISR_REGISTERS * regs*/)
 	ZLOX_UINT32 key_ascii = 0;	
 	ZLOX_UINT32 key_code = 0;
 	ZLOX_UINT32 scanMaxNum = sizeof(scanToAscii_table) / (8 * 4);
-	
-	//if(!fire_key_interrupt)
-		//fire_key_interrupt = ZLOX_TRUE;
 
 	if(press_key == 0xE0)
 	{
@@ -264,6 +259,10 @@ static ZLOX_VOID zlox_keyboard_callback(/*ZLOX_ISR_REGISTERS * regs*/)
 			ascii_msg.keyboard.ascii = key_ascii;
 			//zlox_send_tskmsg(input_focus_task,&ascii_msg);
 			zlox_update_for_mykbd(&ascii_msg);
+		}
+		else if(key_ascii == 0x0F00) // shift + tab
+		{
+			zlox_shift_tab_window();
 		}
 		else
 		{

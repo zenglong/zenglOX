@@ -929,6 +929,43 @@ ZLOX_SINT32 zlox_cmd_window_clear()
 	return 0;
 }
 
+ZLOX_SINT32 zlox_shift_tab_window()
+{
+	ZLOX_MY_WINDOW * stab_win = mywin_list_header->next;
+	if(my_drag_win != ZLOX_NULL)
+	{
+		return -1;
+	}
+	if(stab_win != ZLOX_NULL && stab_win != mywin_list_end)
+	{
+		if(stab_win != mywin_list_kbd_input)
+			mywin_list_kbd_input = stab_win;
+		ZLOX_MY_WINDOW * lastwin = mywin_list_end;
+		stab_win->prev->next = stab_win->next;
+		stab_win->next->prev = stab_win->prev;
+		lastwin->next = stab_win;
+		stab_win->prev = lastwin;
+		stab_win->next = ZLOX_NULL;
+		stab_win->need_update = ZLOX_FALSE;
+		zlox_draw_my_window(stab_win, ZLOX_NULL, ZLOX_NULL);
+		lastwin = mywin_list_end = stab_win;
+		ZLOX_MY_RECT rect, mouse_tmp_rect, intersect_rect;
+		mouse_tmp_rect.x = my_mouse_x;
+		mouse_tmp_rect.y = my_mouse_y;
+		mouse_tmp_rect.width = my_mouse_w;
+		mouse_tmp_rect.height = my_mouse_h;
+		rect.x = stab_win->x;
+		rect.y = stab_win->y;
+		rect.width = stab_win->width;
+		rect.height = stab_win->height;
+		if(zlox_detect_intersect_rect(&rect, &mouse_tmp_rect, &intersect_rect) == ZLOX_TRUE)
+		{
+			zlox_draw_my_mouse(&intersect_rect);
+		}
+	}
+	return 0 ;
+}
+
 static ZLOX_SINT32 zlox_draw_my_window(ZLOX_MY_WINDOW * my_window, 
 		ZLOX_BOOL * need_update_mouse,ZLOX_MY_RECT * mouse_update_rect)
 {

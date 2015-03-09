@@ -53,6 +53,7 @@ ZLOX_VOID zlox_memset(ZLOX_UINT8 *dest, ZLOX_UINT8 val, ZLOX_UINT32 len);
 // Compare two strings. return 0 if they are equal or 1 otherwise.
 ZLOX_SINT32 zlox_strcmp(ZLOX_CHAR * str1, ZLOX_CHAR * str2);
 ZLOX_SINT32 zlox_strcmpn(ZLOX_CHAR * s1, ZLOX_CHAR * s2, ZLOX_SINT32 n);
+ZLOX_SINT32 zlox_memcmp(ZLOX_UINT8 * s1, ZLOX_UINT8 * s2, ZLOX_UINT32 n);
 // Copy the NULL-terminated string src into dest, and
 // return dest.
 ZLOX_CHAR * zlox_strcpy(ZLOX_CHAR * dest, const ZLOX_CHAR * src);

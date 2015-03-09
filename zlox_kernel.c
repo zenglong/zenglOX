@@ -98,7 +98,7 @@ ZLOX_SINT32 zlox_kernel_main(ZLOX_MULTIBOOT * mboot_ptr, ZLOX_UINT32 initial_sta
 	// 初始化系统调用
 	zlox_initialise_syscalls();
 
-	if(zlox_ps2_init(ZLOX_FALSE) == ZLOX_TRUE)
+	if(zlox_ps2_init() == ZLOX_TRUE)
 	{
 		zlox_syscall_monitor_write("PS2 Controller is init now!\n");
 		if(zlox_initKeyboard() == ZLOX_TRUE)
@@ -109,7 +109,6 @@ ZLOX_SINT32 zlox_kernel_main(ZLOX_MULTIBOOT * mboot_ptr, ZLOX_UINT32 initial_sta
 		}
 		zlox_mouse_install();
 		zlox_syscall_monitor_write("mouse is install now!\n");
-		//zlox_test_ps2_keyboard();
 	}
 
 	zlox_init_ata();

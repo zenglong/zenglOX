@@ -179,6 +179,19 @@ ZLOX_SINT32 zlox_strcmpn(ZLOX_CHAR * s1, ZLOX_CHAR * s2, ZLOX_SINT32 n)
 	return(n<0 ? 0 : *s1 - *--s2);
 }
 
+ZLOX_SINT32 zlox_memcmp(ZLOX_UINT8 * s1, ZLOX_UINT8 * s2, ZLOX_UINT32 n)
+{
+	ZLOX_UINT8 u1, u2;
+	for ( ; n-- ; s1++, s2++) {
+		u1 = * s1;
+		u2 = * s2;
+		if (u1 != u2) {
+			return (u1-u2);
+		}
+	}
+	return 0;
+}
+
 // Copy the NULL-terminated string src into dest, and
 // return dest.
 ZLOX_CHAR * zlox_strcpy(ZLOX_CHAR * dest, const ZLOX_CHAR * src)

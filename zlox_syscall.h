@@ -9,7 +9,7 @@
 
 #define ZLOX_MAJOR_VERSION 3 //zenglOX 主版本号
 #define ZLOX_MINOR_VERSION 0 //zenglOX 子版本号
-#define ZLOX_REVISION 1      //zenglOX 修正版本号
+#define ZLOX_REVISION 2      //zenglOX 修正版本号
 
 typedef enum _ZLOX_SYSCALL_ENUM{
 	ZLOX_SYSCALL_MONITOR_WRITE,

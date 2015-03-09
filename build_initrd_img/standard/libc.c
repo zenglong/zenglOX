@@ -1128,3 +1128,8 @@ void exit(int code)
 	syscall_exit(code);
 }
 
+int abs(int j)
+{
+	return (j < 0 ? -j : j);
+}
+

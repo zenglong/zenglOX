@@ -5,6 +5,7 @@
 #include "zlox_task.h"
 #include "zlox_my_windows.h"
 #include "zlox_ata.h"
+#include "zlox_monitor.h"
 
 #define MOUSE_PORT   0x60
 #define MOUSE_STATUS 0x64
@@ -127,22 +128,10 @@ ZLOX_UINT8 zlox_mouse_read()
 
 ZLOX_VOID zlox_mouse_install()
 {
-	ZLOX_UINT8 _status;	//unsigned char
+	// Flush The Output Buffer 
+	while(zlox_inb(0x64) & 0x1)
+		zlox_inb(0x60);
 
-	//Enable the auxiliary mouse device
-	zlox_mouse_wait(1);
-	zlox_outb(0x64, 0xA8);
- 
-	//Enable the interrupts
-	zlox_mouse_wait(1);
-	zlox_outb(0x64, 0x20);
-	zlox_mouse_wait(0);
-	_status=(zlox_inb(0x60) | 2);
-	zlox_mouse_wait(1);
-	zlox_outb(0x64, 0x60);
-	zlox_mouse_wait(1);
-	zlox_outb(0x60, _status);
- 
 	//Tell the mouse to use default settings
 	zlox_mouse_write(0xF6);
 	zlox_mouse_read();	//Acknowledge

@@ -30,6 +30,8 @@ ZLOX_VOID _zlox_idle_cpu();
 // defined in zlox_syscall.c
 ZLOX_SINT32 zlox_overflow_test();
 
+ZLOX_BOOL syscall_in_flag = ZLOX_FALSE;
+
 ZLOX_DEFN_SYSCALL1(monitor_write, ZLOX_SYSCALL_MONITOR_WRITE, const char*);
 ZLOX_DEFN_SYSCALL1(monitor_write_hex, ZLOX_SYSCALL_MONITOR_WRITE_HEX, ZLOX_UINT32);
 ZLOX_DEFN_SYSCALL1(monitor_write_dec, ZLOX_SYSCALL_MONITOR_WRITE_DEC, ZLOX_UINT32);
@@ -206,6 +208,8 @@ static ZLOX_VOID zlox_syscall_handler(ZLOX_ISR_REGISTERS * regs)
 	// use all the parameters it wants, and we can pop them all back off afterwards.
 	ZLOX_SINT32 ret;
 
+	syscall_in_flag = ZLOX_TRUE;
+
 	asm volatile (" \
 	  push %1; \
 	  push %2; \
@@ -219,6 +223,8 @@ static ZLOX_VOID zlox_syscall_handler(ZLOX_ISR_REGISTERS * regs)
 	  pop %%ebx; \
 	  pop %%ebx; \
 	" : "=a" (ret) : "D" (regs->edi), "S" (regs->esi), "d" (regs->edx), "c" (regs->ecx), "b" (regs->ebx), "0" (location));
+
+	syscall_in_flag = ZLOX_FALSE;
 
 	if(regs->eax == ZLOX_SYSCALL_EXECVE && 
 		((ret != -1) && ((ZLOX_UINT32)ret > 0))

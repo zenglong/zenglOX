@@ -10,6 +10,8 @@
 
 截图如下(如果下面的图片无法显示的话, 可以直接查看源码根目录下的screenshot目录, 所有截图都放在该目录内):
 
+![screenshot/v302_1.jpg](https://github.com/zenglong/zenglOX/raw/master/screenshot/v302_1.jpg)
+
 ![screenshot/v300_1.jpg](https://github.com/zenglong/zenglOX/raw/master/screenshot/v300_1.jpg)
 
 ![screenshot/v300_2.jpg](https://github.com/zenglong/zenglOX/raw/master/screenshot/v300_2.jpg)
@@ -19,7 +21,9 @@
 ![screenshot/v300_4.jpg](https://github.com/zenglong/zenglOX/raw/master/screenshot/v300_4.jpg)
 
 ```
-前两幅图是VirtualBox与VMware下的截图，第三幅图是在笔记本上，通过U盘启动时的截图，第四幅图是在作者的台式机上,
+第一幅图片是v3.0.2版本中的截图。
+
+第二幅与第三幅图片是VirtualBox与VMware下的截图，第四幅图是在笔记本上，通过U盘启动时的截图，第五幅图是在作者的台式机上,
 通过U盘启动时的截图。(将Grub2写入U盘的方法, 在下面会进行介绍, 在作者的笔记本上, 鼠标键盘都可以正常使用, 但是在
 作者的台式机上, 只有键盘可以正常工作, 鼠标估计是走的USB通道, 没有通过PS/2的second port对应的IRQ来发送中断信号)
 

@@ -129,6 +129,7 @@ int main(VOID * task, int argc, char * argv[])
 			//syscall_dispatch_win_msg(&msg, hterm);
 			//break;
 		case MT_TASK_FINISH:
+			syscall_finish_all_child(msg.finish_task.exit_task);
 			syscall_finish(msg.finish_task.exit_task);
 			return msg.finish_task.exit_code;
 			break;

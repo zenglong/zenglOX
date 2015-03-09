@@ -4,7 +4,7 @@
 #include "syscall.h"
 #include "task.h"
 
-#define PROGRAM_COPY_TOTAL_NUM 6
+#define PROGRAM_COPY_TOTAL_NUM 10
 
 char * program_copy_cmd[PROGRAM_COPY_TOTAL_NUM] = {
 	"file iso/EXTRA/EE.;1 hd/bin/ee",
@@ -12,7 +12,11 @@ char * program_copy_cmd[PROGRAM_COPY_TOTAL_NUM] = {
 	"file iso/EXTRA/ZENGL.;1 hd/bin/zengl",
 	"file iso/GAME/21.ZL;1 hd/game/21.zl",
 	"file iso/GAME/21_DEF.ZL;1 hd/game/21_def.zl",
-	"file iso/GAME/21_FUN.ZL;1 hd/game/21_fun.zl"
+	"file iso/GAME/21_FUN.ZL;1 hd/game/21_fun.zl",
+	"file iso/IMG/R.PNG;1 hd/img/r.png",
+	"file iso/IMG/H.PNG;1 hd/img/h.png",
+	"file iso/IMG/S.PNG;1 hd/img/s.png",
+	"file iso/EXTRA/SHOWPNG.;1 hd/bin/showpng",
 };
 
 int main(VOID * task, int argc, char * argv[])
