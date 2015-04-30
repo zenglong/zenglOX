@@ -72,7 +72,10 @@ zengl脚本程式, 以及libc.so动态库文件进行更新, 因为libc.so库文
 
 首先参考官网v0.0.1里的文章搭建交叉编译环境(请使用slackware或ubuntu之类的linux系统, bochs可以安装, 也可以不安装, 因为v3.0.0版本使用的是Qemu来开发的, 
 如果安装bochs的话, 还需要按照v2.0.0版本的要求加入e1000网卡的支持, 以及按照v2.4.0版本的要求, 修改bochs-2.6里的pci_ide.cc文件, 启动startBochs时,
-还需要root权限)
+还需要root权限
+
+从zenglOX v3.1.0版本开始，不再提供bochs相关的启动脚本和相关配置文件，因为，v3.1.0及后续版本已经不适合在bochs下进行开发了，
+zenglOX v3.1.0版本只提供qemu的启动脚本和qemu相关的虚拟磁盘。
 
 首先从sourceforge网盘的v3.0.0文件夹里下载qemu-2.2.0.tar.bz2 , 假设我们下载到了Downloads目录中:
 
@@ -128,9 +131,90 @@ ERROR: glib-2.12 required to compile QEMU 的错误
 
 以上是作者安装qemu时出现的一些依赖问题, 如果读者有别的依赖没安装的话, 当出现错误时, 请根据错误信息在网络中搜索解决方案. 
 
-安装完依赖项后, 就可以进行qemu的配置和编译了:
+安装完依赖项后, 对于zenglOX v3.1.0及之后的版本，由于引入了sound blaster 16之类的声卡的驱动，并且，声音输出在qemu下执行时，它的I/O线程
+会很繁忙，以至于在Ubuntu系统下，如果不开启kvm硬件加速的话，qemu的I/O线程会严重阻塞VCPU线程，从而导致qemu的CPU指令无法正常执行，也就会让
+qemu里的音乐播放，图形界面渲染，鼠标操作等一系列功能都无法正常运作(主要是在播放音乐过程中)。
+因此，对于zenglOX v3.1.0及之后的版本就必须开启KVM硬件加速(至少在ubuntu的系统下是这样的)。
+
+要开启KVM(也就是处理器的虚拟化技术), 
+读者可以参考 http://www.linuxfromscratch.org/blfs/view/svn/postlfs/qemu.html 该链接里的内容。
+
+该链接中，提示读者可以先用如下命令，来查看处理器是否支持虚拟化技术:
+
+egrep '^flags.*(vmx|svm)' /proc/cpuinfo
+
+如果什么输出信息都没有，那么很遗憾，你的处理器不支持虚拟话技术(或者是: 你的Linux是安装在VirtualBox之类的虚拟机中的，VirtualBox不会将
+处理器的虚拟化功能，传递给运行在其中的系统)，
+如果该命令产生了任何输出信息的话，就说明你的处理器支持虚拟化技术，接着就可以进入BIOS中查看该虚拟化技术是否开启了，如果没开启就手动开启。
+
+作者的台式机用的是技嘉的主板(型号GA-F2A85XM-DS2)，在该主板的BIOS里的M.I.T.页面下，
+有一个Advanced Frequency Settings项目，进入该项目后，
+再进入Advanced CPU Core Features项目，该项目里，有一个SVM Mode选项，该选项默认是Enabled开启状态，因此，作者的技嘉主板
+默认就开启了CPU的虚拟化技术。作者的华硕笔记本默认也是开启了处理器的虚拟化技术的。对于其他主板，则需要查看主板的说明书，或者网上搜索。
+
+如果CPU不支持虚拟化技术的话，就只能将生成的iso镜像放置到VirtualBox或VMware下进行测试了.
+
+在开启了CPU的虚拟化功能后，还需要查看Linux内核是否将KVM编译为了内建模式，或者将KVM编译为了模块模式，在上面那个链接里
+已经写的比较详细了，这里就不多说了，在ubuntu系统下(作者所使用的是ubuntu 12.04的系统)，KVM默认就被编译为了模块模式，
+读者可以使用 modinfo kvm-intel 和 modinfo kvm-amd 命令来查看这两个模块的相关信息，对于Intel处理器，需要使用kvm-intel模块,
+对于AMD处理器，则需要使用kvm-amd模块。要加载kvm-amd模块，可以使用sudo modprobe kvm-amd命令，要加载kvm-intel模块，
+则可以使用sudo modprobe kvm-intel命令，如果你的处理器不支持某个模块的话，
+modprobe命令执行时，就会抛出Operation not supported的信息，并且不会去加载该模块，因此，
+你不需要担心，因加载到了错误的模块而影响到系统的正常运行。
+
+如果想让kvm-intel或kvm-amd模块在启动时，自动被加载的话，在ubuntu系统下，可以在/etc/modules文件中加入对应的模块名.
+
+要查看模块是否被成功加载了，可以通过 lsmod | grep kvm 命令来查看。如果显示出了kvm的相关信息，那么就说明对应的模块被加载成功了。
+
+在kvm模块被成功加载后，qemu不需要什么额外的配置(qemu本身就支持kvm)，只需在qemu的启动命令行参数中，加入-enable-kvm参数即可，
+从zenglOX v3.1.0版本开始，作者默认就在startQemu的脚本文件中，加入了-enable-kvm的参数。如果你的Linux系统环境下，不需要开启kvm
+硬件加速，qemu也能正常播放音乐的话，可以将该参数去掉。不过如果能开启kvm硬件加速的话，最好还是开启，因为它可以有效的提高qemu的
+执行速度。
+
+此外，从zenglOX v3.1.0版本开始，startQemu脚本文件的开头，加入了一条export QEMU_AUDIO_DRV=alsa命令，这条命令用于强制要求
+qemu使用ALSA音频驱动来播放声音。
+
+要让qemu播放出声音，首先需要确保qemu所在的Linux系统能发出声音，如果Linux系统都不能发出声音的话，运行在Linux系统中的qemu就
+更不可能发出声音了。
+
+作者的台式机安装的是ubuntu 12.04的Linux发行版, 一开始该系统是没有声音的，alsamixer命令执行后，显示出"
+This sound device does not have any controls"的信息，根本没有音量可供调节，因此，应该是alsa音频驱动的问题。
+作者就参考 http://blog.csdn.net/rainysia/article/details/12907443 这篇文章将ALSA音频驱动重新安装了一下
+(作者也是realtek alc887的声卡)，同时参考 http://blog.csdn.net/wangzhilife/article/details/7881722 和
+http://blog.163.com/seven_7_one/blog/static/162606412201185114049121 这两个链接里的文章，将ALSA相关的
+alsa-lib及alsa-utils都安装了一遍(安装时，要注意alsa-driver，alsa-lib及alsa-utils的版本号要一致)，
+重启后，alsamixer就可以正常调节音量了, ubuntu也就可以正常播放声音了。
+
+作者的笔记本上，装的也是ubuntu 12.04的系统，但是，默认就可以播放声音，因为，现在的Linux内核中，默认就集成了alsa的音频驱动，
+作者笔记本上的声卡比较旧，内核集成的alsa驱动可以识别出来, 不像作者台式机上的声卡, 内核集成的alsa驱动无法识别，就只有到
+alsa的官方网站(http://www.alsa-project.org/), 下载新版的驱动来安装了。当然，你也可以将ubuntu 12.04升级到14.04或者
+15.04的新版本，让新版本的内核中集成的alsa驱动来识别。不过，作者不喜欢升级，一方面要等满久，另一方面，新版本是否稳定也不清楚。
+
+对于2.6.x的linux内核，你可以从alsa官网的old drivers (alsa-driver)的ftp站点(当前地址为
+ftp://ftp.alsa-project.org/pub/driver/)，下载到1.0.23，1.0.24或者1.0.25的alsa-driver来进行编译安装，
+对于3.x.x或者更高版本的Linux系统，alsa驱动已经被彻底整合进Linux的内核源码中了，
+alsa官方已经不再提供单独的alsa-driver的下载地址了。
+
+在系统加入了ALSA音频驱动以及相关的alsa-lib, alsa-utils的情况下，如果系统能正常播放声音，那么，接下来，就只需在qemu的配置中
+加入alsa的支持即可, 对于zenglOX v3.1.0之前的版本，你可以使用如下配置: 
 
 zengl@zengl.com:~/Downloads/qemu-build$ ../qemu-2.2.0/configure --target-list=i386-softmmu --enable-debug --disable-pie
+
+对于zenglOX v3.1.0之后的版本，就需要使用如下所示的配置:
+
+zengl@zengl.com:~/Downloads/qemu-build$ ../qemu-2.2.0/configure --target-list=i386-softmmu --enable-debug --disable-pie --enable-sdl --audio-drv-list='oss alsa sdl'
+
+增加了--enable-sdl和--audio-drv-list='oss alsa sdl'两个配置参数，--enable-sdl表示采用SDL来进行渲染，有的linux系统中会
+使用gtk来渲染，gtk渲染下，播放声音时，会阻塞gtk的渲染工作。在startQemu的启动脚本中，也加入了一条-display sdl的启动参数，表示
+强制使用SDL引擎来进行渲染，--audio-drv-list='oss alsa sdl'表示qemu将支持oss，alsa及sdl的音频驱动，这样在startQemu脚本文件里
+加入export QEMU_AUDIO_DRV=alsa命令后，qemu就会通过alsa音频驱动来播放声音了，如果没有--audio-drv-list='oss alsa sdl'这条
+配置信息的话，那么qemu就将只支持原始的oss音频驱动，当export QEMU_AUDIO_DRV=alsa命令执行后，再启动qemu时，会提示
+audio: Unknown audio driver `alsa'的信息，这样qemu就无法通过alsa音频驱动来播放声音了，因此，必须加入
+--audio-drv-list='oss alsa sdl'这条配置信息。
+
+在使用configure对qemu配置完后，就可以通过make和make install命令来编译安装qemu了:
+
+zengl@zengl.com:~/Downloads/qemu-build$ ../qemu-2.2.0/configure --target-list=i386-softmmu --enable-debug --disable-pie --enable-sdl --audio-drv-list='oss alsa sdl'
 zengl@zengl.com:~/Downloads/qemu-build$ make
 zengl@zengl.com:~/Downloads/qemu-build$ sudo make install
 zengl@zengl.com:~/Downloads/qemu-build$ qemu-system-i386 --version
@@ -140,6 +224,7 @@ zengl@zengl.com:~/Downloads/qemu-build$
 上面configure配置时的--target-list=i386-softmmu是让make编译时, 只生成x86的qemu模拟器, 如果不指定该参数的话, 就会将arm之类的模拟器也生成一遍, 
 那就会编译很久了, 而且我们也不需要arm之类的测试平台. --enable-debug参数让你可以调试qemu源代码(它会保留调试所需的符号信息), --disable-pie参数
 也是用于调试的, 它会让生成的qemu的指令代码不是与位置无关的, 只有这样才能正常调试qemu的源代码, 没有这个参数的话, gdb调试qemu源代码时会出现问题.
+--enable-sdl与--audio-drv-list配置参数的含义，在上面已经解释过了，这里就不多说了。
 
 在configure配置生成Makefile文件后, 就可以通过make命令来进行编译了, 编译完后, 可以通过sudo make install来安装qemu到系统中, qemu默认会安装到
 /usr/local/bin位置处, 安装时需要root权限, 因此就用到了sudo命令, 安装完后, 可以通过qemu-system-i386 --version来查看qemu的版本号信息, 如果版本

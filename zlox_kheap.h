@@ -60,6 +60,8 @@ ZLOX_VOID zlox_free(ZLOX_VOID *p, ZLOX_HEAP *heap);
 **/
 ZLOX_UINT32 zlox_kmalloc_int(ZLOX_UINT32 sz, ZLOX_SINT32 align, ZLOX_UINT32 *phys);
 
+ZLOX_UINT32 zlox_kmalloc_128k_align(ZLOX_UINT32 sz, ZLOX_UINT32 *phys);
+
 /**
    Allocate a chunk of memory, sz in size. The chunk must be
    page aligned.

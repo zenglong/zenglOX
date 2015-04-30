@@ -19,6 +19,7 @@
 #include "zlox_ps2.h"
 #include "zlox_my_windows.h"
 #include "zlox_mouse.h"
+#include "zlox_audio.h"
 
 static ZLOX_VOID zlox_syscall_handler(ZLOX_ISR_REGISTERS * regs);
 // _zlox_reboot() and _zlox_shutdown() is in zlox_shutdown.s
@@ -106,6 +107,10 @@ ZLOX_DEFN_SYSCALL2(cmd_window_set_cursor, ZLOX_SYSCALL_CMD_WINDOW_SET_CURSOR, ZL
 ZLOX_DEFN_SYSCALL1(cmd_window_set_single, ZLOX_SYSCALL_CMD_WINDOW_SET_SINGLE, ZLOX_BOOL);
 ZLOX_DEFN_SYSCALL0(cmd_window_clear, ZLOX_SYSCALL_CMD_WINDOW_CLEAR);
 ZLOX_DEFN_SYSCALL3(exit_do, ZLOX_SYSCALL_EXIT_DO, void *, ZLOX_SINT32, ZLOX_BOOL);
+ZLOX_DEFN_SYSCALL2(audio_set_databuf, ZLOX_SYSCALL_AUDIO_SET_DATABUF, ZLOX_UINT8 *, ZLOX_SINT32);
+ZLOX_DEFN_SYSCALL5(audio_set_args, ZLOX_SYSCALL_AUDIO_SET_ARGS, ZLOX_UINT32, ZLOX_UINT32, ZLOX_UINT32, ZLOX_UINT32, void *);
+ZLOX_DEFN_SYSCALL0(audio_play, ZLOX_SYSCALL_AUDIO_PLAY);
+ZLOX_DEFN_SYSCALL2(audio_ctrl, ZLOX_SYSCALL_AUDIO_CTRL, ZLOX_UINT32, void *);
 
 static ZLOX_VOID * syscalls[ZLOX_SYSCALL_NUMBER] =
 {
@@ -183,6 +188,10 @@ static ZLOX_VOID * syscalls[ZLOX_SYSCALL_NUMBER] =
 	&zlox_cmd_window_set_single,
 	&zlox_cmd_window_clear,
 	&zlox_exit_do,
+	&zlox_audio_set_databuf,
+	&zlox_audio_set_args,
+	&zlox_audio_play,
+	&zlox_audio_ctrl,
 };
 
 ZLOX_UINT32 num_syscalls = ZLOX_SYSCALL_NUMBER;

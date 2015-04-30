@@ -20,6 +20,7 @@
 #include "zlox_mouse.h"
 #include "zlox_vga.h"
 #include "zlox_my_windows.h"
+#include "zlox_audio.h"
 
 ZLOX_VOID zlox_test_ps2_keyboard();
 
@@ -58,6 +59,10 @@ ZLOX_SINT32 zlox_kernel_main(ZLOX_MULTIBOOT * mboot_ptr, ZLOX_UINT32 initial_sta
 
 	lfb_vid_memory = (ZLOX_UINT8 *)((ZLOX_MULTIBOOT_VBE_INFO *)(mboot_ptr->vbe_mode_info))->physbase;
 
+	ZLOX_SINT32 audio_reset = zlox_audio_reset();
+	if(audio_reset == 0)
+		zlox_audio_alloc_res_before_init();
+
 	// 开启分页,并创建堆
 	zlox_init_paging_start((ZLOX_UINT32)(mboot_ptr->mem_lower + mboot_ptr->mem_upper));
 
@@ -81,6 +86,9 @@ ZLOX_SINT32 zlox_kernel_main(ZLOX_MULTIBOOT * mboot_ptr, ZLOX_UINT32 initial_sta
 		zlox_monitor_write("network is init now!\n");
 
 	zlox_init_paging_end();
+
+	if(audio_reset == 0)
+		zlox_audio_init();
 
 	/*for (ZLOX_UINT16 y = 0; y < 768; y++) {
 		for (ZLOX_UINT16 x = 0; x < 1024; x++) {

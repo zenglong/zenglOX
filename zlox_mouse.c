@@ -23,6 +23,13 @@ ZLOX_UINT8 mouse_byte[3]; //signed char
 
 ZLOX_FLOAT mouse_scale_factor = 1.0;
 
+static ZLOX_VOID zlox_mouse_clear()
+{
+	mouse_cycle=0;
+	mouse_byte[0] = mouse_byte[1] = mouse_byte[2] = 0;
+	return;
+}
+
 //Mouse functions
 ZLOX_VOID zlox_mouse_handler(/*ZLOX_ISR_REGISTERS * regs*/)
 {
@@ -34,7 +41,11 @@ ZLOX_VOID zlox_mouse_handler(/*ZLOX_ISR_REGISTERS * regs*/)
 			{
 			case 0:
 				mouse_byte[0] = mouse_in;
-				if (!(mouse_in & MOUSE_V_BIT)) return;
+				if (!(mouse_in & MOUSE_V_BIT))
+				{
+					zlox_mouse_clear();
+					return;
+				}
 				mouse_cycle++;
 				break;
 			case 1:
@@ -46,6 +57,7 @@ ZLOX_VOID zlox_mouse_handler(/*ZLOX_ISR_REGISTERS * regs*/)
 				/* We now have a full mouse packet ready to use */
 				if (mouse_byte[0] & 0x80 || mouse_byte[0] & 0x40) {
 					/* x/y overflow? bad packet! */
+					zlox_mouse_clear();
 					break;
 				}
 				ZLOX_TASK_MSG msg = {0};
@@ -70,9 +82,10 @@ ZLOX_VOID zlox_mouse_handler(/*ZLOX_ISR_REGISTERS * regs*/)
 				{
 					zlox_update_for_mymouse(&msg);
 				}
-				mouse_cycle = 0;
+				zlox_mouse_clear();
 				break;
 			default:
+				zlox_mouse_clear();
 				break;
 			}
 		}
@@ -139,6 +152,8 @@ ZLOX_VOID zlox_mouse_install()
 	//Enable Packet Streaming
 	zlox_mouse_write(0xF4);
 	zlox_mouse_read();	//Acknowledge
+
+	zlox_mouse_clear();
 
 	//Setup the mouse handler
 	zlox_register_interrupt_callback(ZLOX_IRQ12, zlox_mouse_handler);

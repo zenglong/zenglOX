@@ -5,6 +5,7 @@
 #include "zlox_kheap.h"
 #include "zlox_descriptor_tables.h"
 #include "zlox_network.h"
+#include "zlox_audio.h"
 
 // The currently running task.
 volatile ZLOX_TASK * current_task = 0;
@@ -590,6 +591,10 @@ ZLOX_SINT32 zlox_finish(ZLOX_TASK * task)
 	if(next_task != 0 && next_task->sign == ZLOX_TSK_SIGN)
 		next_task->prev = prev_task;
 	zlox_push_pid(task->id);
+	if(task == (ZLOX_TASK *)zlox_audio_get_task())
+	{
+		zlox_audio_ctrl(ZLOX_ACT_EXIT, ZLOX_NULL);
+	}
 	zlox_memset((ZLOX_UINT8 *)task,0,sizeof(ZLOX_TASK));
 	zlox_kfree(task);
 	task_count--;

@@ -1,4 +1,4 @@
-#use gdb and bochs to debug zenglOX
+#use gdb and qemu to debug zenglOX
 gdb -q zenglOX.bin
 (gdb) break *_zlox_boot_start
 (gdb) target remote localhost:1234

@@ -51,6 +51,28 @@ ZLOX_UINT32 zlox_kmalloc_int(ZLOX_UINT32 sz, ZLOX_SINT32 align, ZLOX_UINT32 *phy
 	}
 }
 
+ZLOX_UINT32 zlox_kmalloc_128k_align(ZLOX_UINT32 sz, ZLOX_UINT32 *phys)
+{
+	ZLOX_UINT32 tmp;
+	if(kheap == 0)
+	{
+		if((placement_address & 0x0001FFFF))
+		{
+			// Align the placement address;
+			placement_address &= 0xFFFE0000;
+			placement_address += 0x20000;
+		}
+		if (phys)
+		{
+			*phys = placement_address;
+		}
+		tmp = placement_address;
+		placement_address += sz;
+		return tmp;
+	}
+	return 0;
+}
+
 ZLOX_VOID zlox_kfree(ZLOX_VOID *p)
 {
 	zlox_free(p, kheap);
