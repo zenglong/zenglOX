@@ -13,7 +13,8 @@ typedef struct{
 	int cur;
 }ReadStr_Type; //字符串动态数组，用于存放用户从终端输入的信息
 
-FILE * debuglog;
+FILE * debuglog = NULL;
+BOOL need_debuglog = FALSE;
 ReadStr_Type ReadStr;
 int random_seed=0;
 
@@ -606,7 +607,8 @@ ZL_EXP_INT main_userdef_info(ZL_EXP_CHAR * infoStrPtr, ZL_EXP_INT infoStrCount,Z
 {
 	UNUSED(infoStrCount);
 	UNUSED(VM_ARG);
-	fprintf(debuglog,"%s",infoStrPtr);
+	if(need_debuglog && debuglog != NULL)
+		fprintf(debuglog,"%s",infoStrPtr);
 	return 0;
 }
 
@@ -622,7 +624,8 @@ ZL_EXP_INT main_userdef_run_info(ZL_EXP_CHAR * infoStrPtr, ZL_EXP_INT infoStrCou
 {
 	UNUSED(infoStrCount);
 	UNUSED(VM_ARG);
-	fprintf(debuglog,"%s",infoStrPtr);
+	if(need_debuglog && debuglog != NULL)
+		fprintf(debuglog,"%s",infoStrPtr);
 	return 0;
 }
 
@@ -857,6 +860,9 @@ ZL_EXP_VOID main_builtin_load_script(ZL_EXP_VOID * VM_ARG,ZL_EXP_INT argcount)
 					  main_userdef_module_init,
 					  ZL_EXP_CP_AF_IN_DEBUG_MODE | 
 					  ZL_EXP_CP_AF_OUTPUT_DEBUG_INFO};
+	if(!need_debuglog)
+		vm_main_args.flags = ZL_EXP_CP_AF_IN_DEBUG_MODE;
+
 	zenglApi_GetFunArg(VM_ARG,1,&arg); //获取第一个参数为脚本名
 	if(arg.type != ZL_EXP_FAT_STR)
 		zenglApi_Exit(VM_ARG,"bltLoadScript函数第一个参数必须字符串，代表要加载的脚本文件名");
@@ -1119,19 +1125,32 @@ int main(VOID * task, int argc, char * argv[])
 
 	if(argc < 2)
 	{
-		printf("usage: %s <script_filename> \n",argv[0]);
+		printf("usage: %s [-v][<script_filename> [-l][-d]]\n",argv[0]);
 		exit(-1);
 	}
-	else if(argc == 2 && (strcmp(argv[1], "-v")==0))
+	else if(argc == 2)
 	{
-		printf("zengl lib version is v%d.%d.%d", 
+		if(strcmp(argv[1], "-v")==0)
+		{
+			printf("zengl lib version is v%d.%d.%d", 
 				ZL_EXP_MAJOR_VERSION, ZL_EXP_MINOR_VERSION, ZL_EXP_REVISION);
-		return 0;
+			return 0;
+		}
 	}
+	else if((strcmp(argv[2],"-l") == 0) || 
+		 (strcmp(argv[2],"-d") == 0))
+		need_debuglog = TRUE;
 
-	debuglog = fopen("hd/zl.log", "w");
+	ZENGL_EXPORT_VM_MAIN_ARG_FLAGS flags = 0;
+	if(need_debuglog)
+	{
+		debuglog = fopen("hd/zl.log", "w");
+		flags = (ZL_EXP_CP_AF_IN_DEBUG_MODE | ZL_EXP_CP_AF_OUTPUT_DEBUG_INFO);
+	}
+	else
+		flags = ZL_EXP_CP_AF_IN_DEBUG_MODE;
 	VM = zenglApi_Open();
-	zenglApi_SetFlags(VM,(ZENGL_EXPORT_VM_MAIN_ARG_FLAGS)(ZL_EXP_CP_AF_IN_DEBUG_MODE | ZL_EXP_CP_AF_OUTPUT_DEBUG_INFO));
+	zenglApi_SetFlags(VM, flags);
 	zenglApi_SetHandle(VM,ZL_EXP_VFLAG_HANDLE_COMPILE_INFO,main_userdef_info);
 	zenglApi_SetHandle(VM,ZL_EXP_VFLAG_HANDLE_RUN_INFO,main_userdef_run_info);
 	zenglApi_SetHandle(VM,ZL_EXP_VFLAG_HANDLE_RUN_PRINT,main_userdef_run_print);
@@ -1144,8 +1163,9 @@ int main(VOID * task, int argc, char * argv[])
 	if(zenglApi_Run(VM,argv[1]) == -1) //编译执行zengl脚本
 		main_exit(VM,"compile and run <%s> failed：%s\n",argv[1],zenglApi_GetErrorString(VM));
 	zenglApi_Close(VM);
-	fclose(debuglog);
-	
+	if(debuglog != NULL)
+		fclose(debuglog);
+
 	return 0;
 }
 

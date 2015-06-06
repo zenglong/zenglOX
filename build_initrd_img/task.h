@@ -41,6 +41,8 @@ typedef enum _MSG_KB_KEY
 	MKK_PAGE_DOWN_PRESS = 0xE051,
 	MKK_INSERT_PRESS = 0xE052,
 	MKK_DELETE_PRESS = 0xE053,
+	MKK_CTRL_PRESS = 0xFF01,
+	MKK_CTRL_RELEASE = 0xFF02,
 } MSG_KB_KEY;
 
 typedef enum _MSG_KB_TYPE
@@ -128,6 +130,10 @@ struct _TASK
 	TASK * parent; // parent task
 	MY_WINDOW * mywin;
 	MY_WINDOW * cmd_win;
+	BOOL isr_idle;
+	BOOL has_idle_cpu;
+	BOOL fs_lock;
+	BOOL elf_lock;
 };
 
 #endif // _TASK_H_

@@ -140,6 +140,8 @@ UINT8 dhcp_type(ETH_DHCP_PACKET * dhcp)
 int wait_for_reply(TASK * task, TASK_MSG * msg)
 {
 	UINT32 origtick = syscall_timer_get_tick();
+	UINT32 frequency = syscall_timer_get_frequency();
+	UINT32 time_out_ticks = 60 * frequency;
 	ETH_DHCP_PACKET * buf_packet;
 	int ret;
 	while(TRUE)
@@ -149,7 +151,7 @@ int wait_for_reply(TASK * task, TASK_MSG * msg)
 		{
 			syscall_idle_cpu();
 			UINT32 curtick = syscall_timer_get_tick();
-			if((curtick - origtick) > 3000)
+			if((curtick - origtick) > time_out_ticks)
 			{
 				syscall_cmd_window_write("wait for dhcp reply time out curtick:");
 				syscall_cmd_window_write_dec(curtick);

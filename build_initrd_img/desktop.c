@@ -7,11 +7,12 @@
 #include "fs.h"
 
 FLOAT mouse_scale = 1.0;
+BOOL need_exeve = FALSE;
 
 SINT32 desktop_win_callback (TASK_MSG * msg, MY_WINDOW * my_window)
 {
 	FLOAT tmp;
-	char execve[10] = {'t','e','r','m'}; // execve "term" filename must be in stack !
+	//char execve[10] = {'t','e','r','m'}; // execve "term" filename must be in stack !
 	switch(msg->type)
 	{
 	case MT_CREATE_MY_WINDOW:
@@ -108,7 +109,8 @@ SINT32 desktop_win_callback (TASK_MSG * msg, MY_WINDOW * my_window)
 			my_window->update_rect.y = 30;
 			my_window->update_rect.width = 41;
 			my_window->update_rect.height = 41;
-			syscall_execve(execve);
+			need_exeve = TRUE;
+			//syscall_execve(execve);
 		}
 		return 0;
 		break;
@@ -126,7 +128,8 @@ SINT32 desktop_win_callback (TASK_MSG * msg, MY_WINDOW * my_window)
 			return 0;
 			break;
 		case MKK_F2_PRESS:
-			syscall_execve(execve);
+			need_exeve = TRUE;
+			//syscall_execve(execve);
 			return 0;
 			break;
 		case MKK_CURSOR_UP_PRESS:
@@ -166,6 +169,7 @@ int main(VOID * task, int argc, char * argv[])
 	UNUSED(argc);
 	UNUSED(argv);
 
+	char execve[10] = {'t','e','r','m'}; // execve "term" filename must be in stack !
 	TASK * tmp_task = ((TASK *)task)->prev;
 	while(tmp_task != 0)
 	{
@@ -201,6 +205,11 @@ int main(VOID * task, int argc, char * argv[])
 		case MT_CREATE_MY_WINDOW:
 		case MT_MOUSE:
 			syscall_dispatch_win_msg(&msg, hdesktop);
+			if(need_exeve == TRUE)
+			{
+				syscall_execve(execve);
+				need_exeve = FALSE;
+			}
 			break;
 		case MT_KEYBOARD:
 			if(msg.keyboard.type == MKT_KEY)
@@ -212,6 +221,11 @@ int main(VOID * task, int argc, char * argv[])
 				case MKK_CURSOR_UP_PRESS:
 				case MKK_CURSOR_DOWN_PRESS:
 					syscall_dispatch_win_msg(&msg, hdesktop);
+					if(need_exeve == TRUE)
+					{
+						syscall_execve(execve);
+						need_exeve = FALSE;
+					}
 					break;
 				default:
 					break;

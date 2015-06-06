@@ -54,6 +54,14 @@ TriplyBlockAddr对应的逻辑块里可以存储256个DoublyBlock的逻辑块地
 #include "zlox_ata.h"
 #include "zlox_monitor.h"
 #include "zlox_my_windows.h"
+#include "zlox_isr.h"
+
+// zlox_fs.c
+ZLOX_VOID zlox_fs_lock(ZLOX_TASK * task);
+ZLOX_VOID zlox_fs_unlock(ZLOX_TASK * task);
+
+// Defined in zlox_task.c
+extern ZLOX_TASK * current_task;
 
 static ZLOX_FS_NODE * zlox_zenglfs_finddir(ZLOX_FS_NODE *node, ZLOX_CHAR *name);
 
@@ -903,11 +911,14 @@ static ZLOX_UINT32 zlox_zenglfs_read(ZLOX_FS_NODE * node, ZLOX_UINT32 arg_offset
 		}
 		else
 			zlox_ide_ata_access(ZLOX_IDE_ATA_READ, zenglfs_ide_index, lba, 2, (buffer + tmp_off));
+
+		zlox_isr_detect_proc_irq();
 	}
 	if(zenglfs_cache_inode.data.size > size)
 		ret = size;
 	else
 		ret = zenglfs_cache_inode.data.size;
+
 	return ret;
 }
 
@@ -946,6 +957,8 @@ static ZLOX_UINT32 zlox_zenglfs_write(ZLOX_FS_NODE * node, ZLOX_UINT32 arg_offse
 		}
 		else
 			zlox_ide_ata_access(ZLOX_IDE_ATA_WRITE, zenglfs_ide_index, lba, 2, (buffer + tmp_off));
+
+		zlox_isr_detect_proc_irq();
 	}
 	//if(before_totalblk > zenglfs_cache_inode.data.totalblk)
 	for(i=nwrites;(blk =zlox_zenglfs_free_inode_blk(i));i++)
@@ -954,6 +967,7 @@ static ZLOX_UINT32 zlox_zenglfs_write(ZLOX_FS_NODE * node, ZLOX_UINT32 arg_offse
 	zenglfs_cache_inode.data.size = size;
 	zenglfs_cache_inode.isDirty = ZLOX_TRUE;
 	zlox_zenglfs_sync_cache_to_disk();
+
 	return size;
 }
 
@@ -1267,6 +1281,8 @@ static ZLOX_FS_NODE * zlox_zenglfs_finddir(ZLOX_FS_NODE *node, ZLOX_CHAR *name)
 
 ZLOX_FS_NODE * zlox_unmount_zenglfs()
 {
+	zlox_fs_lock(current_task);
+
 	zlox_zenglfs_sync_cache_to_disk();
 	if(zenglfs_root != ZLOX_NULL)
 	{
@@ -1313,12 +1329,15 @@ ZLOX_FS_NODE * zlox_unmount_zenglfs()
 		zlox_kfree(zenglfs_cache_triply.ptr);
 		zlox_memset((ZLOX_UINT8 *)&zenglfs_cache_triply, 0, sizeof(ZLOX_ZLFS_CACHE_TRIPLY));
 	}
+	zlox_fs_unlock(current_task);
 	return zenglfs_root;
 }
 
 // 挂载硬盘分区到hd目录下
 ZLOX_FS_NODE * zlox_mount_zenglfs(ZLOX_UINT32 ide_index, ZLOX_UINT32 pt)
 {
+	zlox_fs_lock(current_task);
+
 	ZLOX_UINT8 *buffer = (ZLOX_UINT8 *)zlox_kmalloc(ZLOX_ATA_SECTOR_SIZE * 2);
 	ZLOX_UINT32 lba = 0; // MBR
 	ZLOX_CHAR * output;
@@ -1328,6 +1347,7 @@ ZLOX_FS_NODE * zlox_mount_zenglfs(ZLOX_UINT32 ide_index, ZLOX_UINT32 pt)
 		if(zlox_cmd_window_write(output) == -1)
 			zlox_monitor_write(output);
 		zlox_kfree(buffer);
+		zlox_fs_unlock(current_task);
 		return ZLOX_NULL;
 	}
 
@@ -1338,6 +1358,7 @@ ZLOX_FS_NODE * zlox_mount_zenglfs(ZLOX_UINT32 ide_index, ZLOX_UINT32 pt)
 			zlox_monitor_write(output);
 		//zlox_monitor_write("partition number must in 1 to 4 \n");
 		zlox_kfree(buffer);
+		zlox_fs_unlock(current_task);
 		return ZLOX_NULL;
 	}
 	ZLOX_IDE_DEVICE * ide_devices = (ZLOX_IDE_DEVICE *)zlox_ata_get_ide_info();
@@ -1355,6 +1376,7 @@ ZLOX_FS_NODE * zlox_mount_zenglfs(ZLOX_UINT32 ide_index, ZLOX_UINT32 pt)
 			zlox_monitor_write(output);
 		//zlox_monitor_write("] has no drive!\n");
 		zlox_kfree(buffer);
+		zlox_fs_unlock(current_task);
 		return ZLOX_NULL;
 	}
 	else if(ide_devices[ide_index].Type == ZLOX_IDE_ATAPI)
@@ -1371,6 +1393,7 @@ ZLOX_FS_NODE * zlox_mount_zenglfs(ZLOX_UINT32 ide_index, ZLOX_UINT32 pt)
 			zlox_monitor_write(output);
 		//zlox_monitor_write("]\n");
 		zlox_kfree(buffer);
+		zlox_fs_unlock(current_task);
 		return ZLOX_NULL;
 	}
 
@@ -1389,6 +1412,7 @@ ZLOX_FS_NODE * zlox_mount_zenglfs(ZLOX_UINT32 ide_index, ZLOX_UINT32 pt)
 			zlox_monitor_write(output);
 		//zlox_monitor_write("]\n");
 		zlox_kfree(buffer);
+		zlox_fs_unlock(current_task);
 		return ZLOX_NULL;
 	}
 
@@ -1402,6 +1426,7 @@ ZLOX_FS_NODE * zlox_mount_zenglfs(ZLOX_UINT32 ide_index, ZLOX_UINT32 pt)
 			zlox_monitor_write(output);
 		//zlox_monitor_write("this partition is not zenglfs \n");
 		zlox_kfree(buffer);
+		zlox_fs_unlock(current_task);
 		return ZLOX_NULL;
 	}
 	lba = partition.startLBA + 2;
@@ -1415,6 +1440,7 @@ ZLOX_FS_NODE * zlox_mount_zenglfs(ZLOX_UINT32 ide_index, ZLOX_UINT32 pt)
 			zlox_monitor_write(output);
 		//zlox_monitor_write("this partition is not formated \n");
 		zlox_kfree(buffer);
+		zlox_fs_unlock(current_task);
 		return ZLOX_NULL;
 	}
 	zenglfs_super_block = (*superblock_ptr);
@@ -1436,6 +1462,7 @@ ZLOX_FS_NODE * zlox_mount_zenglfs(ZLOX_UINT32 ide_index, ZLOX_UINT32 pt)
 
 	zenglfs_ide_index = ide_index;
 	zlox_kfree(buffer);
+	zlox_fs_unlock(current_task);
 	return zenglfs_root;
 }
 

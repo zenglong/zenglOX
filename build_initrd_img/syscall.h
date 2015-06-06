@@ -84,6 +84,8 @@ typedef enum _SYSCALL_ENUM{
 	SYSCALL_AUDIO_SET_ARGS,
 	SYSCALL_AUDIO_PLAY,
 	SYSCALL_AUDIO_CTRL,
+	SYSCALL_TIMER_GET_FREQUENCY,
+	SYSCALL_MONITOR_DISABLE_SCROLL,
 }SYSCALL_ENUM;
 
 #define DECL_SYSCALL0(fn) SINT32 syscall_##fn();
@@ -219,6 +221,8 @@ DECL_SYSCALL2(audio_set_databuf, UINT8 *, SINT32)
 DECL_SYSCALL5(audio_set_args, UINT32, UINT32, UINT32, UINT32, void *)
 DECL_SYSCALL0(audio_play)
 DECL_SYSCALL2(audio_ctrl, UINT32, void *)
+DECL_SYSCALL0(timer_get_frequency)
+DECL_SYSCALL0(monitor_disable_scroll)
 
 #endif // _SYSCALL_H_
 

@@ -203,10 +203,16 @@ static ZLOX_VOID zlox_keyboard_callback(/*ZLOX_ISR_REGISTERS * regs*/)
 		zlox_setleds();
 	}
 
-	if(key == 0x1D && !(control_keys & ZLOX_CK_CTRL))	/* Ctrl key */
+	if(key == 0x1D && !(control_keys & ZLOX_CK_CTRL))  /* Ctrl key */
+	{
 		control_keys |= ZLOX_CK_CTRL;
-	if(key == 0x80 + 0x1D)	/* Ctrl key depressed */
+		key_code = ZLOX_MKK_CTRL_PRESS;
+	}
+	if((key == 0x80 + 0x1D) && (control_keys & ZLOX_CK_CTRL))  /* Ctrl key depressed */
+	{
 		control_keys &= (0xFF - ZLOX_CK_CTRL);
+		key_code = ZLOX_MKK_CTRL_RELEASE;
+	}
 	if((key == 0x2A || key == 0x36) && !(control_keys & ZLOX_CK_SHIFT))	/* Shift key */
 		control_keys |= ZLOX_CK_SHIFT;
 	if((key == 0x80 + 0x2A) || (key == 0x80 + 0x36))	/* Shift key depressed */

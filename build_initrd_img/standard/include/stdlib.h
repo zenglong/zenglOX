@@ -43,6 +43,7 @@ typedef char *va_list;
 #define SEEK_END -4
 
 #define CLOCKS_PER_SEC 50
+//#define CLOCKS_PER_SEC 1000
 
 #define LONG_MIN (-2147483647L - 1)
 #define LONG_MAX 2147483647L

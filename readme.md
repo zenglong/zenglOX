@@ -77,6 +77,12 @@ zengl脚本程式, 以及libc.so动态库文件进行更新, 因为libc.so库文
 从zenglOX v3.1.0版本开始，不再提供bochs相关的启动脚本和相关配置文件，因为，v3.1.0及后续版本已经不适合在bochs下进行开发了，
 zenglOX v3.1.0版本只提供qemu的启动脚本和qemu相关的虚拟磁盘。
 
+从zenglOX v3.2.0版本开始，作者建议使用qemu-2.3.0来进行开发，原因以及qemu 2.3.0的安装过程，
+都记录在zenglOX v3.2.0版本的网盘中的readme.txt文件里。
+另外，v0.0.1版本对应的官方文章中，提到的交叉编译环境的搭建过程，在ubuntu 15.04以及那些使用
+GCC 4.9.x作为编译器的系统中，已经无法搭建成功了，解决方案请参考zenglOX v3.2.0版本的网盘中的
+readme.txt文件(其实就是下载更高版本的GCC的源代码来组建交叉编译工具)。
+
 首先从sourceforge网盘的v3.0.0文件夹里下载qemu-2.2.0.tar.bz2 , 假设我们下载到了Downloads目录中:
 
 zengl@zengl.com:~/Downloads$ ls
@@ -135,6 +141,9 @@ ERROR: glib-2.12 required to compile QEMU 的错误
 会很繁忙，以至于在Ubuntu系统下，如果不开启kvm硬件加速的话，qemu的I/O线程会严重阻塞VCPU线程，从而导致qemu的CPU指令无法正常执行，也就会让
 qemu里的音乐播放，图形界面渲染，鼠标操作等一系列功能都无法正常运作(主要是在播放音乐过程中)。
 因此，对于zenglOX v3.1.0及之后的版本就必须开启KVM硬件加速(至少在ubuntu的系统下是这样的)。
+
+在zenglOX v3.2.0版本的网盘里的readme.txt文件中，提到了：如果使用qemu-2.3.0版本的话，就可以解决qemu在
+播放音频时，可能会产生的阻塞VCPU线程的问题。
 
 要开启KVM(也就是处理器的虚拟化技术), 
 读者可以参考 http://www.linuxfromscratch.org/blfs/view/svn/postlfs/qemu.html 该链接里的内容。
@@ -246,7 +255,7 @@ Reading symbols from /home/zengl/zenglOX/zenglOX_v3.0.0/zenglOX.bin...done.
 (gdb) target remote localhost:1234
 Remote debugging using localhost:1234
 0x0000fff0 in ?? ()
-(gdb) b zlox_kernel_main 
+(gdb) b zlox_kernel_main (如果开启了kvm硬件加速功能的话，这里则应该使用 hb zlox_kernel_main，也就是用硬件断点!)
 Breakpoint 1 at 0x10003c: file zlox_kernel.c, line 36.
 (gdb) c
 Continuing.
@@ -278,6 +287,14 @@ zenglOX.bin文件在sourceforge网盘的v3.0.0的文件夹内也有, 可以直�
 这样, 就可以用U盘来启动zenglOX了, 重启机子, 在BIOS中将U盘设置为启动盘, 再重启就可以先看到grub2的菜单界面, 接着就会进入zenglOX了.
 
 不过真机上, 只能使用ramdisk里的程式.
+
+注意：如果你想通过U盘来启动你的hobby OS，如果是用的上面介绍的grub-install的
+方式的话，请不要使用UEFI的方式来启动，可以在主板的BIOS中进行设置，UEFI的启动方式下，
+GRUB2设置的VBE图形界面就会失效，那就什么都看不到了。在作者的技嘉主板的台式机中，
+进入BIOS后，可以通过BIOS Features页面中的OS Type下的Boot Mode Selection来选择，
+我一般设置为Legacy Only，它还有两个选项，一个是UEFI and Legacy，一个是UEFI Only，当使用
+UEFI and legacy时，还需要在Boot Option中进行选择，因此，为了简单起见，作者就直接使用
+的是Legacy Only选项。
 
 此外, qemu在v3.0.0版本中, 使用的是user用户模式的网络, 只能ping到网关, 要ping外网的话, 需要用到tun/tap, 由于配置比较麻烦, 放在v3.0.0之后的版本再做, 
 bochs, virtualbox及vmware下, 应该可以ping到外网的ip. (zenglOX中和网络相关的内容请参考 zenglOX v2.0.0版本相关的官方文章)

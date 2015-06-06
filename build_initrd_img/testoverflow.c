@@ -19,17 +19,23 @@ int main(VOID * task, int argc, char * argv[])
 
 	_commontest_gl = 3;
 
-	if(argc == 1)
-	{
-		syscall_overflow_test();
-	}
-	else if(argc > 1 && strcmp(argv[1],"-u")==0)
+	if(argc > 1 && strcmp(argv[1],"-u")==0)
 	{
 		recursion();
 	}
+	else if(argc > 1 && strcmp(argv[1],"-x")==0)
+	{
+		// 无穷循环测试
+		for(;;)
+			;
+	}
+	else if(argc > 1 && strcmp(argv[1],"-k")==0)
+	{
+		syscall_overflow_test();
+	}
 	else
 	{
-		syscall_monitor_write("usage: testoverflow [-u]");
+		syscall_cmd_window_write("usage: testoverflow [-u][-x][-k]");
 	}
 
 	return 0;

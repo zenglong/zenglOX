@@ -16,7 +16,7 @@ int main(TASK * task, int argc, char * argv[])
 	{
 		int ret;
 		int i;
-		UINT32 origtick;
+		UINT32 origtick, frequency, time_out_ticks;
 		TASK_MSG msg;
 		syscall_network_getinfo(&net_info);
 		if(net_info.isInit == FALSE)
@@ -52,6 +52,8 @@ int main(TASK * task, int argc, char * argv[])
 		else
 			syscall_cmd_window_write("send arp request and wait for reply\n");
 		origtick = syscall_timer_get_tick();
+		frequency = syscall_timer_get_frequency();
+		time_out_ticks = 60 * frequency;
 		while(TRUE)
 		{
 			ret = syscall_get_tskmsg(task,&msg,TRUE);
@@ -59,7 +61,7 @@ int main(TASK * task, int argc, char * argv[])
 			{
 				syscall_idle_cpu();
 				UINT32 curtick = syscall_timer_get_tick();
-				if((curtick - origtick) > 3000)
+				if((curtick - origtick) > time_out_ticks)
 				{
 					syscall_cmd_window_write("wait for arp reply time out curtick:");
 					syscall_cmd_window_write_dec(curtick);

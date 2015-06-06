@@ -524,9 +524,12 @@ ZLOX_VOID zlox_free(ZLOX_VOID *p, ZLOX_HEAP *heap)
 	if ( (ZLOX_UINT32)footer+sizeof(ZLOX_KHP_FOOTER) == heap->end_address)
 	{
 		ZLOX_UINT32 old_length = heap->end_address-heap->start_address;
+		// 如果header指针被回收掉了的话，header就会是无效的指针，因此，先把header->size存储起来.
+		ZLOX_UINT32 orig_header_size = header->size;
 		ZLOX_UINT32 new_length = zlox_contract( (ZLOX_UINT32)header - heap->start_address, heap);
+
 		// Check how big we will be after resizing.
-		if (header->size - (old_length-new_length) > 0)
+		if (orig_header_size - (old_length-new_length) > 0)
 		{
 			// We will still exist, so resize us.
 			header->size -= old_length-new_length;

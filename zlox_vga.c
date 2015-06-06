@@ -637,6 +637,16 @@ ZLOX_VOID zlox_vga_write_char(ZLOX_SINT32 x, ZLOX_SINT32 y, ZLOX_SINT32 val, ZLO
 	}
 }
 
+ZLOX_VOID zlox_vga_scroll_monitor(ZLOX_SINT32 y, ZLOX_SINT32 ch_total_height, 
+				ZLOX_SINT32 total_row)
+{
+	ZLOX_UINT8 * dst = lfb_vid_memory + y * lfb_resolution_x * sizeof(ZLOX_UINT32);
+	ZLOX_UINT8 * src = dst + ch_total_height * lfb_resolution_x * sizeof(ZLOX_UINT32);
+	ZLOX_UINT32 cpylen = lfb_resolution_x * sizeof(ZLOX_UINT32) * ch_total_height * 
+				total_row;
+	zlox_memcpy(dst, src, cpylen);
+}
+
 ZLOX_SINT32 zlox_vga_update_screen(ZLOX_UINT8 * buffer, ZLOX_UINT32 buffer_size)
 {
 	ZLOX_UINT8 * video_memory;

@@ -294,6 +294,8 @@ ZLOX_SINT32 zlox_atapi_drive_read_sectors (ZLOX_UINT32 ide_index, ZLOX_UINT32 lb
 	for(i=0;i<lba_num;i++)
 	{
 		size += zlox_atapi_drive_read_sector(ide_index,(lba+i),buffer+(ZLOX_ATAPI_SECTOR_SIZE * i));
+
+		zlox_isr_detect_proc_irq();
 	}
 	return size;
 }

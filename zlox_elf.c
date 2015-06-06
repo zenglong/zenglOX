@@ -6,6 +6,7 @@
 #include "zlox_paging.h"
 #include "zlox_task.h"
 #include "zlox_kheap.h"
+#include "zlox_isr.h"
 
 // 所需的zlox_paging.c里的全局变量
 extern ZLOX_PAGE_DIRECTORY * current_directory;
@@ -197,13 +198,17 @@ ZLOX_ELF_KERNEL_MAP * zlox_exists_kernel_map(ZLOX_CHAR * soname)
 
 ZLOX_UINT8 * zlox_shlib_readfile(ZLOX_CHAR * soname)
 {
-	ZLOX_FS_NODE * fsnode = zlox_finddir_fs(fs_root, soname);
-	if ((fsnode->flags & 0x7) != ZLOX_FS_FILE)
+	//ZLOX_FS_NODE * fsnode = zlox_finddir_fs(fs_root, soname);
+	ZLOX_FS_NODE fsnode;
+	zlox_memset(((ZLOX_UINT8 *)&fsnode), 0, sizeof(ZLOX_FS_NODE));
+	zlox_finddir_fs_safe(fs_root, soname, &fsnode);
+
+	if ((fsnode.flags & 0x7) != ZLOX_FS_FILE)
 	{
 		goto not_valid_shlib;
 	}
-	ZLOX_UINT8 * buf = (ZLOX_UINT8 *)zlox_kmalloc(fsnode->length + 10);
-	ZLOX_UINT32 sz = zlox_read_fs(fsnode, 0, fsnode->length, buf);
+	ZLOX_UINT8 * buf = (ZLOX_UINT8 *)zlox_kmalloc(fsnode.length + 10);
+	ZLOX_UINT32 sz = zlox_read_fs(&fsnode, 0, fsnode.length, buf);
 	if((sz > 0) && zlox_elf_check_supported((ZLOX_ELF32_EHDR *)buf, ZLOX_ET_DYN) )
 	{
 		return buf;
@@ -732,18 +737,59 @@ static ZLOX_SINT32 zlox_restore_filename(ZLOX_CHAR * filename,ZLOX_SINT32 pos)
 	return 0;
 }
 
+ZLOX_BOOL g_elf_lock = ZLOX_FALSE;
+
+static ZLOX_VOID zlox_elf_lock(ZLOX_TASK * task)
+{
+	while(g_elf_lock == ZLOX_TRUE)
+	{
+		zlox_isr_detect_proc_irq();
+		asm("pause");
+	}
+
+	g_elf_lock = ZLOX_TRUE;
+	if((task != ZLOX_NULL) && 
+	   (task->elf_lock == ZLOX_FALSE))
+	{
+		task->elf_lock = ZLOX_TRUE;
+	}
+	return;
+}
+
+ZLOX_VOID zlox_elf_unlock(ZLOX_TASK * task)
+{
+	if(g_elf_lock == ZLOX_TRUE)
+	{
+		g_elf_lock = ZLOX_FALSE;
+	}
+
+	if((task != ZLOX_NULL) && 
+	   (task->elf_lock == ZLOX_TRUE))
+	{
+		task->elf_lock = ZLOX_FALSE;
+	}
+	return;
+}
+
 ZLOX_SINT32 zlox_execve(const ZLOX_CHAR * filename)
 {
-	ZLOX_SINT32 ret_pos = zlox_set_filename((ZLOX_CHAR **)&filename);
-	ZLOX_FS_NODE *fsnode = zlox_finddir_fs(fs_root, (ZLOX_CHAR *)filename);
+	zlox_elf_lock(ZLOX_NULL);
 
-	if ((fsnode->flags & 0x7) == ZLOX_FS_FILE)
+	ZLOX_SINT32 ret_pos = zlox_set_filename((ZLOX_CHAR **)&filename);
+	//ZLOX_FS_NODE *fsnode = zlox_finddir_fs(fs_root, (ZLOX_CHAR *)filename);
+	ZLOX_FS_NODE fsnode;
+	zlox_memset(((ZLOX_UINT8 *)&fsnode), 0, sizeof(ZLOX_FS_NODE));
+	zlox_finddir_fs_safe(fs_root, (ZLOX_CHAR *)filename, &fsnode);
+
+	if ((fsnode.flags & 0x7) == ZLOX_FS_FILE)
 	{
 		ZLOX_SINT32 ret = zlox_fork();
 		if(ret == 0)
 		{
-			ZLOX_CHAR * buf = (ZLOX_CHAR *)zlox_kmalloc(fsnode->length + 10);
-			ZLOX_UINT32 sz = zlox_read_fs(fsnode, 0, fsnode->length, (ZLOX_UINT8 *)buf);
+			current_task->elf_lock = ZLOX_TRUE;
+
+			ZLOX_CHAR * buf = (ZLOX_CHAR *)zlox_kmalloc(fsnode.length + 10);
+			ZLOX_UINT32 sz = zlox_read_fs(&fsnode, 0, fsnode.length, (ZLOX_UINT8 *)buf);
 			ZLOX_UINT32 addr;
 
 			if((sz > 0) && zlox_elf_check_supported((ZLOX_ELF32_EHDR *)buf, ZLOX_ET_EXEC) )
@@ -760,6 +806,7 @@ ZLOX_SINT32 zlox_execve(const ZLOX_CHAR * filename)
 					ZLOX_UINT32 filename_len = zlox_strlen((ZLOX_CHAR *)filename);
 					current_task->args = (ZLOX_CHAR *)zlox_kmalloc(filename_len + 1);
 					zlox_strcpy(current_task->args,filename);
+					zlox_elf_unlock(current_task);
 					return addr;
 				}
 				else
@@ -768,6 +815,7 @@ ZLOX_SINT32 zlox_execve(const ZLOX_CHAR * filename)
 					zlox_elf_print_msg("execve:\"");
 					zlox_elf_print_msg(filename);
 					zlox_elf_print_msg("\" load failed !\n");
+					zlox_elf_unlock(current_task);
 					zlox_exit(-1);
 					return -1;
 				}				
@@ -778,6 +826,7 @@ ZLOX_SINT32 zlox_execve(const ZLOX_CHAR * filename)
 				zlox_elf_print_msg("execve Error:\"");
 				zlox_elf_print_msg(filename);
 				zlox_elf_print_msg("\" is not a valid ELF file!\n");
+				zlox_elf_unlock(current_task);
 				zlox_exit(-1);
 				return -1;
 			}
@@ -785,12 +834,13 @@ ZLOX_SINT32 zlox_execve(const ZLOX_CHAR * filename)
 		zlox_restore_filename((ZLOX_CHAR *)filename,ret_pos);
 		return 0;
 	}
-	else if((fsnode->flags & 0x7) == ZLOX_FS_DIRECTORY)
+	else if((fsnode.flags & 0x7) == ZLOX_FS_DIRECTORY)
 	{
 		zlox_elf_print_msg("execve Error:\"");
 		zlox_elf_print_msg(filename);
 		zlox_elf_print_msg("\" is a directory , it's must be an ELF file \n");
 		zlox_restore_filename((ZLOX_CHAR *)filename,ret_pos);
+		zlox_elf_unlock(ZLOX_NULL);
 		return -1;
 	}
 	else
@@ -799,9 +849,11 @@ ZLOX_SINT32 zlox_execve(const ZLOX_CHAR * filename)
 		zlox_elf_print_msg(filename);
 		zlox_elf_print_msg("\" is not exist in your file system! \n");
 		zlox_restore_filename((ZLOX_CHAR *)filename,ret_pos);
+		zlox_elf_unlock(ZLOX_NULL);
 		return -1;
 	}
 
+	zlox_elf_unlock(ZLOX_NULL);
 	return -1;
 }
 

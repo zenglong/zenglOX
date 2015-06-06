@@ -41,6 +41,8 @@ int main(VOID * task, int argc, char * argv[])
 			syscall_cmd_window_write_hex((UINT32)pci_devconf_lst.ptr[i].cfg_hdr.class_code);
 			syscall_cmd_window_write(" sub_class: ");
 			syscall_cmd_window_write_hex((UINT32)pci_devconf_lst.ptr[i].cfg_hdr.sub_class);
+			syscall_cmd_window_write(" prog_if: ");
+			syscall_cmd_window_write_hex((UINT32)pci_devconf_lst.ptr[i].cfg_hdr.prog_if);
 			syscall_cmd_window_write("\n");
 		}
 		syscall_cmd_window_write("pci device total count: ");

@@ -2,6 +2,7 @@
 
 #include "zlox_monitor.h"
 #include "zlox_vga.h"
+#include "zlox_initrd.h"
 
 #define ZLOX_MONITOR_COLOR 0xFFFFFFFF
 #define ZLOX_MONITOR_BACK_COLOR 0x0
@@ -9,6 +10,8 @@
 #define ZLOX_MONITOR_H_SPACE 2
 
 extern ZLOX_UINT32 vga_current_mode;
+
+ZLOX_BOOL need_scroll_monitor = ZLOX_TRUE;
 
 // The VGA framebuffer starts at 0xB8000.
 ZLOX_UINT16 * video_memory = (ZLOX_UINT16 *)0xB8000;
@@ -192,6 +195,8 @@ ZLOX_VOID zlox_monitor_put_orig(ZLOX_CHAR c)
 // Writes a single character out to the screen.
 ZLOX_VOID zlox_monitor_put(ZLOX_CHAR c)
 {
+	zlox_klog_write(c);
+
 	if(vga_current_mode != ZLOX_VGA_MODE_VBE_1024X768X32)
 		return;
 
@@ -255,10 +260,27 @@ ZLOX_VOID zlox_monitor_put(ZLOX_CHAR c)
 		cursor_y ++;
 	}
 
-	if(cursor_y >= 36)
+	if(!need_scroll_monitor)
 	{
-		cursor_y = 12;
+		if(cursor_y >= 40)
+		{
+			cursor_y = 10;
+		}
 	}
+	else
+	{
+		if(cursor_y >= 25)
+		{
+			zlox_vga_scroll_monitor(start_y, ZLOX_VGA_CHAR_HEIGHT + h_space, 25);
+			cursor_y = 24;
+		}
+	}
+}
+
+ZLOX_SINT32 zlox_monitor_disable_scroll()
+{
+	need_scroll_monitor = ZLOX_FALSE;
+	return 0;
 }
 
 ZLOX_VOID zlox_monitor_set_single(ZLOX_BOOL flag)

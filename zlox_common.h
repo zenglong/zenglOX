@@ -26,6 +26,8 @@ typedef float ZLOX_FLOAT;
 
 #define ZLOX_UNUSED(x) (void)(x)
 
+#define ZLOX_PACKED __attribute__((packed))
+
 // Write a byte out to the specified port.
 ZLOX_VOID zlox_outb(ZLOX_UINT16 port,ZLOX_UINT8 value);
 // Write a word(2 byte) out to the specified port.

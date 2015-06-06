@@ -9,6 +9,10 @@
 #include "zlox_monitor.h"
 #include "zlox_my_windows.h"
 
+// zlox_fs.c
+ZLOX_VOID zlox_fs_lock(ZLOX_TASK * task);
+ZLOX_VOID zlox_fs_unlock(ZLOX_TASK * task);
+
 extern ZLOX_IDE_DEVICE ide_devices[4];
 // Defined in zlox_task.c
 extern ZLOX_TASK * current_task;
@@ -304,6 +308,8 @@ ZLOX_VOID zlox_init_path_table_extdata()
 // 卸载iso目录，将堆中分配的相关内存资源释放掉
 ZLOX_FS_NODE * zlox_unmount_iso()
 {
+	zlox_fs_lock(current_task);
+
 	if(iso_root != ZLOX_NULL)
 	{
 		zlox_kfree(iso_root);
@@ -328,12 +334,15 @@ ZLOX_FS_NODE * zlox_unmount_iso()
 		iso_cache.lba = 0;
 		iso_cache.size = 0;
 	}
+	zlox_fs_unlock(current_task);
 	return iso_root;
 }
 
 // 挂载CDROM到iso目录下
 ZLOX_FS_NODE * zlox_mount_iso()
 {
+	zlox_fs_lock(current_task);
+
 	ZLOX_SINT32 i,j;
 	ZLOX_CHAR * output;
 	if(iso_root != ZLOX_NULL)
@@ -341,6 +350,7 @@ ZLOX_FS_NODE * zlox_mount_iso()
 		output = "kernel : iso has been mounted , you must unmount it first , then mount it again \n";
 		if(zlox_cmd_window_write(output) == -1)
 			zlox_monitor_write(output);
+		zlox_fs_unlock(current_task);
 		return ZLOX_NULL;
 	}
 	iso_root = ZLOX_NULL;
@@ -408,6 +418,7 @@ err:
 		break;
 	}
 
+	zlox_fs_unlock(current_task);
 	return iso_root;
 }
 

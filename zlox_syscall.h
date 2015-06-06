@@ -5,10 +5,10 @@
 
 #include "zlox_common.h"
 
-#define ZLOX_SYSCALL_NUMBER 78
+#define ZLOX_SYSCALL_NUMBER 80
 
 #define ZLOX_MAJOR_VERSION 3 //zenglOX 主版本号
-#define ZLOX_MINOR_VERSION 1 //zenglOX 子版本号
+#define ZLOX_MINOR_VERSION 2 //zenglOX 子版本号
 #define ZLOX_REVISION 0      //zenglOX 修正版本号
 
 typedef enum _ZLOX_SYSCALL_ENUM{
@@ -90,6 +90,8 @@ typedef enum _ZLOX_SYSCALL_ENUM{
 	ZLOX_SYSCALL_AUDIO_SET_ARGS,
 	ZLOX_SYSCALL_AUDIO_PLAY,
 	ZLOX_SYSCALL_AUDIO_CTRL,
+	ZLOX_SYSCALL_TIMER_GET_FREQUENCY,
+	ZLOX_SYSCALL_MONITOR_DISABLE_SCROLL,
 }ZLOX_SYSCALL_ENUM;
 
 ZLOX_VOID zlox_initialise_syscalls();
@@ -227,6 +229,8 @@ ZLOX_DECL_SYSCALL2(audio_set_databuf, ZLOX_UINT8 *, ZLOX_SINT32)
 ZLOX_DECL_SYSCALL5(audio_set_args, ZLOX_UINT32, ZLOX_UINT32, ZLOX_UINT32, ZLOX_UINT32, void *)
 ZLOX_DECL_SYSCALL0(audio_play)
 ZLOX_DECL_SYSCALL2(audio_ctrl, ZLOX_UINT32, void *)
+ZLOX_DECL_SYSCALL0(timer_get_frequency)
+ZLOX_DECL_SYSCALL0(monitor_disable_scroll)
 
 ZLOX_SINT32 zlox_get_version(ZLOX_SINT32 * major, ZLOX_SINT32 * minor, ZLOX_SINT32 * revision);
 

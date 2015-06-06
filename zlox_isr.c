@@ -3,6 +3,16 @@
 #include "zlox_common.h"
 #include "zlox_isr.h"
 #include "zlox_monitor.h"
+#include "zlox_task.h"
+
+//  _zlox_idle_cpu is in zlox_process.s
+ZLOX_VOID _zlox_idle_cpu();
+
+// zlox_ps2.c
+ZLOX_UINT16 zlox_pic_get_irr(ZLOX_VOID);
+
+//zlox_task.c
+extern ZLOX_TASK * current_task;
 
 ZLOX_ISR_CALLBACK interrupt_callbacks[256];
 
@@ -55,5 +65,25 @@ ZLOX_VOID zlox_irq_handler(ZLOX_ISR_REGISTERS regs)
 		ZLOX_ISR_CALLBACK callback = interrupt_callbacks[regs.int_no];
 		callback(&regs);
 	}
+}
+
+ZLOX_VOID zlox_idle_cpu()
+{
+	current_task->has_idle_cpu = ZLOX_TRUE;
+	_zlox_idle_cpu();
+	current_task->has_idle_cpu = ZLOX_FALSE;
+}
+
+ZLOX_VOID zlox_isr_detect_proc_irq()
+{
+	ZLOX_UINT16 irr = zlox_pic_get_irr();
+	if(irr != 0)
+	{
+		current_task->isr_idle = ZLOX_TRUE;
+		_zlox_idle_cpu();
+		current_task->isr_idle = ZLOX_FALSE;
+	}
+	else 
+		return ;
 }
 

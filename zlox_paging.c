@@ -421,6 +421,7 @@ ZLOX_VOID zlox_page_fault(ZLOX_ISR_REGISTERS * regs)
 		//	goto print_page_error_message;
 		//}
 		zlox_monitor_set_color_space(ZLOX_FALSE, 0, 0, 0, 0);
+		//for(;;);
 		zlox_exit(-1);
 	}
 

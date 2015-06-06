@@ -9,7 +9,15 @@
 #define ZLOX_PCI_BAR_IO 0x1
 #define ZLOX_PCI_BAR_NONE 0x3
 
+#define ZLOX_PCI_BASE_ADDRESS_IO_MASK (~0x03UL)
+#define ZLOX_PCI_BASE_ADDRESS_MEM_MASK (~0x0fUL)
+#ifndef ZLOX_IO_SPACE_LIMIT
+#define ZLOX_IO_SPACE_LIMIT 0xffff
+#endif
+
 #define ZLOX_PCI_REG_COMMAND 0x1
+#define ZLOX_PCI_COMMAND_IO 0x1 /* Enable response in I/O space */
+#define ZLOX_PCI_COMMAND_MEMORY 0x2 /* Enable response in Memory space */
 #define ZLOX_PCI_COMMAND_MAST_EN 0x0004	/* Enable Busmaster Access */
 
 struct _ZLOX_PCI_CONF_HDR {
@@ -70,6 +78,10 @@ ZLOX_UINT16 zlox_pci_reg_inw(ZLOX_UNI_PCI_CFG_ADDR saddr, ZLOX_UINT8 reg);
 
 ZLOX_UINT32 zlox_pci_get_bar_mem_amount(ZLOX_UNI_PCI_CFG_ADDR saddr, ZLOX_UINT32 bar_index);
 
+ZLOX_UINT32 zlox_pci_get_bar_size(ZLOX_UNI_PCI_CFG_ADDR saddr, ZLOX_UINT32 bar_index);
+
+ZLOX_SINT32 zlox_pci_set_master(ZLOX_UNI_PCI_CFG_ADDR saddr, ZLOX_BOOL enable);
+
 ZLOX_PCI_DEVCONF * zlox_pci_get_devconf(ZLOX_UINT16 vend_id, ZLOX_UINT16 dev_id);
 
 ZLOX_UINT32 zlox_pci_get_bar(ZLOX_PCI_DEVCONF * pci_devconf, ZLOX_UINT8 type);
@@ -77,6 +89,8 @@ ZLOX_UINT32 zlox_pci_get_bar(ZLOX_PCI_DEVCONF * pci_devconf, ZLOX_UINT8 type);
 ZLOX_VOID zlox_pci_list();
 
 ZLOX_SINT32 zlox_pci_get_devconf_lst(ZLOX_PCI_DEVCONF_LST * devconf_lst);
+
+ZLOX_PCI_DEVCONF_LST * zlox_pci_get_devconf_lst_for_kernel();
 
 ZLOX_VOID zlox_pci_init();
 

@@ -6,6 +6,7 @@
 #include "zlox_descriptor_tables.h"
 #include "zlox_network.h"
 #include "zlox_audio.h"
+#include "zlox_time.h"
 
 // The currently running task.
 volatile ZLOX_TASK * current_task = 0;
@@ -41,6 +42,12 @@ ZLOX_SINT32 zlox_pop_pid(ZLOX_BOOL needPop);
 
 //zlox_monitor.c
 ZLOX_VOID zlox_monitor_set_single(ZLOX_BOOL flag);
+
+//zlox_elf.c
+ZLOX_VOID zlox_elf_unlock(ZLOX_TASK * task);
+//zlox_fs.c
+ZLOX_VOID zlox_fs_unlock(ZLOX_TASK * task);
+
 extern ZLOX_BOOL single_line_out;
 
 ZLOX_VOID zlox_initialise_tasking()
@@ -67,6 +74,10 @@ ZLOX_VOID zlox_initialise_tasking()
 	current_task->parent = 0;
 	current_task->mywin = ZLOX_NULL;
 	current_task->cmd_win = ZLOX_NULL;
+	current_task->isr_idle = ZLOX_FALSE;
+	current_task->has_idle_cpu = ZLOX_FALSE;
+	current_task->fs_lock = ZLOX_FALSE;
+	current_task->elf_lock = ZLOX_FALSE;
 	current_task->kernel_stack = 0xF0000000;
 	for(ZLOX_UINT32 tmp_esp = current_task->kernel_stack - ZLOX_KERNEL_STACK_SIZE; 
 		tmp_esp < current_task->kernel_stack ;tmp_esp += 0x1000)
@@ -177,11 +188,22 @@ ZLOX_VOID zlox_switch_task()
 	volatile ZLOX_TASK * tmp_task = ready_queue;
 	volatile ZLOX_TASK * new_task = ZLOX_NULL;
 	ZLOX_UINT32 msg_total_count = 0;
+	ZLOX_BOOL has_isr_idle = ZLOX_FALSE;
+	ZLOX_BOOL has_not_ide_cpu = ZLOX_FALSE;
 
 	// 统计所有任务的需要处理的消息总数, 同时检测是否有新建的任务
 	do
 	{
 		msg_total_count += tmp_task->msglist.count;
+
+		if(tmp_task != ready_queue && tmp_task->isr_idle == ZLOX_TRUE &&
+		   tmp_task->status == ZLOX_TS_RUNNING)
+			has_isr_idle = ZLOX_TRUE;
+
+		if(tmp_task != ready_queue && tmp_task->has_idle_cpu == ZLOX_FALSE && 
+		   tmp_task->status == ZLOX_TS_RUNNING)
+			has_not_ide_cpu = ZLOX_TRUE;
+
 		if(tmp_task != ready_queue && tmp_task->args == 0 &&
 			tmp_task->status == ZLOX_TS_RUNNING)
 		{
@@ -194,7 +216,7 @@ ZLOX_VOID zlox_switch_task()
 	tmp_task = ZLOX_NULL;
 
 	//如果有新建的任务, 则优先运行新任务
-	if(new_task != ZLOX_NULL)
+	if(new_task != ZLOX_NULL && new_task->isr_idle == ZLOX_FALSE)
 	{
 		current_task = new_task;
 	}
@@ -211,9 +233,13 @@ ZLOX_VOID zlox_switch_task()
 			// 当任务处于运行状态下, 具有需要处理的消息的任务会被优先执行
 			if(current_task->status == ZLOX_TS_RUNNING)
 			{
-				if(current_task->msglist.count > 0)
+				if((current_task->msglist.count > 0) || 
+				   (current_task->isr_idle == ZLOX_TRUE) || 
+				   (current_task->has_idle_cpu == ZLOX_FALSE))
 					break;
-				else if(msg_total_count > 0)
+				else if((msg_total_count > 0) || 
+					 (has_isr_idle == ZLOX_TRUE) || 
+					 (has_not_ide_cpu == ZLOX_TRUE))
 				{
 					if(current_task == orig_task)
 					{
@@ -244,6 +270,11 @@ ZLOX_VOID zlox_switch_task()
 				break;
 			}
 		}while(ZLOX_TRUE);
+	}
+
+	if(current_task == orig_task)
+	{
+		return ;
 	}
 
 	eip = current_task->eip;
@@ -293,6 +324,10 @@ ZLOX_SINT32 zlox_fork()
 	new_task->parent = (ZLOX_TASK *)current_task;
 	new_task->mywin = ZLOX_NULL;
 	new_task->cmd_win = ZLOX_NULL;
+	new_task->isr_idle = ZLOX_FALSE;
+	new_task->has_idle_cpu = ZLOX_FALSE;
+	new_task->fs_lock = ZLOX_FALSE;
+	new_task->elf_lock = ZLOX_FALSE;
 
 	// Add it to the end of the ready queue.
 	ZLOX_TASK *tmp_task = (ZLOX_TASK *)ready_queue;
@@ -583,6 +618,14 @@ ZLOX_SINT32 zlox_finish(ZLOX_TASK * task)
 	if(task->mywin != ZLOX_NULL)
 	{
 		zlox_destroy_my_window(task->mywin);
+	}
+	if(task->fs_lock == ZLOX_TRUE)
+	{
+		zlox_fs_unlock(task);
+	}
+	if(task->elf_lock == ZLOX_TRUE)
+	{
+		zlox_elf_unlock(task);
 	}
 	prev_task = task->prev;
 	next_task = task->next;

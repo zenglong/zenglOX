@@ -10,7 +10,7 @@ C_NET_TARGET = arp dhcp ipconf ping
 C_EXTRA_TARGET = extra/output/ee extra/output/showpng extra/output/libc.so extra/output/zengl
 C_DEP_LIB = ld.so libcommon.so
 C_DEP_NET_LIB = libnetwork.so
-INITRD_FILES = test.wav test2.wav background.bmp licence.txt $(AS_TARGET) $(C_TARGET) $(C_NET_TARGET) $(C_DEP_LIB) $(C_DEP_NET_LIB)
+INITRD_FILES = klog test.wav test2.wav background.bmp licence.txt $(AS_TARGET) $(C_TARGET) $(C_NET_TARGET) $(C_DEP_LIB) $(C_DEP_NET_LIB)
 
 LIBC_SRCS = standard/libc.c standard/printf.c standard/vsnprintf.c standard/fcvt.c standard/modf.c standard/qsort.c
 

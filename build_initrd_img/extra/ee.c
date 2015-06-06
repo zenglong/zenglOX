@@ -1,8 +1,8 @@
 #include <stdlib.h>
 
 #define EE_MAJOR_VERSION 1
-#define EE_MINOR_VERSION 3
-#define EE_REVISION 9
+#define EE_MINOR_VERSION 4
+#define EE_REVISION 0
 
 #define EOL '\0' /* end of line marker */
 #define BLK ' ' /* blank */
@@ -19,15 +19,18 @@
 #define TAB 4   /* tab */
 #define POS 5   /* show pos */
 #define ALT 6   /* meta_key */
-#define NEW 7   /* new file */
-#define SHW 8   /* screen */
-#define EDT 9   /* quit edit */
-#define WIN 10  /* window */
-#define NTS 11  /* note posted */
-#define ALL 12  /* last flag, quit */
+#define RDO 7   /* read only */
+#define NEW 8   /* new file */
+#define SHW 9   /* screen */
+#define EDT 10   /* quit edit */
+#define WIN 11  /* window */
+#define NTS 12  /* note posted */
+#define ALL 13  /* last flag, quit */
 char flag[ALL+1] = {0};
-char fsym[]="|foctp~*";
+char fsym[]="|foctp~r*";
 BOOL is_in_save = FALSE;
+
+BOOL g_control_press = FALSE;
 
 typedef struct {
 	char name[NLEN];
@@ -51,13 +54,13 @@ ctrl+t: switch tab mode     ctrl+v: block paste\n\r\
 ctrl+w: backward tab move   ctrl+x: block cut\n\r\
 ctrl+z: exit                ctrl+Backspace: backspace and delete tab\n\r\
 F1 key: show help           F2 key: switch line col show\n\r\
-Home key: goto line begin   End key: goto line end\n\r\
-Left key: cursor left       Right key: cursor right\n\r\
-Up key: cursor up           Down key: cursor down\n\r\
-Page Up key: page up        Page Down key: page down\n\r\
-Backspace key: backspace    Enter key: newline\n\r\
-Delete key: delete char     Insert key: insert mode\n\r\
-ESC+z: exit\n\r\
+F3 key: read only switch    Home key: goto line begin\n\r\
+End key: goto line end      Left key: cursor left\n\r\
+Right key: cursor right     Up key: cursor up\n\r\
+Down key: cursor down       Page Up key: page up\n\r\
+Page Down key: page down    Backspace key: backspace\n\r\
+Enter key: newline          Delete key: delete char\n\r\
+Insert key: insert mode     ESC+z: exit\n\r\
 please note that you must use left ctrl key , not right ctrl!\n\r\
 and the control letter is case sensitive!\n\r\
 Press any key to continue ..."
@@ -152,6 +155,8 @@ get_key_start:
 		return 'U' & 0x1F;
 		break;
 	case MKK_F3_PRESS:
+		return 'A' & 0x1F;
+		break;
 	case MKK_F4_PRESS:
 	case MKK_F5_PRESS:
 	case MKK_F6_PRESS:
@@ -159,6 +164,12 @@ get_key_start:
 	case MKK_F8_PRESS:
 	case MKK_F9_PRESS:
 	case MKK_F10_PRESS:
+		goto get_key_start;
+	case MKK_CTRL_PRESS:
+		g_control_press = TRUE;
+		goto get_key_start;
+	case MKK_CTRL_RELEASE:
+		g_control_press = FALSE;
 		goto get_key_start;
 	}
 	if(key == 27) { // ESC
@@ -362,6 +373,30 @@ void show_status(void)
 	show_note(tbuf);
 	get_key();
 	flag[SHW]++;
+}
+
+void show_read_only_switch(void)
+{
+	char tbuf[160];
+	if(flag[RDO])
+		sprintf(tbuf, "now in read only mode, press any key to continue");
+	else
+		sprintf(tbuf, "now in writable mode, press any key to continue");
+	show_note(tbuf);
+	get_key();
+	flag[SHW]++;
+}
+
+void show_read_only_warn()
+{
+	char tbuf[160];
+	if(flag[RDO])
+	{
+		sprintf(tbuf, "now in read only mode, you can't modify, press any key to continue");
+		show_note(tbuf);
+		get_key();
+		flag[SHW]++;
+	}
 }
 
 /* file operation ---*/
@@ -1149,25 +1184,58 @@ void main_meta_ctrl(int key)
 	case 'A':goto_y(0);break;
 	case 'b':block_mark();break;
 	case 'c':block_copy(0);break;
-	case 'd':block_delete();break;
+	case 'd':
+		if(flag[RDO])
+			; //show_read_only_warn();
+		else
+			block_delete();
+		break;
 	case 'e':show_flag(CAS, !flag[CAS]);break;
 	case 'f':goto_search(0);break;
 	case 'F':goto_search(1);break;
 	case 'g':goto_row();break;
 	case 'i':show_status();break;
 	case 'l':goto_col();break;
-	case 'm':line_format();break;
+	case 'm':
+		if(flag[RDO])
+			; //show_read_only_warn();
+		else
+			line_format();
+		break;
 	case 'q':key_tab(1);break;
-	case 'r':goto_replace(0);break;
-	case 'R':goto_replace(1);break;
+	case 'r':
+		if(flag[RDO])
+			; //show_read_only_warn();
+		else
+			goto_replace(0);
+		break;
+	case 'R':
+		if(flag[RDO])
+			; //show_read_only_warn();
+		else
+			goto_replace(1);
+		break;
 	case 's':saved_file();break;
 	case 't':show_flag(TAB, !flag[TAB]);break;
-	case 'v':block_paste();break;
+	case 'v':
+		if(flag[RDO])
+			; //show_read_only_warn();
+		else
+			block_paste();
+		break;
 	case 'w':key_left_tab();break;
-	case 'x':block_copy(1);break;
+	case 'x':
+		if(flag[RDO])
+			; //show_read_only_warn();
+		else
+			block_copy(1);
+		break;
 	case 'z':file_save(1, 0); break;
 	case 8:
-		key_backspace(TRUE);
+		if(flag[RDO])
+			; //show_read_only_warn();
+		else
+			key_backspace(TRUE);
 		break;
 	}
 }
@@ -1179,7 +1247,7 @@ void main_exec(int key)
 	while(*++dp && --i>0) 
 		;
 
-	UINT8 control_key = get_control_key();
+	//UINT8 control_key = get_control_key();
 
 	if(flag[ALT])
 	{
@@ -1192,10 +1260,16 @@ void main_exec(int key)
 	}
 	//else if(control_key & LIBC_CK_ALT)
 	//	main_meta_alt(key);
-	else if(control_key & LIBC_CK_CTRL)
+	//else if(control_key & LIBC_CK_CTRL)
+	else if(g_control_press == TRUE)
 		main_meta_ctrl(key);
 	else if(key >= BLK)
-		key_normal(key);
+	{
+		if(flag[RDO])
+			; //show_read_only_warn();
+		else
+			key_normal(key);
+	}
 	else switch(key | 0x60) {
 	case 'e':
 		cursor_up();
@@ -1216,19 +1290,31 @@ void main_exec(int key)
 		cursor_pagedown();
 		break;
 	case 'h':
-		key_backspace(FALSE);
+		if(flag[RDO])
+			; //show_read_only_warn();
+		else
+			key_backspace(FALSE);
 		break;
 	case 'i': 
-		key_tab(0); 
+		if(flag[RDO])
+			; //show_read_only_warn();
+		else
+			key_tab(0); 
 		break;
 	case 'j': 
-		key_return(); 
+		if(flag[RDO])
+			; //show_read_only_warn();
+		else
+			key_return(); 
 		break;
 	case 'n':
 		show_flag(OVR, !flag[OVR]);
 		break;
 	case 'm':
-		key_delete();
+		if(flag[RDO])
+			; //show_read_only_warn();
+		else
+			key_delete();
 		break;
 	case 'f': // home press
 		goto_x(1);
@@ -1242,6 +1328,10 @@ void main_exec(int key)
 	case 'u': // press F2 key to show line col number
 		show_flag(POS, !flag[POS]);
 		flag[NTS]++;
+		break;
+	case 'a': // press F3 key to switch read only mode
+		show_flag(RDO, !flag[RDO]);
+		// show_read_only_switch();
 		break;
 	}
 }

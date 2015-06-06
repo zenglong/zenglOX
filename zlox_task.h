@@ -53,6 +53,8 @@ typedef enum _ZLOX_MSG_KB_KEY
 	ZLOX_MKK_PAGE_DOWN_PRESS = 0xE051,
 	ZLOX_MKK_INSERT_PRESS = 0xE052,
 	ZLOX_MKK_DELETE_PRESS = 0xE053,
+	ZLOX_MKK_CTRL_PRESS = 0xFF01,
+	ZLOX_MKK_CTRL_RELEASE = 0xFF02,
 } ZLOX_MSG_KB_KEY;
 
 typedef enum _ZLOX_MSG_KB_TYPE
@@ -138,6 +140,10 @@ struct _ZLOX_TASK
 	ZLOX_TASK * parent; // parent task
 	ZLOX_MY_WINDOW * mywin;
 	ZLOX_MY_WINDOW * cmd_win;
+	ZLOX_BOOL isr_idle;
+	ZLOX_BOOL has_idle_cpu;
+	ZLOX_BOOL fs_lock;
+	ZLOX_BOOL elf_lock;
 };
 
 typedef struct _ZLOX_PID_REUSE_LIST

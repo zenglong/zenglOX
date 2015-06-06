@@ -111,6 +111,8 @@ ZLOX_DEFN_SYSCALL2(audio_set_databuf, ZLOX_SYSCALL_AUDIO_SET_DATABUF, ZLOX_UINT8
 ZLOX_DEFN_SYSCALL5(audio_set_args, ZLOX_SYSCALL_AUDIO_SET_ARGS, ZLOX_UINT32, ZLOX_UINT32, ZLOX_UINT32, ZLOX_UINT32, void *);
 ZLOX_DEFN_SYSCALL0(audio_play, ZLOX_SYSCALL_AUDIO_PLAY);
 ZLOX_DEFN_SYSCALL2(audio_ctrl, ZLOX_SYSCALL_AUDIO_CTRL, ZLOX_UINT32, void *);
+ZLOX_DEFN_SYSCALL0(timer_get_frequency, ZLOX_SYSCALL_TIMER_GET_FREQUENCY);
+ZLOX_DEFN_SYSCALL0(monitor_disable_scroll, ZLOX_SYSCALL_MONITOR_DISABLE_SCROLL);
 
 static ZLOX_VOID * syscalls[ZLOX_SYSCALL_NUMBER] =
 {
@@ -138,7 +140,8 @@ static ZLOX_VOID * syscalls[ZLOX_SYSCALL_NUMBER] =
 	&zlox_get_version,
 	&_zlox_reboot,
 	&_zlox_shutdown,
-	&_zlox_idle_cpu,
+	//&_zlox_idle_cpu,
+	&zlox_idle_cpu,
 	&zlox_atapi_drive_read_sector,
 	&zlox_atapi_drive_read_capacity,
 	&zlox_ata_get_ide_info,
@@ -192,6 +195,8 @@ static ZLOX_VOID * syscalls[ZLOX_SYSCALL_NUMBER] =
 	&zlox_audio_set_args,
 	&zlox_audio_play,
 	&zlox_audio_ctrl,
+	&zlox_timer_get_frequency,
+	&zlox_monitor_disable_scroll,
 };
 
 ZLOX_UINT32 num_syscalls = ZLOX_SYSCALL_NUMBER;
@@ -245,6 +250,8 @@ static ZLOX_VOID zlox_syscall_handler(ZLOX_ISR_REGISTERS * regs)
 	//zlox_kheap_check_all_blk(); // for debug
 
 	regs->eax = ret;
+
+	//zlox_isr_detect_proc_irq();
 }
 
 ZLOX_SINT32 zlox_get_version(ZLOX_SINT32 * major, ZLOX_SINT32 * minor, ZLOX_SINT32 * revision)

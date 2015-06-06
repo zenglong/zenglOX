@@ -98,6 +98,7 @@ int main(VOID * task, int argc, char * argv[])
 	BOOL isinUp = FALSE;
 	char input[MAX_INPUT]={0};
 	int count = 0;
+	int cur = count;
 	TASK_MSG msg;
 
 	UNUSED(argc);
@@ -145,19 +146,55 @@ int main(VOID * task, int argc, char * argv[])
 				switch(msg.keyboard.key)
 				{
 				case MKK_CURSOR_UP_PRESS:
-					if(strlen(input_for_up) == 0)
-						break;
-					if(strcmp(input_for_up, input) == 0)
-						break;
-					strcpy(input_for_down, input);
-					replace_input(input,input_for_up,&count);
-					isinUp = TRUE;
+					{
+						if(strlen(input_for_up) == 0)
+							break;
+						if(strcmp(input_for_up, input) == 0)
+							break;
+						strcpy(input_for_down, input);
+						for(int i=0 ; i < (count - cur) ;i++)
+							syscall_cmd_window_put(' ');
+						replace_input(input,input_for_up,&count);
+						cur = count;
+						isinUp = TRUE;
+					}
 					break;
 				case MKK_CURSOR_DOWN_PRESS:
 					if(isinUp == TRUE)
 					{
+						for(int i=0 ; i < (count - cur) ;i++)
+							syscall_cmd_window_put(' ');
 						replace_input(input,input_for_down,&count);
+						cur = count;
 						isinUp = FALSE;
+					}
+					break;
+				case MKK_CURSOR_LEFT_PRESS:
+					if(cur > 0)
+					{
+						syscall_cmd_window_put('\b');
+						cur--;
+					}
+					break;
+				case MKK_CURSOR_RIGHT_PRESS:
+					if(cur < count)
+					{
+						syscall_cmd_window_put(input[cur]);
+						cur++;
+					}
+					break;
+				case MKK_HOME_PRESS:
+					while(cur > 0)
+					{
+						syscall_cmd_window_put('\b');
+						cur--;
+					}
+					break;
+				case MKK_END_PRESS:
+					while(cur < count)
+					{
+						syscall_cmd_window_put(input[cur]);
+						cur++;
 					}
 					break;
 				default:
@@ -189,6 +226,7 @@ int main(VOID * task, int argc, char * argv[])
 						syscall_wait(task);
 					input[0] = '\0';
 					count = 0;
+					cur = count;
 				}
 				syscall_cmd_window_write("\nzenglOX> ");
 				syscall_set_input_focus(task);
@@ -196,9 +234,16 @@ int main(VOID * task, int argc, char * argv[])
 			}
 			else if(msg.keyboard.ascii == '\b')
 			{
-				if(count > 0)
+				if(count > 0 && cur > 0)
 				{
-					syscall_cmd_window_write("\b \b");
+					for(int i = cur-1, j = cur; j < count ;i++,j++)
+						input[i] = input[j];
+					input[count-1] = ' ';
+					syscall_cmd_window_put('\b');
+					syscall_cmd_window_write(&input[cur-1]);
+					for(int i = 0; i < (count - cur + 1);i++)
+						syscall_cmd_window_put('\b');
+					cur--;
 					input[--count] = '\0';
 				}
 				continue;
@@ -211,9 +256,15 @@ int main(VOID * task, int argc, char * argv[])
 				// input里目前只存放可显示字符，可显示字符的范围为十进制格式的32到126
 				if(msg.keyboard.ascii >= 32 && msg.keyboard.ascii <= 126)
 				{
-					input[count++] = msg.keyboard.ascii;
-					input[count]='\0';
-					syscall_cmd_window_put((char)msg.keyboard.ascii);
+					for(int i = count-1, j = count; j > cur ; i--,j--)
+						input[j] = input[i];
+					input[cur] = msg.keyboard.ascii;
+					input[count + 1]='\0';
+					syscall_cmd_window_write(&input[cur]);
+					for(int i = 0; i < (count - cur);i++)
+						syscall_cmd_window_put('\b');
+					cur++;
+					count++;
 				}
 			}
 		}

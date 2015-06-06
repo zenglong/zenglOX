@@ -10,10 +10,14 @@ int main(VOID * task, int argc, char * argv[])
 
 	FS_NODE * fsnode = (FS_NODE *)syscall_umalloc(sizeof(FS_NODE));
 
-	if(argc == 2)
+	if(argc == 2 || argc == 3)
 	{
 		FS_NODE * fs_root = (FS_NODE *)syscall_get_fs_root();
 		int ret = syscall_finddir_fs_safe(fs_root, argv[1], fsnode);
+		UINT32 show_char_num = 0;
+		if(argc == 3)
+			show_char_num = strToUInt(argv[2]);
+
 		if (ret == -1)
 		{
 			syscall_cmd_window_write("\"");
@@ -24,6 +28,8 @@ int main(VOID * task, int argc, char * argv[])
 		{
 			CHAR * buf = (CHAR *)syscall_umalloc(fsnode->length + 1);
 			syscall_read_fs(fsnode,0,fsnode->length,buf);
+			if(show_char_num > 0 && show_char_num < fsnode->length)
+				buf[show_char_num] = '\0';
 			buf[fsnode->length] = '\0';
 			syscall_cmd_window_write(buf);
 			syscall_ufree(buf);
@@ -37,7 +43,7 @@ int main(VOID * task, int argc, char * argv[])
 	}
 	else
 	{
-		syscall_cmd_window_write("usage: cat <filename>");
+		syscall_cmd_window_write("usage: cat <filename> [show char num]");
 	}
 
 	if(fsnode != NULL)

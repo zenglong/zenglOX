@@ -43,6 +43,9 @@ ZLOX_VOID zlox_vga_set_point(ZLOX_SINT32 x, ZLOX_SINT32 y, ZLOX_UINT32 value);
 
 ZLOX_VOID zlox_vga_write_char(ZLOX_SINT32 x, ZLOX_SINT32 y, ZLOX_SINT32 val, ZLOX_UINT32 color, ZLOX_UINT32 backColour);
 
+ZLOX_VOID zlox_vga_scroll_monitor(ZLOX_SINT32 y, ZLOX_SINT32 ch_total_height, 
+				ZLOX_SINT32 total_row);
+
 ZLOX_SINT32 zlox_vga_update_screen(ZLOX_UINT8 * buffer, ZLOX_UINT32 buffer_size);
 
 ZLOX_UINT32 zlox_vga_get_text_font();

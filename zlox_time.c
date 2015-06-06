@@ -4,8 +4,10 @@
 #include "zlox_isr.h"
 #include "zlox_monitor.h"
 #include "zlox_task.h"
+#include "zlox_usb.h"
 
 ZLOX_UINT32 tick = 0;
+ZLOX_UINT32 timer_frequency = 0;
 ZLOX_BOOL timer_switch_flag = ZLOX_TRUE;
 
 ZLOX_VOID zlox_test_ps2_keyboard();
@@ -14,7 +16,10 @@ static ZLOX_VOID zlox_timer_callback(/*ZLOX_ISR_REGISTERS * regs*/)
 {
 	tick++;
 	if(timer_switch_flag)
+	{
+		zlox_usb_poll();
 		zlox_switch_task();
+	}
 }
 
 ZLOX_VOID zlox_timer_sleep(ZLOX_UINT32 Ticks, ZLOX_BOOL need_switch)
@@ -40,6 +45,11 @@ ZLOX_UINT32 zlox_timer_get_tick()
 	return tick;
 }
 
+ZLOX_UINT32 zlox_timer_get_frequency()
+{
+	return timer_frequency;
+}
+
 ZLOX_VOID zlox_init_timer(ZLOX_UINT32 frequency)
 {
 	ZLOX_UINT32 divisor;
@@ -63,5 +73,7 @@ ZLOX_VOID zlox_init_timer(ZLOX_UINT32 frequency)
 	// Send the frequency divisor.
 	zlox_outb(0x40, l);
 	zlox_outb(0x40, h);
+
+	timer_frequency = frequency;
 }
 

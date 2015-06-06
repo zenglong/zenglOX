@@ -3,6 +3,18 @@
 #include "zlox_kheap.h"
 #include "zlox_initrd.h"
 
+#define ZLOX_INITRD_KLOG_MAX_SIZE (1024 * 10)
+
+typedef struct _ZLOX_INITRD_KLOG
+{
+	ZLOX_CHAR * start;
+	ZLOX_UINT32 size;
+	ZLOX_UINT32 offset;
+	ZLOX_SINT32 rd_inode;
+} ZLOX_INITRD_KLOG;
+
+ZLOX_INITRD_KLOG initrd_klog = {0};
+
 ZLOX_INITRD_HEADER * initrd_header; // The header.
 ZLOX_INITRD_FILE_HEADER * file_headers; // The list of file headers.
 ZLOX_FS_NODE *initrd_root; // Our root directory node.
@@ -170,7 +182,40 @@ ZLOX_FS_NODE * zlox_initialise_initrd(ZLOX_UINT32 location)
 		root_nodes[i].open = 0;
 		root_nodes[i].close = 0;
 		root_nodes[i].impl = 0;
+
+		if(zlox_strcmp(root_nodes[i].name, "klog") == 0)
+		{
+			file_headers[i].offset = (ZLOX_UINT32)initrd_klog.start;
+			file_headers[i].length = initrd_klog.offset;
+			root_nodes[i].length = initrd_klog.offset;
+			initrd_klog.rd_inode = i;
+		}
 	}
 	return initrd_root;
+}
+
+ZLOX_VOID zlox_klog_init()
+{
+	initrd_klog.size = ZLOX_INITRD_KLOG_MAX_SIZE;
+	initrd_klog.start = (ZLOX_CHAR *)zlox_kmalloc(initrd_klog.size);
+	initrd_klog.offset = 0;
+	initrd_klog.rd_inode = -1;
+}
+
+ZLOX_VOID zlox_klog_write(ZLOX_CHAR ch)
+{
+	if(initrd_klog.start == ZLOX_NULL)
+		return;
+
+	if(initrd_klog.offset < initrd_klog.size)
+	{
+		initrd_klog.start[initrd_klog.offset] = ch;
+		initrd_klog.offset++;
+		if(initrd_klog.rd_inode >= 0)
+		{
+			file_headers[initrd_klog.rd_inode].length = initrd_klog.offset;
+			root_nodes[initrd_klog.rd_inode].length = initrd_klog.offset;
+		}
+	}
 }
 

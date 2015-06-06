@@ -21,6 +21,7 @@
 #include "zlox_vga.h"
 #include "zlox_my_windows.h"
 #include "zlox_audio.h"
+#include "zlox_usb.h"
 
 ZLOX_VOID zlox_test_ps2_keyboard();
 
@@ -49,6 +50,8 @@ ZLOX_SINT32 zlox_kernel_main(ZLOX_MULTIBOOT * mboot_ptr, ZLOX_UINT32 initial_sta
 	asm volatile("sti");
 	// 将PIT定时器的频率设为50Hz,即每20ms产生一次时间中断
 	zlox_init_timer(50);
+	// 将PIT定时器的频率设为1000Hz,即每1ms产生一次时间中断
+	//zlox_init_timer(1000);
 
 	ZLOX_ASSERT(mboot_ptr->mods_count > 0);
 	initrd_location = *((ZLOX_UINT32*)mboot_ptr->mods_addr);
@@ -56,6 +59,8 @@ ZLOX_SINT32 zlox_kernel_main(ZLOX_MULTIBOOT * mboot_ptr, ZLOX_UINT32 initial_sta
 	// grub会将initrd模块放置到kernel内核后面,所以将placement_address设置为initrd_end,
 	// 这样zlox_init_paging分配页表时才能将initrd考虑进来,同时堆分配空间时就不会覆盖到initrd里的内容
 	placement_address = initrd_end;
+
+	zlox_klog_init();
 
 	lfb_vid_memory = (ZLOX_UINT8 *)((ZLOX_MULTIBOOT_VBE_INFO *)(mboot_ptr->vbe_mode_info))->physbase;
 
@@ -89,6 +94,8 @@ ZLOX_SINT32 zlox_kernel_main(ZLOX_MULTIBOOT * mboot_ptr, ZLOX_UINT32 initial_sta
 
 	if(audio_reset == 0)
 		zlox_audio_init();
+
+	zlox_usb_init();
 
 	/*for (ZLOX_UINT16 y = 0; y < 768; y++) {
 		for (ZLOX_UINT16 x = 0; x < 1024; x++) {
@@ -152,13 +159,14 @@ ZLOX_SINT32 zlox_kernel_main(ZLOX_MULTIBOOT * mboot_ptr, ZLOX_UINT32 initial_sta
 
 	ZLOX_SINT32 sec=0;
 	ZLOX_UINT32 origtick = zlox_syscall_timer_get_tick();
+	ZLOX_UINT32 frequency = zlox_syscall_timer_get_frequency();
 	while(sec < 3)
 	{
 		while(ZLOX_TRUE)
 		{
 			zlox_syscall_idle_cpu();
 			ZLOX_UINT32 curtick = zlox_syscall_timer_get_tick();
-			if((curtick - origtick) > 50)
+			if((curtick - origtick) > frequency)
 				break;
 		}
 		zlox_syscall_monitor_write("..");
@@ -168,6 +176,8 @@ ZLOX_SINT32 zlox_kernel_main(ZLOX_MULTIBOOT * mboot_ptr, ZLOX_UINT32 initial_sta
 
 	//while(1)
 	//	;
+
+	zlox_syscall_monitor_disable_scroll();
 
 	zlox_syscall_execve("desktop");
 

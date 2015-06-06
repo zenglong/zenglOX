@@ -21,5 +21,9 @@ typedef struct _ZLOX_INITRD_FILE_HEADER
 
 ZLOX_FS_NODE * zlox_initialise_initrd(ZLOX_UINT32 location);
 
+ZLOX_VOID zlox_klog_init();
+
+ZLOX_VOID zlox_klog_write(ZLOX_CHAR ch);
+
 #endif //_ZLOX_INITRD_H_
 

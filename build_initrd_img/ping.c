@@ -235,7 +235,8 @@ int main(TASK * task, int argc, char * argv[])
 
 		UINT32 ping_num = strToUInt(argv[1]);
 		UINT32 timeout = strToUInt(argv[2]);
-		timeout = (timeout * 1000) / 20;
+		UINT32 timer_frequency = syscall_timer_get_frequency();
+		timeout = (timeout * 1000) / (1000 / timer_frequency);
 		UINT8 gw_mac[6] = {0};
 		int ret;
 		ret = ping_get_gateway_mac(gw_mac, task, timeout);

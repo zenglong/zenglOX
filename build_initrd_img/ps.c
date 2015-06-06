@@ -8,10 +8,13 @@
 int main(TASK * task, int argc, char * argv[])
 {
 	if(argc == 1 || (argc > 1 && strcmp(argv[1],"-d")==0) ||
-		(argc > 1 && strcmp(argv[1],"-x")==0))
+		(argc > 1 && strcmp(argv[1],"-x")==0) || 
+		(argc > 1 && strIsNum(argv[1])) )
 	{
 		TASK * first_task;
 		TASK * tmp_task;
+		UINT32 show_num = 0;
+		UINT32 show_count = 0;
 		tmp_task = task;
 		while(tmp_task != 0)
 		{
@@ -19,6 +22,16 @@ int main(TASK * task, int argc, char * argv[])
 			tmp_task = first_task->prev;
 		}
 		tmp_task = first_task;
+		if(argc == 2)
+		{
+			if(strIsNum(argv[1]))
+				show_num = strToUInt(argv[1]);
+		}
+		else if(argc > 2)
+		{
+			if(strIsNum(argv[2]))
+				show_num = strToUInt(argv[2]);
+		}
 		do{
 			syscall_cmd_window_write("ID:");
 			syscall_cmd_window_write_dec(tmp_task->id);
@@ -88,12 +101,17 @@ int main(TASK * task, int argc, char * argv[])
 			else
 				syscall_cmd_window_write("\n");
 			tmp_task = tmp_task->next;
+			show_count++;
+			if(show_num != 0 && show_count >= show_num)
+				break;
 		}while(tmp_task != 0);
 	}
 	else if(argc > 1 && strcmp(argv[1],"-u")==0)
 	{
 		TASK * first_task;
 		TASK * tmp_task;
+		UINT32 show_num = 0;
+		UINT32 show_count = 0;
 		tmp_task = task;
 		while(tmp_task != 0)
 		{
@@ -101,6 +119,16 @@ int main(TASK * task, int argc, char * argv[])
 			tmp_task = first_task->prev;
 		}
 		tmp_task = first_task;
+		if(argc == 2)
+		{
+			if(strIsNum(argv[1]))
+				show_num = strToUInt(argv[1]);
+		}
+		else if(argc > 2)
+		{
+			if(strIsNum(argv[2]))
+				show_num = strToUInt(argv[2]);
+		}
 		do{
 			syscall_cmd_window_write("ID:");
 			syscall_cmd_window_write_dec(tmp_task->id);
@@ -135,6 +163,9 @@ int main(TASK * task, int argc, char * argv[])
 			syscall_cmd_window_write_dec(((HEAP *)(tmp_task->heap))->index.size);
 			syscall_cmd_window_write(" >>\n\n");
 			tmp_task = tmp_task->next;
+			show_count++;
+			if(show_num != 0 && show_count >= show_num)
+				break;
 		}while(tmp_task != 0);
 	}
 	else if(argc > 1 && strcmp(argv[1],"-m")==0)
@@ -199,7 +230,7 @@ int main(TASK * task, int argc, char * argv[])
 	}
 	else
 	{
-		syscall_cmd_window_write("usage: ps [-m][-d][-u][-x]");
+		syscall_cmd_window_write("usage: ps [shownum][-m][-d [shownum]][-u [shownum]][-x [shownum]]");
 	}
 	return 0;
 }

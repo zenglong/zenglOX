@@ -14,6 +14,8 @@ ZLOX_SINT32 zlox_monitor_insert_line();
 // Writes a single character out to the screen.
 ZLOX_VOID zlox_monitor_put(ZLOX_CHAR c);
 
+ZLOX_SINT32 zlox_monitor_disable_scroll();
+
 ZLOX_VOID zlox_monitor_set_single(ZLOX_BOOL flag);
 
 ZLOX_VOID zlox_monitor_set_cursor(ZLOX_UINT8 x, ZLOX_UINT8 y);

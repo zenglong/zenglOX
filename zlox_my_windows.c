@@ -4,6 +4,7 @@
 #include "zlox_kheap.h"
 #include "zlox_monitor.h"
 #include "zlox_vga.h"
+#include "zlox_isr.h"
 
 #define ZLOX_CMD_WINDOW_W_SPACE 1
 #define ZLOX_CMD_WINDOW_H_SPACE 2
@@ -494,6 +495,9 @@ ZLOX_SINT32 zlox_cmd_window_put(ZLOX_CHAR c)
 			zlox_draw_my_mouse(&intersect_rect);
 		}
 	}
+
+	zlox_isr_detect_proc_irq();
+
 	return val;
 }
 
@@ -1399,7 +1403,7 @@ static ZLOX_SINT32 zlox_cmd_window_write_char(ZLOX_SINT32 x, ZLOX_SINT32 y, ZLOX
 	return val;
 }
 
-static ZLOX_SINT32 zlox_erase_drag_rect(ZLOX_MY_WINDOW * start, ZLOX_MY_WINDOW * end, ZLOX_MY_RECT * rect)
+/*static ZLOX_SINT32 zlox_erase_drag_rect(ZLOX_MY_WINDOW * start, ZLOX_MY_WINDOW * end, ZLOX_MY_RECT * rect)
 {
 	ZLOX_MY_RECT lfb_tmp_rect;
 	lfb_tmp_rect.x = 0;
@@ -1446,9 +1450,101 @@ static ZLOX_SINT32 zlox_erase_drag_rect(ZLOX_MY_WINDOW * start, ZLOX_MY_WINDOW *
 		tmpwin = tmpwin->next;
 	}
 	return 0;
+}*/
+
+static ZLOX_SINT32 zlox_erase_drag_rect(ZLOX_MY_WINDOW * start, ZLOX_MY_WINDOW * end, ZLOX_MY_RECT * rect)
+{
+	ZLOX_MY_RECT lfb_tmp_rect;
+	lfb_tmp_rect.x = 0;
+	lfb_tmp_rect.y = 0;
+	lfb_tmp_rect.width = lfb_resolution_x;
+	lfb_tmp_rect.height = lfb_resolution_y;
+	ZLOX_MY_RECT intersect_rect_lfb;
+	ZLOX_MY_RECT intersect_rect;
+	ZLOX_MY_RECT win_rect;
+	ZLOX_MY_WINDOW * tmpwin = start;
+	ZLOX_SINT32 pix_byte = lfb_resolution_b / 8;
+	ZLOX_UINT32 * vid_mem = (ZLOX_UINT32 *)lfb_vid_memory;
+	while(ZLOX_TRUE)
+	{
+		if(zlox_detect_intersect_rect(&lfb_tmp_rect, rect, &intersect_rect_lfb))
+		{
+			win_rect.x = tmpwin->x;
+			win_rect.y = tmpwin->y;
+			win_rect.width = tmpwin->width;
+			win_rect.height = tmpwin->height;
+			if(zlox_detect_intersect_rect(&win_rect, &intersect_rect_lfb, &intersect_rect))
+			{
+				ZLOX_SINT32 x, y, win_x, win_y;
+				ZLOX_BOOL need_draw_top = ZLOX_TRUE;
+				ZLOX_BOOL need_draw_bottom = ZLOX_TRUE;
+				if(intersect_rect.y == rect->y)
+				{
+					x = intersect_rect.x;
+					y = intersect_rect.y;
+					win_x = x - tmpwin->x;
+					win_y = y - tmpwin->y;
+					if(intersect_rect.width > 0)
+					{
+						zlox_memcpy((ZLOX_UINT8 *)&vid_mem[x + y * lfb_resolution_x], 
+							(ZLOX_UINT8 *)&tmpwin->bitmap[win_x + win_y * tmpwin->width], 
+							intersect_rect.width * pix_byte);
+						if(need_draw_top)
+							need_draw_top = ZLOX_FALSE;
+					}
+				}
+
+				if(intersect_rect.height > 1 && rect->height > 1)
+				{
+					if((intersect_rect.y + intersect_rect.height - 1) == 
+					   (rect->y + rect->height - 1))
+					{
+						x = intersect_rect.x;
+						y = intersect_rect.y + intersect_rect.height - 1;
+						win_x = x - tmpwin->x;
+						win_y = y - tmpwin->y;
+						if(intersect_rect.width > 0)
+						{
+							zlox_memcpy((ZLOX_UINT8 *)&vid_mem[x + y * lfb_resolution_x], 
+								(ZLOX_UINT8 *)&tmpwin->bitmap[win_x + win_y * tmpwin->width], 
+								intersect_rect.width * pix_byte);
+							if(need_draw_bottom)
+								need_draw_bottom = ZLOX_FALSE;
+						}
+					}
+				}
+
+				for(y = intersect_rect.y; y < (intersect_rect.y + intersect_rect.height); y++)
+				{
+					if(y == intersect_rect.y)
+						if(need_draw_top == ZLOX_FALSE)
+							continue;
+					if(y == (intersect_rect.y + intersect_rect.height - 1))
+						if(need_draw_bottom == ZLOX_FALSE)
+							continue;
+					for(x = intersect_rect.x; x < (intersect_rect.x + intersect_rect.width);)
+					{
+						if(x == rect->x || 
+						   x == (rect->x + rect->width - 1))
+						{
+							win_x = x - tmpwin->x;
+							win_y = y - tmpwin->y;
+							vid_mem[x + y * lfb_resolution_x] = 
+									tmpwin->bitmap[win_x + win_y * tmpwin->width];
+						}
+						x += (intersect_rect.width - 1) > 0 ? (intersect_rect.width - 1) : 1;
+					}
+				}
+			}
+		}
+		if(tmpwin == end)
+			break;
+		tmpwin = tmpwin->next;
+	}
+	return 0;
 }
 
-static ZLOX_SINT32 zlox_draw_drag_rect(ZLOX_MY_RECT * rect)
+/*static ZLOX_SINT32 zlox_draw_drag_rect(ZLOX_MY_RECT * rect)
 {
 	ZLOX_MY_RECT lfb_tmp_rect;
 	lfb_tmp_rect.x = 0;
@@ -1473,6 +1569,73 @@ static ZLOX_SINT32 zlox_draw_drag_rect(ZLOX_MY_RECT * rect)
 					x++;
 				else
 					x += (intersect_rect.width - 1) > 0 ? (intersect_rect.width - 1) : 1;
+			}
+		}
+	}
+	return 0;
+}*/
+
+static ZLOX_SINT32 zlox_draw_drag_rect(ZLOX_MY_RECT * rect)
+{
+	ZLOX_MY_RECT lfb_tmp_rect;
+	lfb_tmp_rect.x = 0;
+	lfb_tmp_rect.y = 0;
+	lfb_tmp_rect.width = lfb_resolution_x;
+	lfb_tmp_rect.height = lfb_resolution_y;
+	ZLOX_MY_RECT intersect_rect;
+	ZLOX_SINT32 pix_byte = lfb_resolution_b / 8;
+	ZLOX_UINT32 * vid_mem = (ZLOX_UINT32 *)lfb_vid_memory;
+	if(zlox_detect_intersect_rect(&lfb_tmp_rect, rect, &intersect_rect))
+	{
+		ZLOX_SINT32 x, y;
+		ZLOX_BOOL need_draw_top = ZLOX_TRUE;
+		ZLOX_BOOL need_draw_bottom = ZLOX_TRUE;
+		if(intersect_rect.y == rect->y)
+		{
+			x = intersect_rect.x;
+			y = intersect_rect.y;
+			if(intersect_rect.width > 0)
+			{
+				zlox_memset((ZLOX_UINT8 *)&vid_mem[x + y * lfb_resolution_x], 0xFF, 
+					intersect_rect.width * pix_byte);
+				if(need_draw_top)
+					need_draw_top = ZLOX_FALSE;
+				
+			}
+		}
+
+		if(intersect_rect.height > 1 && rect->height > 1)
+		{
+			if((intersect_rect.y + intersect_rect.height - 1) == 
+			   (rect->y + rect->height - 1))
+			{
+				x = intersect_rect.x;
+				y = intersect_rect.y + intersect_rect.height - 1;
+				if(intersect_rect.width > 0)
+				{
+					zlox_memset((ZLOX_UINT8 *)&vid_mem[x + y * lfb_resolution_x], 0xFF, 
+						intersect_rect.width * pix_byte);
+					if(need_draw_bottom)
+						need_draw_bottom = ZLOX_FALSE;
+				}
+			}
+		}
+
+		for(y = intersect_rect.y; y < (intersect_rect.y + intersect_rect.height); y++)
+		{
+			if(y == intersect_rect.y)
+				if(need_draw_top == ZLOX_FALSE)
+					continue;
+			if(y == (intersect_rect.y + intersect_rect.height - 1))
+				if(need_draw_bottom == ZLOX_FALSE)
+					continue;
+			for(x = intersect_rect.x; x < (intersect_rect.x + intersect_rect.width);)
+			{
+				if(x == rect->x || x == (rect->x + rect->width - 1))
+				{
+					vid_mem[x + y * lfb_resolution_x] = 0xFFFFFFFF;
+				}
+				x += (intersect_rect.width - 1) > 0 ? (intersect_rect.width - 1) : 1;
 			}
 		}
 	}

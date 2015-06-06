@@ -40,5 +40,9 @@ typedef ZLOX_VOID (*ZLOX_ISR_CALLBACK)(ZLOX_ISR_REGISTERS *);
 
 ZLOX_VOID zlox_register_interrupt_callback(ZLOX_UINT8 n, ZLOX_ISR_CALLBACK callback);
 
+ZLOX_VOID zlox_idle_cpu();
+
+ZLOX_VOID zlox_isr_detect_proc_irq();
+
 #endif //_ZLOX_ISR_H_
 
